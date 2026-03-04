@@ -2823,9 +2823,9 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
   // Most visited store
   const topStore = useMemo(() => {
     const map = {};
-    receipts.forEach(r => { if (r.store) map[r.store] = (map[r.store] || 0) + 1; });
-    const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
-    return entries[0] ? { name: entries[0][0], count: entries[0][1] } : null;
+    receipts.forEach(r => { if (r.store) { const k = r.store.trim().toLowerCase(); if (!map[k]) map[k] = { name: r.store.trim(), count: 0 }; map[k].count++; } });
+    const entries = Object.values(map).sort((a, b) => b.count - a.count);
+    return entries[0] || null;
   }, [receipts]);
 
   // Day of week with highest spending
@@ -3059,12 +3059,13 @@ function StoresView({ receipts }) {
     });
   }, [receipts, range]);
 
-  // ── Build store summary map (grouped by store name, with locations) ──
+  // ── Build store summary map (grouped by normalized store name, with locations) ──
   const storeMap = useMemo(() => {
     const map = {};
     filtered.forEach(r => {
-      const key = (r.store || "Nieznany sklep").trim();
-      if (!map[key]) map[key] = { name: key, visits: 0, total: 0, saved: 0, items: [], lastDate: null, locations: {} };
+      const raw = (r.store || "Nieznany sklep").trim();
+      const key = raw.toLowerCase();
+      if (!map[key]) map[key] = { name: raw, visits: 0, total: 0, saved: 0, items: [], lastDate: null, locations: {} };
       map[key].visits++;
       map[key].total  += parseFloat(r.total) || 0;
       map[key].saved  += parseFloat(r.total_discounts) || 0;
@@ -3072,7 +3073,7 @@ function StoresView({ receipts }) {
       const d = parseDate(r.date);
       if (d && (!map[key].lastDate || d > map[key].lastDate)) map[key].lastDate = d;
       // Track locations by address/zip
-      const locKey = [r.zip_code, r.address].filter(Boolean).join(" ") || null;
+      const locKey = [r.zip_code, r.address].filter(Boolean).join(" ").toLowerCase() || null;
       if (locKey) {
         if (!map[key].locations[locKey]) map[key].locations[locKey] = { address: r.address || "", zip_code: r.zip_code || "", visits: 0, total: 0 };
         map[key].locations[locKey].visits++;
@@ -4077,7 +4078,7 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
     });
     return Object.entries(nameMap)
       .filter(([, items]) => {
-        const stores = new Set(items.map(i => i.store).filter(Boolean));
+        const stores = new Set(items.map(i => (i.store || "").trim().toLowerCase()).filter(Boolean));
         return stores.size >= 2;
       })
       .map(([name, items]) => {
@@ -4731,6 +4732,11 @@ function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, cus
   const [type,     setType]     = useState("one-time");
   const [name,     setName]     = useState("");
   const [amount,   setAmount]   = useState("");
+  const [quantity, setQuantity] = useState("1");
+  const [unit,     setUnit]     = useState("");
+  const [unitPrice,setUnitPrice]= useState("");
+  const [discount, setDiscount] = useState("");
+  const [discountLabel, setDiscountLabel] = useState("");
   const [category, setCategory] = useState("Inne");
   const [date,     setDate]     = useState(new Date().toISOString().slice(0,10));
   const [store,    setStore]    = useState("");
@@ -4747,6 +4753,16 @@ function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, cus
     else nameRef.current?.focus();
   }, [textMode]);
 
+  // Auto-calculate total from quantity × unit_price - discount
+  useEffect(() => {
+    const q = parseFloat(quantity) || 1;
+    const up = parseFloat(unitPrice);
+    if (up > 0) {
+      const disc = parseFloat(discount) || 0;
+      setAmount((q * up - disc).toFixed(2));
+    }
+  }, [quantity, unitPrice, discount]);
+
   // Close on overlay click
   const overlayRef = useRef();
 
@@ -4757,6 +4773,12 @@ function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, cus
       id:       Date.now() + Math.random(),
       name:     name.trim(),
       amount:   parseFloat(amount),
+      quantity: parseFloat(quantity) || 1,
+      unit:     unit.trim() || null,
+      unit_price: parseFloat(unitPrice) || null,
+      total_price: parseFloat(amount),
+      discount: parseFloat(discount) || null,
+      discount_label: discountLabel.trim() || null,
       category,
       date,
       store:    store.trim(),
@@ -4831,16 +4853,52 @@ function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, cus
                 ))}
               </div>
 
-              {/* Name + amount row */}
+              {/* Name */}
+              <div style={{ marginBottom:14 }}>
+                <label htmlFor="qa-name" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Nazwa</label>
+                <input id="qa-name" ref={nameRef} className="field" value={name}
+                  onChange={e => setName(e.target.value)} onKeyDown={e => e.key==="Enter" && submit()}
+                  placeholder="np. Młotek, Spotify, Pralka…" />
+              </div>
+
+              {/* Quantity + Unit + Unit Price row */}
               <div style={{ display:"flex", gap:10, marginBottom:14 }}>
-                <div style={{ flex:2, minWidth:0 }}>
-                  <label htmlFor="qa-name" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Nazwa</label>
-                  <input id="qa-name" ref={nameRef} className="field" value={name}
-                    onChange={e => setName(e.target.value)} onKeyDown={e => e.key==="Enter" && submit()}
-                    placeholder="np. Młotek, Spotify, Pralka…" />
+                <div style={{ flex:1, minWidth:70 }}>
+                  <label htmlFor="qa-qty" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Ilość</label>
+                  <input id="qa-qty" className="field" type="number" min="0" step="0.01"
+                    value={quantity} onChange={e => setQuantity(e.target.value)}
+                    placeholder="1" style={{ textAlign:"right" }} />
+                </div>
+                <div style={{ flex:1, minWidth:60 }}>
+                  <label htmlFor="qa-unit" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Jedn.</label>
+                  <input id="qa-unit" className="field" value={unit}
+                    onChange={e => setUnit(e.target.value)}
+                    placeholder="szt, kg, l…" />
                 </div>
                 <div style={{ flex:1, minWidth:90 }}>
-                  <label htmlFor="qa-amt" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Kwota (PLN)</label>
+                  <label htmlFor="qa-uprice" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Cena jedn.</label>
+                  <input id="qa-uprice" className="field" type="number" min="0" step="0.01"
+                    value={unitPrice} onChange={e => setUnitPrice(e.target.value)}
+                    placeholder="0.00" style={{ textAlign:"right" }} />
+                </div>
+              </div>
+
+              {/* Discount + Total row */}
+              <div style={{ display:"flex", gap:10, marginBottom:14 }}>
+                <div style={{ flex:1, minWidth:80 }}>
+                  <label htmlFor="qa-disc" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Zniżka (zł)</label>
+                  <input id="qa-disc" className="field" type="number" min="0" step="0.01"
+                    value={discount} onChange={e => setDiscount(e.target.value)}
+                    placeholder="0.00" style={{ textAlign:"right" }} />
+                </div>
+                <div style={{ flex:1, minWidth:80 }}>
+                  <label htmlFor="qa-disclbl" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Opis zniżki</label>
+                  <input id="qa-disclbl" className="field" value={discountLabel}
+                    onChange={e => setDiscountLabel(e.target.value)}
+                    placeholder="np. Karta Moja" />
+                </div>
+                <div style={{ flex:1, minWidth:90 }}>
+                  <label htmlFor="qa-amt" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Razem (PLN)</label>
                   <input id="qa-amt" className="field" type="number" min="0" step="0.01"
                     value={amount} onChange={e => setAmount(e.target.value)}
                     onKeyDown={e => e.key==="Enter" && submit()} placeholder="0.00" style={{ textAlign:"right" }} />
