@@ -4192,6 +4192,10 @@ export default function App() {
   }, [darkMode]);
 
   const handleFiles = useCallback(async files => {
+    if (!apiKey) {
+      setShowKeyModal(true);
+      return;
+    }
     for (const file of files) {
       const id = Date.now() + Math.random();
       setProcessing(p => [...p, { id, name: file.name }]);
