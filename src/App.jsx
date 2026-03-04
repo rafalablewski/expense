@@ -54,6 +54,7 @@ const CATS = {
   "Owoce":         "#EA580C",
   "Napoje":        "#6D28D9",
   "Pieczywo":      "#D97706",
+  "Zboża":         "#B45309",
   "Słodycze":      "#BE185D",
   "Chemia":        "#0891B2",
   // Bills & services
@@ -82,14 +83,14 @@ const CATS = {
 
 // Category groups for UI
 const CAT_GROUPS = {
-  "Spożywcze":   ["Nabiał","Mięso","Warzywa","Owoce","Napoje","Pieczywo","Słodycze","Chemia"],
+  "Spożywcze":   ["Nabiał","Mięso","Warzywa","Owoce","Napoje","Pieczywo","Zboża","Słodycze","Chemia"],
   "Rachunki":    ["Paliwo","Subskrypcje","Transport","Rozrywka","Restauracje"],
   "Jednorazowe": ["Elektronika","Odzież","Zdrowie","Narzędzia","Meble","AGD","Ogród","Zwierzęta","Podróże","Sport","Kosmetyki","Edukacja","Prezenty","Dom","Inne"],
 };
 
 // Category icons
 const CAT_ICONS = {
-  "Nabiał":"🥛","Mięso":"🥩","Warzywa":"🥦","Owoce":"🍎","Napoje":"🥤","Pieczywo":"🍞","Słodycze":"🍬","Chemia":"🧹",
+  "Nabiał":"🥛","Mięso":"🥩","Warzywa":"🥦","Owoce":"🍎","Napoje":"🥤","Pieczywo":"🍞","Zboża":"🌾","Słodycze":"🍬","Chemia":"🧹",
   "Paliwo":"⛽","Subskrypcje":"📱","Restauracje":"🍽️","Transport":"🚗","Rozrywka":"🎬",
   "Elektronika":"💻","Odzież":"👔","Zdrowie":"💊","Narzędzia":"🔧","Meble":"🛋️","AGD":"🫙",
   "Ogród":"🌿","Zwierzęta":"🐾","Podróże":"✈️","Sport":"🏃","Kosmetyki":"💄","Edukacja":"📚","Prezenty":"🎁","Dom":"🏠","Inne":"📦",
@@ -1587,7 +1588,7 @@ async function scanReceipt(b64, mt, apiKey) {
       "total_price": number,
       "discount": number | null,
       "discount_label": string | null,
-      "category": "Nabiał"|"Mięso"|"Warzywa"|"Owoce"|"Napoje"|"Pieczywo"|"Słodycze"|"Chemia"|"Paliwo"|"Subskrypcje"|"Restauracje"|"Transport"|"Rozrywka"|"Elektronika"|"Odzież"|"Zdrowie"|"Narzędzia"|"Meble"|"AGD"|"Ogród"|"Zwierzęta"|"Podróże"|"Sport"|"Kosmetyki"|"Edukacja"|"Prezenty"|"Dom"|"Inne"
+      "category": "Nabiał"|"Mięso"|"Warzywa"|"Owoce"|"Napoje"|"Pieczywo"|"Zboża"|"Słodycze"|"Chemia"|"Paliwo"|"Subskrypcje"|"Restauracje"|"Transport"|"Rozrywka"|"Elektronika"|"Odzież"|"Zdrowie"|"Narzędzia"|"Meble"|"AGD"|"Ogród"|"Zwierzęta"|"Podróże"|"Sport"|"Kosmetyki"|"Edukacja"|"Prezenty"|"Dom"|"Inne"
     }
   ],
   "total": number | null,
@@ -1601,7 +1602,8 @@ Rules:
 - Product names: read carefully, expand abbreviations into readable Polish names (e.g. "PomidGustBel400g" → "Pomidory Gusto Bello 400g").
 - Categorize food products correctly: tomatoes/vegetables → "Warzywa", fruits → "Owoce", etc.
 - Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.
-- Grains, cereals, pasta, flour, rice (ryż, kasza, kasza pęczak, kasza jęczmienna, kasza gryczana, makaron, mąka, płatki) → category "Pieczywo". These are grain/carb products, NOT vegetables.${(() => {
+- Grains, cereals, pasta, flour, rice (ryż, kasza, kasza pęczak, kasza jęczmienna, kasza gryczana, makaron, mąka, płatki) → category "Zboża". These are grain/carb products, NOT vegetables or bread.
+- Bread, rolls, buns, bagels (chleb, bułka, rogal, bajgiel) → category "Pieczywo".${(() => {
   const c = getCorrections();
   const nameEntries = Object.entries(c.names);
   const catEntries = Object.entries(c.categories);
@@ -1671,7 +1673,7 @@ async function parseTextReceipt(text, apiKey) {
       "total_price": number,
       "discount": number | null,
       "discount_label": string | null,
-      "category": "Nabiał"|"Mięso"|"Warzywa"|"Owoce"|"Napoje"|"Pieczywo"|"Słodycze"|"Chemia"|"Paliwo"|"Subskrypcje"|"Restauracje"|"Transport"|"Rozrywka"|"Elektronika"|"Odzież"|"Zdrowie"|"Narzędzia"|"Meble"|"AGD"|"Ogród"|"Zwierzęta"|"Podróże"|"Sport"|"Kosmetyki"|"Edukacja"|"Prezenty"|"Dom"|"Inne"
+      "category": "Nabiał"|"Mięso"|"Warzywa"|"Owoce"|"Napoje"|"Pieczywo"|"Zboża"|"Słodycze"|"Chemia"|"Paliwo"|"Subskrypcje"|"Restauracje"|"Transport"|"Rozrywka"|"Elektronika"|"Odzież"|"Zdrowie"|"Narzędzia"|"Meble"|"AGD"|"Ogród"|"Zwierzęta"|"Podróże"|"Sport"|"Kosmetyki"|"Edukacja"|"Prezenty"|"Dom"|"Inne"
     }
   ],
   "total": number | null,
@@ -1688,7 +1690,8 @@ Rules:
 - zip_code: Extract the postal/zip code if present. Return null if not found.
 - Categorize products into the correct Polish category.
 - Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.
-- Grains, cereals, pasta, flour, rice (ryż, kasza, kasza pęczak, kasza jęczmienna, kasza gryczana, makaron, mąka, płatki) → category "Pieczywo". These are grain/carb products, NOT vegetables.${getCorrectionsHint()}
+- Grains, cereals, pasta, flour, rice (ryż, kasza, kasza pęczak, kasza jęczmienna, kasza gryczana, makaron, mąka, płatki) → category "Zboża". These are grain/carb products, NOT vegetables or bread.
+- Bread, rolls, buns, bagels (chleb, bułka, rogal, bajgiel) → category "Pieczywo".${getCorrectionsHint()}
 
 Text to parse:
 ${text}`
@@ -2434,7 +2437,7 @@ function MealPlanView({ receipts, apiKey }) {
 
   // Build ingredient list from recent receipts
   const knownItems = useMemo(() => {
-    const cats = new Set(["Nabiał","Mięso","Warzywa","Owoce","Pieczywo","Słodycze"]);
+    const cats = new Set(["Nabiał","Mięso","Warzywa","Owoce","Pieczywo","Zboża","Słodycze"]);
     return [...new Set(
       receipts.flatMap(r => (r.items||[])
         .filter(it => cats.has(it.category))
