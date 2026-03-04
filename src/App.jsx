@@ -1,4 +1,7 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { signOut } from "firebase/auth";
+import { auth } from "./firebase";
+import { loadUserData, saveAllUserData, updateField } from "./firestore";
 
 /* ══════════════════════════════════════════
    KUCHNIAPP — Complete redesign
@@ -4811,8 +4814,14 @@ function lsSet(key, val) {
 
 /* ─── Correction Learning System ─────────────── */
 // Stored shape: { names: { "AI_NAME": ["correction1", "correction2"], ... }, categories: { "product_lower": "Category", ... } }
-function getCorrections() { return lsGet(LS_KEYS.corrections, { names: {}, categories: {} }); }
-function saveCorrections(c) { lsSet(LS_KEYS.corrections, c); }
+let _correctionsCache = { names: {}, categories: {} };
+let _correctionsUid = null;
+function initCorrections(uid, data) { _correctionsUid = uid; _correctionsCache = data || { names: {}, categories: {} }; }
+function getCorrections() { return _correctionsCache; }
+function saveCorrections(c) {
+  _correctionsCache = c;
+  if (_correctionsUid) updateField(_correctionsUid, "corrections", c);
+}
 
 function learnFromCorrections(original, confirmed) {
   const corr = getCorrections();
@@ -4891,61 +4900,88 @@ function getCorrectionStats() {
   return { names: Object.keys(corr.names).length, categories: Object.keys(corr.categories).length };
 }
 
-export default function App() {
+export default function App({ uid }) {
   const [view,      setView]      = useState("home");
-  const [receipts,  setReceipts]  = useState(() => lsGet(LS_KEYS.receipts, []));
-  const [expenses,  setExpenses]  = useState(() => lsGet(LS_KEYS.expenses, []));
+  const [receipts,  setReceipts]  = useState([]);
+  const [expenses,  setExpenses]  = useState([]);
   const [processing,setProcessing]= useState([]);
   const [errors,    setErrors]    = useState([]);
-  const [budgets,   setBudgets]   = useState(() => lsGet(LS_KEYS.budgets, {}));
-  const [recurring, setRecurring] = useState(() => lsGet(LS_KEYS.recurring, []));
-  const [currency,  setCurrency]  = useState(() => lsGet(LS_KEYS.currency, "PLN"));
+  const [budgets,   setBudgets]   = useState({});
+  const [recurring, setRecurring] = useState([]);
+  const [currency,  setCurrency]  = useState("PLN");
   const [darkMode,  setDarkMode]  = useState(() => lsGet(LS_KEYS.darkMode, false));
-  const [onboarded, setOnboarded] = useState(() => lsGet(LS_KEYS.onboarded, false));
+  const [onboarded, setOnboarded] = useState(false);
   const [showQA,    setShowQA]    = useState(false);
   const [apiKey,    setApiKey]    = useState(() => lsGet(LS_KEYS.apiKey, ""));
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [pendingReview, setPendingReview] = useState(null); // receipt awaiting user approval
+  const [dataLoaded, setDataLoaded] = useState(false);
   const pendingFilesRef = useRef(null);
   const pageRef = useRef();
+  const initialLoadDone = useRef(false);
 
-  // One-time data migration: fix known OCR errors
+  // Load data from Firestore on mount
   useEffect(() => {
-    const migrated = lsGet("maszka_migrated_v1", false);
-    if (migrated) return;
-    setReceipts(prev => prev.map(r => ({
-      ...r,
-      items: (r.items || []).map(it => {
-        let name = it.name || "";
-        let category = it.category;
-        // Fix: PopidGusRello400g → Pomidory Gusto Bello 400g (Warzywa, not Mięso)
-        if (/popid.*gus.*ello/i.test(name) || /pomid.*gus.*ello/i.test(name)) {
-          name = "Pomidory Gusto Bello 400g";
-          category = "Warzywa";
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await loadUserData(uid);
+        if (cancelled) return;
+
+        if (data === null) {
+          // No Firestore data — migrate from localStorage
+          const migrated = {
+            receipts:    lsGet(LS_KEYS.receipts, []),
+            expenses:    lsGet(LS_KEYS.expenses, []),
+            budgets:     lsGet(LS_KEYS.budgets, {}),
+            recurring:   lsGet(LS_KEYS.recurring, []),
+            currency:    lsGet(LS_KEYS.currency, "PLN"),
+            darkMode:    lsGet(LS_KEYS.darkMode, false),
+            onboarded:   lsGet(LS_KEYS.onboarded, false),
+            corrections: lsGet(LS_KEYS.corrections, { names: {}, categories: {} }),
+          };
+          await saveAllUserData(uid, migrated);
+          // Clear localStorage after successful migration (except apiKey)
+          Object.entries(LS_KEYS).forEach(([k, v]) => {
+            if (k !== "apiKey") localStorage.removeItem(v);
+          });
+          applyData(migrated);
+        } else {
+          applyData(data);
         }
-        return { ...it, name, category };
-      }),
-    })));
-    lsSet("maszka_migrated_v1", true);
-  }, []);
+        setDataLoaded(true);
+      } catch (e) {
+        console.error("Failed to load data from Firestore:", e);
+        setErrors(["Nie udało się załadować danych. Odśwież stronę."]);
+        setDataLoaded(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [uid]);
 
-  // One-time fix: receipt dated 2026-01-02 should be 2026-03-02
+  function applyData(d) {
+    setReceipts(d.receipts || []);
+    setExpenses(d.expenses || []);
+    setBudgets(d.budgets || {});
+    setRecurring(d.recurring || []);
+    setCurrency(d.currency || "PLN");
+    setDarkMode(d.darkMode || false);
+    setOnboarded(d.onboarded || false);
+    initCorrections(uid, d.corrections);
+  }
+
+  // Persist to Firestore on change (skip initial load)
   useEffect(() => {
-    if (lsGet("_migrated_date_fix_20260302", false)) return;
-    setReceipts(prev => prev.map(r =>
-      r.date === "2026-01-02" ? { ...r, date: "2026-03-02" } : r
-    ));
-    lsSet("_migrated_date_fix_20260302", true);
-  }, []);
+    if (dataLoaded) initialLoadDone.current = true;
+  }, [dataLoaded]);
 
-  // Persist to localStorage on change
-  useEffect(() => { lsSet(LS_KEYS.receipts, receipts); }, [receipts]);
-  useEffect(() => { lsSet(LS_KEYS.expenses, expenses); }, [expenses]);
-  useEffect(() => { lsSet(LS_KEYS.budgets, budgets); }, [budgets]);
-  useEffect(() => { lsSet(LS_KEYS.recurring, recurring); }, [recurring]);
-  useEffect(() => { lsSet(LS_KEYS.currency, currency); }, [currency]);
-  useEffect(() => { lsSet(LS_KEYS.darkMode, darkMode); }, [darkMode]);
-  useEffect(() => { lsSet(LS_KEYS.onboarded, onboarded); }, [onboarded]);
+  useEffect(() => { if (initialLoadDone.current) updateField(uid, "receipts", receipts); }, [receipts]);
+  useEffect(() => { if (initialLoadDone.current) updateField(uid, "expenses", expenses); }, [expenses]);
+  useEffect(() => { if (initialLoadDone.current) updateField(uid, "budgets", budgets); }, [budgets]);
+  useEffect(() => { if (initialLoadDone.current) updateField(uid, "recurring", recurring); }, [recurring]);
+  useEffect(() => { if (initialLoadDone.current) updateField(uid, "currency", currency); }, [currency]);
+  useEffect(() => { if (initialLoadDone.current) { updateField(uid, "darkMode", darkMode); lsSet(LS_KEYS.darkMode, darkMode); } }, [darkMode]);
+  useEffect(() => { if (initialLoadDone.current) updateField(uid, "onboarded", onboarded); }, [onboarded]);
 
   // Unified allItems: manual expenses + receipt items
   const allItems = useMemo(() => [
@@ -5020,6 +5056,18 @@ export default function App() {
 
   const totalItems = allItems.length;
   const currentView = VIEWS.find(v => v.id === view);
+
+  if (!dataLoaded) return (
+    <div style={{
+      minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+      background: "#000", color: "#fff", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: 32, marginBottom: 12 }}>🧾</div>
+        <div style={{ fontSize: 14, color: "#aaa" }}>Ładowanie danych...</div>
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -5176,6 +5224,12 @@ export default function App() {
           <button className="dark-btn" onClick={() => { setDarkMode(d => !d); haptic(12); }}
             aria-label={darkMode ? "Tryb jasny" : "Tryb ciemny"} title={darkMode ? "Tryb jasny" : "Tryb ciemny"}>
             {darkMode ? "☀️" : "🌙"}
+          </button>
+
+          {/* Logout */}
+          <button className="dark-btn" onClick={() => signOut(auth)}
+            aria-label="Wyloguj" title="Wyloguj">
+            🚪
           </button>
 
           {/* Mobile: centered title */}
