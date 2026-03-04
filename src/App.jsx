@@ -3423,12 +3423,19 @@ function BudgetsView({ receipts, expenses = [], allItems = [], budgets, setBudge
   // Current month spending per category
   const now = new Date();
   const monthItems = useMemo(() => {
-    return receipts.flatMap(r => {
+    const receiptItems = receipts.flatMap(r => {
       const d = parseDate(r.date);
       if (!d || d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return [];
       return (r.items || []).map(it => ({ ...it }));
     });
-  }, [receipts]);
+    const manualItems = expenses
+      .filter(e => {
+        const d = parseDate(e.date);
+        return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      })
+      .map(e => ({ name: e.name, total_price: e.amount, category: e.category }));
+    return [...receiptItems, ...manualItems];
+  }, [receipts, expenses]);
 
   const spending = useMemo(() => {
     const map = {};
@@ -3770,7 +3777,13 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
   const totalSaved = receipts.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
 
   // Budget alerts
-  const monthItems = useMemo(() => thisMonth.flatMap(r => r.items || []), [thisMonth]);
+  const monthItems = useMemo(() => {
+    const fromReceipts = thisMonth.flatMap(r => r.items || []);
+    const fromExpenses = thisMonthExpenses.map(e => ({
+      name: e.name, total_price: e.amount, category: e.category,
+    }));
+    return [...fromReceipts, ...fromExpenses];
+  }, [thisMonth, thisMonthExpenses]);
   const monthSpending = useMemo(() => {
     const map = {};
     monthItems.forEach(it => { const c = it.category || "Inne"; map[c] = (map[c] || 0) + (parseFloat(it.total_price) || 0); });
@@ -4914,6 +4927,15 @@ export default function App() {
       }),
     })));
     lsSet("maszka_migrated_v1", true);
+  }, []);
+
+  // One-time fix: receipt dated 2026-01-02 should be 2026-03-02
+  useEffect(() => {
+    if (lsGet("_migrated_date_fix_20260302", false)) return;
+    setReceipts(prev => prev.map(r =>
+      r.date === "2026-01-02" ? { ...r, date: "2026-03-02" } : r
+    ));
+    lsSet("_migrated_date_fix_20260302", true);
   }, []);
 
   // Persist to localStorage on change
