@@ -279,6 +279,162 @@ body {
 }
 .qa-body { padding: 0 24px 24px; }
 
+/* ── RECEIPT REVIEW MODAL ── */
+.review-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  background: rgba(0,0,0,0.50);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: fadeIn .2s ease both;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.review-card {
+  width: 100%;
+  max-width: 680px;
+  max-height: 90dvh;
+  overflow-y: auto;
+  background: rgba(248,255,252,0.97);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border: 1px solid rgba(255,255,255,0.90);
+  border-radius: 24px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.22);
+  animation: fadeUp .4s cubic-bezier(.16,1,.3,1) both;
+}
+[data-dark="1"] .review-card {
+  background: rgba(12,22,15,0.96);
+  border-color: rgba(255,255,255,0.12);
+}
+.review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.50);
+}
+.review-title {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  color: ${$.ink0};
+}
+.review-body { padding: 20px 24px; }
+.review-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.review-field-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.review-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: ${$.ink3};
+  margin-bottom: 6px;
+}
+.review-input {
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  border: 1.5px solid rgba(255,255,255,0.65);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.50);
+  color: ${$.ink0};
+  outline: none;
+  transition: border-color .15s;
+}
+.review-input:focus { border-color: ${$.green}; }
+[data-dark="1"] .review-input {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.18);
+  color: #F5F5F7;
+}
+.review-item-card {
+  background: rgba(255,255,255,0.40);
+  border: 1px solid rgba(255,255,255,0.60);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  animation: slideDown .3s ease both;
+}
+[data-dark="1"] .review-item-card {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.12);
+}
+.review-item-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 8px;
+  align-items: end;
+}
+@media (max-width: 560px) {
+  .review-item-grid { grid-template-columns: 1fr 1fr; }
+  .review-field-row { grid-template-columns: 1fr; }
+  .review-field-row-2 { grid-template-columns: 1fr; }
+}
+.review-cat-select {
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  border: 1.5px solid rgba(255,255,255,0.65);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.50);
+  color: ${$.ink0};
+  outline: none;
+  cursor: pointer;
+}
+.review-cat-select:focus { border-color: ${$.green}; }
+[data-dark="1"] .review-cat-select {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.18);
+  color: #F5F5F7;
+}
+.review-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255,255,255,0.50);
+}
+.review-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.review-item-num {
+  font-size: 12px;
+  font-weight: 700;
+  color: ${$.ink3};
+}
+.review-remove-btn {
+  background: none;
+  border: none;
+  color: ${$.red};
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity .15s;
+}
+.review-remove-btn:hover { opacity: 1; }
+
 /* Type toggle */
 .type-row {
   display: grid;
@@ -1263,11 +1419,11 @@ async function scanReceipt(b64, mt, apiKey) {
           { type: "image", source: { type: "base64", media_type: mt, data: b64 } },
           {
             type: "text",
-            text: `Scan this receipt. Respond with ONLY raw JSON — no markdown, no backticks, no commentary.
+            text: `Scan this Polish receipt. Respond with ONLY raw JSON — no markdown, no backticks, no commentary.
 
 {
   "store": string | null,
-  "date": string | null,
+  "date": "YYYY-MM-DD",
   "items": [
     {
       "name": string,
@@ -1284,7 +1440,11 @@ async function scanReceipt(b64, mt, apiKey) {
   "total_discounts": number | null
 }
 
-Rules: prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.`
+Rules:
+- date MUST be in YYYY-MM-DD format. Extract from receipt header/footer. NEVER return null for date.
+- Product names: read carefully, expand abbreviations into readable Polish names (e.g. "PomidGustBel400g" → "Pomidory Gusto Bello 400g").
+- Categorize food products correctly: tomatoes/vegetables → "Warzywa", fruits → "Owoce", etc.
+- Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.`
           }
         ]
       }]
@@ -1327,6 +1487,145 @@ function DropZone({ onFiles }) {
         <div className="dropzone-hint" aria-hidden="true">
           <svg width="13" height="13" fill="none" viewBox="0 0 13 13"><path d="M6.5 1v11M1 6.5h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
           Wybierz pliki
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Receipt Review Modal ───────────────────── */
+const ALL_CATS = Object.keys(CATS);
+
+function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
+  const [data, setData] = useState(() => ({
+    store: receipt.store || "",
+    date: receipt.date || new Date().toISOString().slice(0, 10),
+    total: receipt.total ?? 0,
+    total_discounts: receipt.total_discounts ?? 0,
+    items: (receipt.items || []).map((it, i) => ({ ...it, _key: i })),
+  }));
+
+  const updateField = (field, val) => setData(d => ({ ...d, [field]: val }));
+  const updateItem = (idx, field, val) => setData(d => ({
+    ...d,
+    items: d.items.map((it, i) => i === idx ? { ...it, [field]: val } : it),
+  }));
+  const removeItem = idx => setData(d => ({
+    ...d,
+    items: d.items.filter((_, i) => i !== idx),
+  }));
+  const addItem = () => setData(d => ({
+    ...d,
+    items: [...d.items, { _key: Date.now(), name: "", quantity: 1, unit: null, unit_price: 0, total_price: 0, discount: null, discount_label: null, category: "Inne" }],
+  }));
+
+  const handleConfirm = () => {
+    const cleaned = {
+      ...data,
+      total: parseFloat(data.total) || 0,
+      total_discounts: parseFloat(data.total_discounts) || 0,
+      items: data.items.map(({ _key, ...it }) => ({
+        ...it,
+        quantity: parseFloat(it.quantity) || 1,
+        unit_price: parseFloat(it.unit_price) || null,
+        total_price: parseFloat(it.total_price) || 0,
+        discount: it.discount ? parseFloat(it.discount) : null,
+      })),
+    };
+    onConfirm(cleaned);
+  };
+
+  return (
+    <div className="review-overlay" onClick={onCancel}>
+      <div className="review-card" onClick={e => e.stopPropagation()}>
+        <div className="review-head">
+          <div className="review-title">Sprawdź paragon</div>
+          <button onClick={onCancel} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: $.ink2, lineHeight: 1 }}>×</button>
+        </div>
+
+        <div className="review-body">
+          {/* Store, Date, Total */}
+          <div className="review-field-row">
+            <div>
+              <div className="review-label">Sklep</div>
+              <input className="review-input" value={data.store} onChange={e => updateField("store", e.target.value)} placeholder="Nazwa sklepu" />
+            </div>
+            <div>
+              <div className="review-label">Data</div>
+              <input className="review-input" type="date" value={data.date} onChange={e => updateField("date", e.target.value)} />
+            </div>
+            <div>
+              <div className="review-label">Suma</div>
+              <input className="review-input" type="number" step="0.01" value={data.total} onChange={e => updateField("total", e.target.value)} />
+            </div>
+          </div>
+
+          <div className="review-field-row-2" style={{ marginBottom: 20 }}>
+            <div>
+              <div className="review-label">Zniżki łącznie</div>
+              <input className="review-input" type="number" step="0.01" value={data.total_discounts || 0} onChange={e => updateField("total_discounts", e.target.value)} />
+            </div>
+          </div>
+
+          {/* Items */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div className="review-label" style={{ marginBottom: 0 }}>Produkty ({data.items.length})</div>
+            <button onClick={addItem} style={{ background: $.greenBg, border: `1px solid ${$.greenRim}`, borderRadius: 8, padding: "5px 12px", fontSize: 12, fontWeight: 700, color: $.green, cursor: "pointer", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+              + Dodaj
+            </button>
+          </div>
+
+          {data.items.map((item, idx) => (
+            <div key={item._key} className="review-item-card">
+              <div className="review-item-header">
+                <div className="review-item-num">#{idx + 1}</div>
+                <button className="review-remove-btn" onClick={() => removeItem(idx)} title="Usuń">×</button>
+              </div>
+              <div className="review-item-grid">
+                <div>
+                  <div className="review-label">Nazwa</div>
+                  <input className="review-input" value={item.name || ""} onChange={e => updateItem(idx, "name", e.target.value)} placeholder="Nazwa produktu" />
+                </div>
+                <div>
+                  <div className="review-label">Ilość</div>
+                  <input className="review-input" type="number" step="0.001" value={item.quantity ?? 1} onChange={e => updateItem(idx, "quantity", e.target.value)} />
+                </div>
+                <div>
+                  <div className="review-label">Cena jedn.</div>
+                  <input className="review-input" type="number" step="0.01" value={item.unit_price ?? ""} onChange={e => updateItem(idx, "unit_price", e.target.value)} />
+                </div>
+                <div>
+                  <div className="review-label">Razem</div>
+                  <input className="review-input" type="number" step="0.01" value={item.total_price ?? 0} onChange={e => updateItem(idx, "total_price", e.target.value)} />
+                </div>
+              </div>
+              <div className="review-item-grid" style={{ marginTop: 8 }}>
+                <div>
+                  <div className="review-label">Kategoria</div>
+                  <select className="review-cat-select" value={item.category || "Inne"} onChange={e => updateItem(idx, "category", e.target.value)}>
+                    {ALL_CATS.map(c => <option key={c} value={c}>{CAT_ICONS[c] || ""} {c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <div className="review-label">Jednostka</div>
+                  <input className="review-input" value={item.unit || ""} onChange={e => updateItem(idx, "unit", e.target.value)} placeholder="szt, kg, L..." />
+                </div>
+                <div>
+                  <div className="review-label">Zniżka</div>
+                  <input className="review-input" type="number" step="0.01" value={item.discount ?? ""} onChange={e => updateItem(idx, "discount", e.target.value)} placeholder="0.00" />
+                </div>
+                <div>
+                  <div className="review-label">Etykieta zniżki</div>
+                  <input className="review-input" value={item.discount_label || ""} onChange={e => updateItem(idx, "discount_label", e.target.value)} placeholder="np. -20%" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="review-footer">
+          <button className="btn-secondary" onClick={onCancel}>Odrzuć</button>
+          <button className="btn-primary" onClick={handleConfirm}>Zatwierdź paragon</button>
         </div>
       </div>
     </div>
@@ -3147,14 +3446,23 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
   const now = new Date();
 
   // allItems comes from App (merged receipts + manual)
-  // This month
+  // This month — receipts
   const thisMonth = useMemo(() => receipts.filter(r => {
     const d = parseDate(r.date);
     return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }), [receipts]);
 
-  const monthSpent = thisMonth.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
-  const totalSpent = receipts.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
+  // This month — manual expenses
+  const thisMonthExpenses = useMemo(() => expenses.filter(e => {
+    const d = parseDate(e.date);
+    return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }), [expenses]);
+
+  const monthReceiptSpent = thisMonth.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
+  const monthExpenseSpent = thisMonthExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+  const monthSpent = monthReceiptSpent + monthExpenseSpent;
+  const totalSpent = receipts.reduce((s, r) => s + (parseFloat(r.total) || 0), 0)
+    + expenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
   const totalSaved = receipts.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
 
   // Budget alerts
@@ -3228,7 +3536,7 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
                 <span style={{ fontSize: 18, color: $.ink3, marginLeft: 6 }}>{sym}</span>
               </div>
               <div style={{ fontSize: 12, color: $.ink2, marginTop: 8 }}>
-                {thisMonth.length} paragonów · {monthName}
+                {thisMonth.length} paragonów{thisMonthExpenses.length > 0 ? ` · ${thisMonthExpenses.length} wydatków` : ""} · {monthName}
               </div>
               <button onClick={() => go("stats")} style={{ marginTop: 12, background: "none", border: "none", color: $.green, fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                 Zobacz statystyki →
@@ -4156,8 +4464,29 @@ export default function App() {
   const [showQA,    setShowQA]    = useState(false);
   const [apiKey,    setApiKey]    = useState(() => lsGet(LS_KEYS.apiKey, ""));
   const [showKeyModal, setShowKeyModal] = useState(false);
+  const [pendingReview, setPendingReview] = useState(null); // receipt awaiting user approval
   const pendingFilesRef = useRef(null);
   const pageRef = useRef();
+
+  // One-time data migration: fix known OCR errors
+  useEffect(() => {
+    const migrated = lsGet("maszka_migrated_v1", false);
+    if (migrated) return;
+    setReceipts(prev => prev.map(r => ({
+      ...r,
+      items: (r.items || []).map(it => {
+        let name = it.name || "";
+        let category = it.category;
+        // Fix: PopidGusRello400g → Pomidory Gusto Bello 400g (Warzywa, not Mięso)
+        if (/popid.*gus.*ello/i.test(name) || /pomid.*gus.*ello/i.test(name)) {
+          name = "Pomidory Gusto Bello 400g";
+          category = "Warzywa";
+        }
+        return { ...it, name, category };
+      }),
+    })));
+    lsSet("maszka_migrated_v1", true);
+  }, []);
 
   // Persist to localStorage on change
   useEffect(() => { lsSet(LS_KEYS.receipts, receipts); }, [receipts]);
@@ -4204,7 +4533,8 @@ export default function App() {
           r.readAsDataURL(file);
         });
         const parsed = await scanReceipt(b64, file.type, key);
-        setReceipts(p => [{ ...parsed, id }, ...p]);
+        // Show review modal instead of adding directly
+        setPendingReview({ ...parsed, id });
         haptic(30);
       } catch (e) {
         setErrors(p => [...p, `${file.name}: ${e.message}`]);
@@ -4252,6 +4582,19 @@ export default function App() {
         <QuickAddExpense
           onAdd={addExpense}
           onClose={() => setShowQA(false)}
+        />
+      )}
+
+      {/* Receipt Review Modal */}
+      {pendingReview && (
+        <ReceiptReviewModal
+          receipt={pendingReview}
+          onConfirm={(reviewed) => {
+            setReceipts(p => [{ ...reviewed, id: pendingReview.id }, ...p]);
+            setPendingReview(null);
+            haptic(30);
+          }}
+          onCancel={() => setPendingReview(null)}
         />
       )}
 
