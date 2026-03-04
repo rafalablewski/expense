@@ -96,6 +96,8 @@ const CAT_ICONS = {
 };
 
 
+const DEFAULT_STORES = ["Biedronka","Auchan","Lidl","Netto","InterMarche","Kaufland","Leroy Merlin","Circle K","Shell","BP","Orlen","OBI"];
+
 /* ─── FX Rates (approximate, refreshed manually) ── */
 const FX = { PLN: 1, EUR: 0.234, USD: 0.252 };
 const FX_SYMBOLS = { PLN: "zł", EUR: "€", USD: "$" };
@@ -103,6 +105,61 @@ const FX_SYMBOLS = { PLN: "zł", EUR: "€", USD: "$" };
 function convertAmt(amt, currency) {
   const n = parseFloat(amt) || 0;
   return (n * (FX[currency] || 1)).toFixed(2);
+}
+
+function StorePickerInput({ value, onChange, customStores = [], onAddCustomStore, id, placeholder }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState(value || "");
+  const ref = useRef(null);
+
+  useEffect(() => { setSearch(value || ""); }, [value]);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const allStores = useMemo(() => [...new Set([...DEFAULT_STORES, ...(customStores || [])])], [customStores]);
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return q ? allStores.filter(s => s.toLowerCase().includes(q)) : allStores;
+  }, [search, allStores]);
+
+  const select = (s) => { onChange(s); setSearch(s); setOpen(false); };
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <input id={id} className="field" value={search}
+        onChange={e => { setSearch(e.target.value); onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        placeholder={placeholder || "Wybierz lub wpisz sklep"}
+        autoComplete="off" />
+      {open && (
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 20,
+          background: "white", border: "1px solid #e5e7eb", borderRadius: 10,
+          maxHeight: 220, overflowY: "auto", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", marginTop: 4 }}>
+          {filtered.map(s => (
+            <div key={s} onClick={() => select(s)}
+              style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, borderBottom: "1px solid #f3f4f6", color: "#1f2937" }}
+              onMouseOver={e => e.currentTarget.style.background = "#f9fafb"}
+              onMouseOut={e => e.currentTarget.style.background = "transparent"}>
+              {DEFAULT_STORES.includes(s) ? "🏪" : "📝"} {s}
+            </div>
+          ))}
+          {search && !allStores.some(s => s.toLowerCase() === search.toLowerCase()) && (
+            <div onClick={() => { if (onAddCustomStore) onAddCustomStore(search); select(search); }}
+              style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: "#06C167", fontWeight: 600 }}>
+              + Dodaj "{search}" jako nowy sklep
+            </div>
+          )}
+          {!search && filtered.length === 0 && (
+            <div style={{ padding: "10px 14px", fontSize: 13, color: "#9CA3AF" }}>Brak sklepów</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 
@@ -1539,7 +1596,8 @@ Rules:
 - date MUST be in YYYY-MM-DD format. Extract from receipt header/footer. NEVER return null for date.
 - Product names: read carefully, expand abbreviations into readable Polish names (e.g. "PomidGustBel400g" → "Pomidory Gusto Bello 400g").
 - Categorize food products correctly: tomatoes/vegetables → "Warzywa", fruits → "Owoce", etc.
-- Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.${(() => {
+- Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.
+- Grains, cereals, pasta, flour, rice (ryż, kasza, kasza pęczak, kasza jęczmienna, kasza gryczana, makaron, mąka, płatki) → category "Pieczywo". These are grain/carb products, NOT vegetables.${(() => {
   const c = getCorrections();
   const nameEntries = Object.entries(c.names);
   const catEntries = Object.entries(c.categories);
@@ -1621,7 +1679,8 @@ Rules:
 - Calculate unit_price = total_price / quantity when both are known.
 - "total" = sum of all total_price values.
 - Categorize products into the correct Polish category.
-- Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.${getCorrectionsHint()}
+- Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.
+- Grains, cereals, pasta, flour, rice (ryż, kasza, kasza pęczak, kasza jęczmienna, kasza gryczana, makaron, mąka, płatki) → category "Pieczywo". These are grain/carb products, NOT vegetables.${getCorrectionsHint()}
 
 Text to parse:
 ${text}`
@@ -1674,7 +1733,7 @@ function DropZone({ onFiles }) {
 /* ─── Receipt Review Drawer ──────────────────── */
 const ALL_CATS = Object.keys(CATS);
 
-function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
+function ReceiptReviewModal({ receipt, onConfirm, onCancel, customStores, onAddCustomStore }) {
   const [data, setData] = useState(() => ({
     store: receipt.store || "",
     date: receipt.date || new Date().toISOString().slice(0, 10),
@@ -1787,7 +1846,7 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
             </div>
             <div>
               <label className="rv-lbl" htmlFor="rv-store">Sklep</label>
-              <input id="rv-store" className="field" value={data.store} onChange={e => updateField("store", e.target.value)} placeholder="Nazwa" />
+              <StorePickerInput id="rv-store" value={data.store} onChange={v => updateField("store", v)} customStores={customStores} onAddCustomStore={onAddCustomStore} placeholder="Nazwa sklepu" />
             </div>
             <div>
               <label className="rv-lbl" htmlFor="rv-total">Suma</label>
@@ -2680,7 +2739,7 @@ function InsightCard({ icon, title, sub, accent }) {
       }}>{icon}</div>
       <div>
         <div style={{ fontSize: 14, fontWeight: 700, color: $.ink0, letterSpacing: "-.01em" }}>{title}</div>
-        <div style={{ fontSize: 12, color: $.ink2, marginTop: 3, lineHeight: 1.5 }}>{sub}</div>
+        <div style={{ fontSize: 12, color: $.ink2, marginTop: 3, lineHeight: 1.5, whiteSpace: "pre-line" }}>{sub}</div>
       </div>
     </div>
   );
@@ -2735,6 +2794,40 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
   const topCat    = catTotals[0];
   const topCatPct = topCat && totalSpent ? ((topCat.value / totalSpent) * 100).toFixed(0) : 0;
   const savePct   = totalSpent ? ((totalSaved / (totalSpent + totalSaved)) * 100).toFixed(1) : 0;
+
+  // Top 3 most expensive individual items
+  const top3Items = useMemo(() =>
+    [...all].sort((a, b) => (parseFloat(b.total_price) || 0) - (parseFloat(a.total_price) || 0)).slice(0, 3),
+    [all]
+  );
+
+  // Most visited store
+  const topStore = useMemo(() => {
+    const map = {};
+    receipts.forEach(r => { if (r.store) map[r.store] = (map[r.store] || 0) + 1; });
+    const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
+    return entries[0] ? { name: entries[0][0], count: entries[0][1] } : null;
+  }, [receipts]);
+
+  // Day of week with highest spending
+  const topDayOfWeek = useMemo(() => {
+    const days = ["Niedziela", "Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota"];
+    const map = new Array(7).fill(0);
+    receipts.forEach(r => {
+      const d = parseDate(r.date);
+      if (d) map[d.getDay()] += (parseFloat(r.total) || 0);
+    });
+    const maxVal = Math.max(...map);
+    const maxIdx = map.indexOf(maxVal);
+    return maxVal > 0 ? { day: days[maxIdx], amount: map[maxIdx] } : null;
+  }, [receipts]);
+
+  // Average items per receipt
+  const avgItemsPerReceipt = useMemo(() => {
+    if (!receipts.length) return 0;
+    const total = receipts.reduce((s, r) => s + (r.items?.length || 0), 0);
+    return (total / receipts.length).toFixed(1);
+  }, [receipts]);
 
   if (!receipts.length) return (
     <>
@@ -2829,6 +2922,17 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
               Spostrzeżenia
             </div>
 
+            {top3Items.length > 0 && (
+              <InsightCard
+                icon="🏆"
+                title="Top 3 najdroższe zakupy"
+                sub={top3Items.map((it, i) =>
+                  `${i + 1}. ${it.name} — ${(parseFloat(it.total_price) || 0).toFixed(2)} zł${it.store ? ` (${it.store})` : ""}`
+                ).join("\n")}
+                accent={false}
+              />
+            )}
+
             {topCat && (
               <InsightCard
                 icon="📌"
@@ -2861,6 +2965,33 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
                 icon="📊"
                 title={`${catTotals.length} aktywnych kategorii wydatków`}
                 sub={`Top 3: ${catTotals.slice(0,3).map(d => d.cat).join(", ")}`}
+                accent={false}
+              />
+            )}
+
+            {topStore && (
+              <InsightCard
+                icon="🏪"
+                title={`Najczęściej odwiedzany sklep: ${topStore.name}`}
+                sub={`${topStore.count} wizyt zakupowych`}
+                accent={false}
+              />
+            )}
+
+            {topDayOfWeek && (
+              <InsightCard
+                icon="📅"
+                title={`Najwięcej wydajesz w: ${topDayOfWeek.day}`}
+                sub={`${topDayOfWeek.amount.toFixed(2)} zł łącznie w ten dzień tygodnia`}
+                accent={false}
+              />
+            )}
+
+            {avgItemsPerReceipt > 0 && (
+              <InsightCard
+                icon="🛒"
+                title={`Średnio ${avgItemsPerReceipt} produktów na paragon`}
+                sub={`Na podstawie ${receipts.length} paragonów`}
                 accent={false}
               />
             )}
@@ -3597,6 +3728,13 @@ function BudgetsView({ receipts, expenses = [], allItems = [], budgets, setBudge
 }
 
 /* ─── RecurringView ──────────────────────────── */
+const isRecurringPaused = (item) => {
+  if (!item.paused) return false;
+  if (item.pauseUntil) {
+    return new Date().toISOString().slice(0, 10) < item.pauseUntil;
+  }
+  return true;
+};
 const REC_CYCLES = ["Miesięcznie","Tygodniowo","Rocznie","Kwartalnie"];
 
 function RecurringView({ recurring, setRecurring, currency }) {
@@ -3617,7 +3755,17 @@ function RecurringView({ recurring, setRecurring, currency }) {
     const base = { "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 };
     return base[item.cycle] || a;
   };
-  const totalMonthly = recurring.reduce((s, r) => s + toMonthly(r) * (FX[currency] || 1), 0);
+  const [pauseMenu, setPauseMenu] = useState(null);
+  const totalMonthly = recurring.filter(r => !isRecurringPaused(r)).reduce((s, r) => s + toMonthly(r) * (FX[currency] || 1), 0);
+
+  const togglePause = (id, pauseUntilDate = null) => {
+    setRecurring(r => r.map(item =>
+      item.id === id
+        ? { ...item, paused: pauseUntilDate ? true : !item.paused, pauseUntil: pauseUntilDate || null }
+        : item
+    ));
+    setPauseMenu(null);
+  };
 
   return (
     <>
@@ -3702,6 +3850,7 @@ function RecurringView({ recurring, setRecurring, currency }) {
                 const monthly = toMonthly(item) * (FX[currency] || 1);
                 const catCol = CATS[item.category] || "#9CA3AF";
                 const dispAmt = (parseFloat(item.amount) * (FX[currency] || 1)).toFixed(2);
+                const paused = isRecurringPaused(item);
                 return (
                   <div key={item.id} style={{
                     display: "flex", alignItems: "center", gap: 14,
@@ -3712,6 +3861,8 @@ function RecurringView({ recurring, setRecurring, currency }) {
                     borderRadius: 16, padding: "16px 20px",
                     animation: `fadeUp .4s cubic-bezier(.16,1,.3,1) ${i * .05}s both`,
                     boxShadow: "0 2px 12px rgba(0,0,0,0.05)",
+                    opacity: paused ? 0.45 : 1,
+                    transition: "opacity .2s",
                   }}>
                     {/* Icon */}
                     <div style={{ width: 42, height: 42, borderRadius: 12, flexShrink: 0, background: catCol + "18", border: `1px solid ${catCol}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
@@ -3728,6 +3879,12 @@ function RecurringView({ recurring, setRecurring, currency }) {
                         {item.cycle !== "Miesięcznie" && (
                           <span style={{ fontSize: 11, color: $.ink3 }}>≈ {monthly.toFixed(2)} {sym}/mies.</span>
                         )}
+                        {paused && (
+                          <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99,
+                            background: "rgba(245,158,11,0.12)", color: "#D97706", border: "1px solid rgba(245,158,11,0.25)" }}>
+                            ⏸ Wstrzymany{item.pauseUntil ? ` do ${item.pauseUntil}` : ""}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -3736,6 +3893,61 @@ function RecurringView({ recurring, setRecurring, currency }) {
                         {dispAmt}
                       </div>
                       <div style={{ fontSize: 11, color: $.ink3, marginTop: 2 }}>{sym} / {item.cycle.toLowerCase()}</div>
+                    </div>
+
+                    {/* Pause button */}
+                    <div style={{ position: "relative", flexShrink: 0 }}>
+                      <button onClick={() => setPauseMenu(pauseMenu === item.id ? null : item.id)}
+                        style={{ background: "none", border: "1.5px solid rgba(255,255,255,0.65)", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: paused ? "#D97706" : $.ink3, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s", flexShrink: 0 }}
+                        aria-label={paused ? `Wznów ${item.name}` : `Wstrzymaj ${item.name}`}>
+                        {paused ? "▶" : "⏸"}
+                      </button>
+                      {pauseMenu === item.id && (
+                        <div style={{ position: "absolute", right: 0, top: 38, zIndex: 10, background: "white", border: "1px solid #e5e7eb", borderRadius: 12, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", minWidth: 200, overflow: "hidden" }}>
+                          {paused ? (
+                            <div onClick={() => togglePause(item.id)}
+                              style={{ padding: "10px 14px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#16A34A" }}
+                              onMouseOver={e => e.currentTarget.style.background = "#f0fdf4"}
+                              onMouseOut={e => e.currentTarget.style.background = "transparent"}>
+                              ▶ Wznów
+                            </div>
+                          ) : (
+                            <>
+                              <div onClick={() => {
+                                const now = new Date();
+                                const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                                togglePause(item.id, end.toISOString().slice(0, 10));
+                              }}
+                                style={{ padding: "10px 14px", cursor: "pointer", fontSize: 13, borderBottom: "1px solid #f3f4f6" }}
+                                onMouseOver={e => e.currentTarget.style.background = "#f9fafb"}
+                                onMouseOut={e => e.currentTarget.style.background = "transparent"}>
+                                ⏸ Wstrzymaj do końca miesiąca
+                              </div>
+                              <div onClick={() => {
+                                const d = new Date();
+                                d.setMonth(d.getMonth() + 2);
+                                togglePause(item.id, d.toISOString().slice(0, 10));
+                              }}
+                                style={{ padding: "10px 14px", cursor: "pointer", fontSize: 13, borderBottom: "1px solid #f3f4f6" }}
+                                onMouseOver={e => e.currentTarget.style.background = "#f9fafb"}
+                                onMouseOut={e => e.currentTarget.style.background = "transparent"}>
+                                ⏸ Wstrzymaj na 2 miesiące
+                              </div>
+                              <div style={{ padding: "10px 14px", fontSize: 13, borderBottom: "1px solid #f3f4f6" }}>
+                                <label style={{ fontSize: 11, fontWeight: 600, color: $.ink3, display: "block", marginBottom: 4 }}>Wznów od:</label>
+                                <input type="date" className="field" style={{ width: "100%", fontSize: 12 }}
+                                  onChange={e => { if (e.target.value) togglePause(item.id, e.target.value); }} />
+                              </div>
+                              <div onClick={() => togglePause(item.id)}
+                                style={{ padding: "10px 14px", cursor: "pointer", fontSize: 13, color: "#D97706" }}
+                                onMouseOver={e => e.currentTarget.style.background = "#fffbeb"}
+                                onMouseOut={e => e.currentTarget.style.background = "transparent"}>
+                                ⏸ Wstrzymaj bezterminowo
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <button onClick={() => setRecurring(r => r.filter(x => x.id !== item.id))}
@@ -3801,7 +4013,7 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
     const a = parseFloat(item.amount) || 0;
     return { "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 }[item.cycle] || a;
   };
-  const recurringMonthly = recurring.reduce((s, r) => s + toMonthly(r), 0);
+  const recurringMonthly = recurring.filter(r => !isRecurringPaused(r)).reduce((s, r) => s + toMonthly(r), 0);
 
   // Duplicates: items bought in 2+ stores, find price variance
   const duplicates = useMemo(() => {
@@ -4429,7 +4641,7 @@ const EXPENSE_TYPES = [
   { id: "recurring", label: "Cykliczny",    icon: "🔄", sub: "subskrypcja, abonament" },
 ];
 
-function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey }) {
+function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, customStores, onAddCustomStore }) {
   const [type,     setType]     = useState("one-time");
   const [name,     setName]     = useState("");
   const [amount,   setAmount]   = useState("");
@@ -4590,7 +4802,7 @@ function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey }) {
                 </div>
                 <div style={{ flex:1 }}>
                   <label htmlFor="qa-store" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Sklep / źródło</label>
-                  <input id="qa-store" className="field" value={store} onChange={e => setStore(e.target.value)} placeholder="np. Leroy Merlin, Amazon…" />
+                  <StorePickerInput id="qa-store" value={store} onChange={setStore} customStores={customStores} onAddCustomStore={onAddCustomStore} placeholder="np. Leroy Merlin, Amazon…" />
                 </div>
               </div>
 
@@ -4616,14 +4828,17 @@ function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey }) {
 }
 
 /* ─── ExpensesView (unified manual + receipts) ── */
-function ExpensesView({ expenses, receipts, onDelete, currency }) {
+function ExpensesView({ expenses, receipts, recurring = [], onDelete, currency }) {
   const sym = FX_SYMBOLS[currency] || "zł";
   const [q,   setQ]   = useState("");
   const [cat, setCat] = useState("All");
-  const [src, setSrc] = useState("All"); // All | manual | receipt
+  const [src, setSrc] = useState("All"); // All | manual | receipt | recurring
   const [sort,setSort] = useState("date"); // date | amount | name
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [expanded, setExpanded] = useState(null);
 
-  // Merge manual expenses + receipt items
+  // Merge manual expenses + receipt items + recurring
   const allItems = useMemo(() => [
     ...expenses.map(e => ({
       id: e.id, name: e.name, total_price: e.amount, category: e.category,
@@ -4635,7 +4850,12 @@ function ExpensesView({ expenses, receipts, onDelete, currency }) {
         ...it, store: r.store, date: r.date, source: "receipt", type: "one-time", note: null,
       }))
     ),
-  ], [expenses, receipts]);
+    ...recurring.filter(r => !isRecurringPaused(r)).map(r => ({
+      id: r.id, name: r.name, total_price: r.amount, category: r.category,
+      date: null, store: null, note: r.cycle, source: "recurring", type: "recurring",
+      unit_price: null, quantity: null, discount: null,
+    })),
+  ], [expenses, receipts, recurring]);
 
   const cats = useMemo(() => [...new Set(allItems.map(i => i.category).filter(Boolean))], [allItems]);
 
@@ -4643,13 +4863,15 @@ function ExpensesView({ expenses, receipts, onDelete, currency }) {
     let out = allItems.filter(i =>
       (i.name || "").toLowerCase().includes(q.toLowerCase()) &&
       (cat === "All" || i.category === cat) &&
-      (src === "All" || i.source === src)
+      (src === "All" || i.source === src) &&
+      (!dateFrom || (i.date || "") >= dateFrom) &&
+      (!dateTo || (i.date || "") <= dateTo)
     );
     if (sort === "date") out = [...out].sort((a,b) => (b.date||"").localeCompare(a.date||""));
     if (sort === "amount") out = [...out].sort((a,b) => (parseFloat(b.total_price)||0) - (parseFloat(a.total_price)||0));
     if (sort === "name") out = [...out].sort((a,b) => (a.name||"").localeCompare(b.name||""));
     return out;
-  }, [allItems, q, cat, src, sort]);
+  }, [allItems, q, cat, src, sort, dateFrom, dateTo]);
 
   const totalManual  = expenses.reduce((s,e) => s + e.amount, 0);
   const totalReceipt = receipts.reduce((s,r) => s + (parseFloat(r.total)||0), 0);
@@ -4698,7 +4920,7 @@ function ExpensesView({ expenses, receipts, onDelete, currency }) {
 
             {/* Source toggle */}
             <div className="pills-row" role="group" aria-label="Źródło">
-              {[["All","Wszystko"],["manual","✏️ Ręczne"],["receipt","🧾 Paragony"]].map(([id,lbl])=>(
+              {[["All","Wszystko"],["manual","✏️ Ręczne"],["receipt","🧾 Paragony"],["recurring","🔄 Cykliczne"]].map(([id,lbl])=>(
                 <button key={id} className={`pill${src===id?" on":""}`}
                   onClick={()=>setSrc(id)} aria-pressed={src===id}>{lbl}</button>
               ))}
@@ -4713,62 +4935,96 @@ function ExpensesView({ expenses, receipts, onDelete, currency }) {
                 </button>
               ))}
             </div>
+
+            {/* Date filter */}
+            <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
+              <label style={{ fontSize:12, fontWeight:600, color:$.ink2, whiteSpace:"nowrap" }}>Od:</label>
+              <input className="field" type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{ flex:1, minWidth:130 }} />
+              <label style={{ fontSize:12, fontWeight:600, color:$.ink2, whiteSpace:"nowrap" }}>Do:</label>
+              <input className="field" type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{ flex:1, minWidth:130 }} />
+              {(dateFrom || dateTo) && (
+                <button className="pill" onClick={()=>{ setDateFrom(""); setDateTo(""); }} style={{ whiteSpace:"nowrap" }}>✕ Wyczyść</button>
+              )}
+            </div>
           </div>
 
-          {/* List */}
+          {/* List — collapsible cards */}
           {list.length === 0 ? (
             <Empty icon="📋" title="Brak wyników" sub="Spróbuj zmienić filtry lub dodaj pierwszy wydatek przyciskiem +" />
           ) : (
-            <div className="card tbl-wrap au2">
-              <table className="tbl" aria-label="Lista wydatków">
-                <thead>
-                  <tr>
-                    {["Nazwa","Kategoria","Źródło","Sklep","Data","Kwota"].map((h,i)=>(
-                      <th key={h} scope="col" style={{ textAlign:i>=5?"right":"left" }}>{h}</th>
-                    ))}
-                    <th scope="col" aria-label="Akcje" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {list.map((item,i) => (
-                    <tr key={i}>
-                      <td>
-                        <div style={{ fontWeight:600, fontSize:14 }}>{CAT_ICONS[item.category]||"📦"} {item.name}</div>
-                        {item.note && <div style={{ fontSize:11, color:$.ink3, marginTop:2 }}>{item.note}</div>}
-                      </td>
-                      <td><CatChip cat={item.category} /></td>
-                      <td>
-                        <span style={{
-                          fontSize:10, fontWeight:700, padding:"3px 8px", borderRadius:99,
-                          background: item.source==="manual" ? "rgba(6,193,103,0.10)" : "rgba(59,130,246,0.10)",
-                          color:      item.source==="manual" ? $.green : "#3B82F6",
-                          border: `1px solid ${item.source==="manual" ? "rgba(6,193,103,0.25)" : "rgba(59,130,246,0.25)"}`,
-                          whiteSpace:"nowrap",
-                        }}>
-                          {item.source==="manual" ? "✏️ Ręczny" : "🧾 Paragon"}
-                        </span>
-                      </td>
-                      <td style={{ color:$.ink2, fontSize:13 }}>{item.store||"—"}</td>
-                      <td className="mono" style={{ color:$.ink3, fontSize:12 }}>{item.date||"—"}</td>
-                      <td style={{ textAlign:"right" }}>
-                        <span className="mono" style={{ fontWeight:600, fontSize:14 }}>
+            <div className="au2" style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              {list.map((item, i) => {
+                const isOpen = expanded === i;
+                return (
+                  <div key={i} onClick={() => setExpanded(isOpen ? null : i)}
+                    style={{
+                      background: $.glass,
+                      backdropFilter: "blur(24px) saturate(180%)",
+                      WebkitBackdropFilter: "blur(24px) saturate(180%)",
+                      border: "1px solid rgba(255,255,255,0.72)",
+                      borderRadius: 16, padding: "14px 18px",
+                      cursor: "pointer",
+                      boxShadow: "0 2px 12px rgba(0,0,0,0.05)",
+                      transition: "all .2s ease",
+                    }}>
+
+                    {/* Collapsed row */}
+                    <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                      <span style={{ fontSize:18, flexShrink:0 }}>{CAT_ICONS[item.category]||"📦"}</span>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:600, fontSize:14, color:$.ink0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{item.name}</div>
+                        <div style={{ fontSize:11, color:$.ink3, marginTop:2 }}>
+                          {item.source==="recurring" ? "cykliczny" : (item.date||"—")}
+                          {" · "}
+                          {item.source==="recurring" ? "🔄" : item.source==="manual" ? "✏️" : "🧾"}
+                        </div>
+                      </div>
+                      <div style={{ textAlign:"right", flexShrink:0 }}>
+                        <span className="mono" style={{ fontWeight:600, fontSize:15 }}>
                           {convertAmt(item.total_price||0, currency)} {sym}
                         </span>
                         {item.discount > 0 && (
                           <div style={{ fontSize:11, color:$.red, fontWeight:600 }}>−{convertAmt(item.discount, currency)}</div>
                         )}
-                      </td>
-                      <td style={{ textAlign:"right" }}>
+                      </div>
+                      <span style={{ fontSize:12, color:$.ink3, transition:"transform .2s", transform: isOpen ? "rotate(180deg)" : "rotate(0)", flexShrink:0 }}>▼</span>
+                    </div>
+
+                    {/* Expanded details */}
+                    {isOpen && (
+                      <div onClick={e => e.stopPropagation()}
+                        style={{ marginTop:14, paddingTop:14, borderTop:"1px solid rgba(0,0,0,0.06)",
+                          display:"grid", gridTemplateColumns:"1fr 1fr", gap:"8px 20px", fontSize:13 }}>
+                        <div><span style={{ color:$.ink3 }}>Kategoria:</span> <CatChip cat={item.category} /></div>
+                        <div>
+                          <span style={{ color:$.ink3 }}>Źródło: </span>
+                          <span style={{
+                            fontSize:10, fontWeight:700, padding:"3px 8px", borderRadius:99,
+                            background: item.source==="recurring" ? "rgba(124,58,237,0.10)" : item.source==="manual" ? "rgba(6,193,103,0.10)" : "rgba(59,130,246,0.10)",
+                            color: item.source==="recurring" ? "#7C3AED" : item.source==="manual" ? $.green : "#3B82F6",
+                            border: `1px solid ${item.source==="recurring" ? "rgba(124,58,237,0.25)" : item.source==="manual" ? "rgba(6,193,103,0.25)" : "rgba(59,130,246,0.25)"}`,
+                          }}>
+                            {item.source==="recurring" ? "🔄 Cykliczny" : item.source==="manual" ? "✏️ Ręczny" : "🧾 Paragon"}
+                          </span>
+                        </div>
+                        {item.store && <div><span style={{ color:$.ink3 }}>Sklep:</span> {item.store}</div>}
+                        {item.quantity && <div><span style={{ color:$.ink3 }}>Ilość:</span> {item.quantity}{item.unit ? ` ${item.unit}` : ""}</div>}
+                        {item.unit_price && <div><span style={{ color:$.ink3 }}>Cena jedn.:</span> {convertAmt(item.unit_price, currency)} {sym}</div>}
+                        {item.discount > 0 && <div style={{ color:$.red }}><span>Zniżka:</span> −{convertAmt(item.discount, currency)} {sym}</div>}
+                        {item.note && <div style={{ gridColumn:"1/-1", color:$.ink2 }}><span style={{ color:$.ink3 }}>Notatka:</span> {item.note}</div>}
                         {item.source==="manual" && (
-                          <button className="btn-icon"
-                            onClick={() => { haptic(10); onDelete(item.id); }}
-                            aria-label={`Usuń ${item.name}`}>×</button>
+                          <div style={{ gridColumn:"1/-1", marginTop:4 }}>
+                            <button onClick={() => { haptic(10); onDelete(item.id); }}
+                              style={{ background:"none", border:`1.5px solid ${$.red}`, borderRadius:8, padding:"5px 14px", fontSize:12, cursor:"pointer", color:$.red, fontWeight:600, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
+                              🗑️ Usuń
+                            </button>
+                          </div>
                         )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -4911,6 +5167,7 @@ export default function App({ uid }) {
   const [errors,    setErrors]    = useState([]);
   const [budgets,   setBudgets]   = useState({});
   const [recurring, setRecurring] = useState([]);
+  const [customStores, setCustomStores] = useState([]);
   const [currency,  setCurrency]  = useState("PLN");
   const [darkMode,  setDarkMode]  = useState(() => lsGet(LS_KEYS.darkMode, false));
   const [onboarded, setOnboarded] = useState(false);
@@ -4988,6 +5245,7 @@ export default function App({ uid }) {
     setExpenses(d.expenses || []);
     setBudgets(d.budgets || {});
     setRecurring(d.recurring || []);
+    setCustomStores(d.customStores || []);
     setCurrency(d.currency || "PLN");
     setDarkMode(d.darkMode || false);
     setOnboarded(d.onboarded || false);
@@ -5041,6 +5299,10 @@ export default function App({ uid }) {
     prevRecurring.current = recurring;
     updateField(uid, "recurring", recurring);
   }, [recurring]);
+  useEffect(() => {
+    if (!initialLoadDone.current) return;
+    updateField(uid, "customStores", customStores);
+  }, [customStores]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevCurrency.current === null) { prevCurrency.current = currency; return; }
@@ -5161,6 +5423,8 @@ export default function App({ uid }) {
           onClose={() => setShowQA(false)}
           apiKey={apiKey}
           onNeedKey={() => setShowKeyModal(true)}
+          customStores={customStores}
+          onAddCustomStore={s => { if (s && !customStores.includes(s) && !DEFAULT_STORES.includes(s)) setCustomStores(cs => [...cs, s]); }}
           onTextReceipt={async (text) => {
             setShowQA(false);
             const id = Date.now() + Math.random();
@@ -5198,6 +5462,8 @@ export default function App({ uid }) {
             haptic(30);
           }}
           onCancel={() => setReviewQueue(q => q.slice(1))}
+          customStores={customStores}
+          onAddCustomStore={s => { if (s && !customStores.includes(s) && !DEFAULT_STORES.includes(s)) setCustomStores(cs => [...cs, s]); }}
         />
       )}
 
@@ -5332,7 +5598,7 @@ export default function App({ uid }) {
           />
         )}
         {view === "home"      && <DashboardView receipts={receipts} expenses={expenses} budgets={budgets} recurring={recurring} currency={currency} go={go} allItems={allItems} />}
-        {view === "expenses"  && <ExpensesView expenses={expenses} receipts={receipts} onDelete={id => setExpenses(e=>e.filter(x=>x.id!==id))} currency={currency} />}
+        {view === "expenses"  && <ExpensesView expenses={expenses} receipts={receipts} recurring={recurring} onDelete={id => setExpenses(e=>e.filter(x=>x.id!==id))} currency={currency} />}
         {view === "shopping"  && <ShoppingView receipts={receipts} />}
         {view === "stores"    && <StoresView receipts={receipts} expenses={expenses} />}
         {view === "budgets"   && <BudgetsView receipts={receipts} expenses={expenses} allItems={allItems} budgets={budgets} setBudgets={setBudgets} currency={currency} />}
