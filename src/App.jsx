@@ -5009,7 +5009,12 @@ export default function App({ uid }) {
   const prevOnboarded = useRef(null);
 
   useEffect(() => {
-    if (!initialLoadDone.current) return;
+    if (!initialLoadDone.current) {
+      // Even before Firestore load completes (or if it fails), save non-empty
+      // receipts to localStorage so they survive a refresh and can be recovered
+      if (receipts.length > 0) lsSet(LS_KEYS.receipts, receipts);
+      return;
+    }
     if (prevReceipts.current === null) { prevReceipts.current = receipts; return; }
     prevReceipts.current = receipts;
     updateField(uid, "receipts", receipts);
