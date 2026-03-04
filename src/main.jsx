@@ -6,7 +6,7 @@ import AuthGate from './AuthGate.jsx'
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <AuthGate>
-      {(user) => <App uid={user.uid} />}
+      {(user) => <App key={user.uid} uid={user.uid} />}
     </AuthGate>
   </React.StrictMode>
 )

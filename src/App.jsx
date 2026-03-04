@@ -4914,11 +4914,13 @@ export default function App({ uid }) {
   const [showQA,    setShowQA]    = useState(false);
   const [apiKey,    setApiKey]    = useState(() => lsGet(LS_KEYS.apiKey, ""));
   const [showKeyModal, setShowKeyModal] = useState(false);
-  const [pendingReview, setPendingReview] = useState(null); // receipt awaiting user approval
+  const [reviewQueue, setReviewQueue] = useState([]); // receipts awaiting user approval
   const [dataLoaded, setDataLoaded] = useState(false);
   const pendingFilesRef = useRef(null);
   const pageRef = useRef();
   const initialLoadDone = useRef(false);
+  const reviewQueueRef = useRef(reviewQueue);
+  reviewQueueRef.current = reviewQueue;
 
   // Load data from Firestore on mount
   useEffect(() => {
@@ -4941,12 +4943,29 @@ export default function App({ uid }) {
             corrections: lsGet(LS_KEYS.corrections, { names: {}, categories: {} }),
           };
           await saveAllUserData(uid, migrated);
-          // Clear localStorage after successful migration (except apiKey)
-          Object.entries(LS_KEYS).forEach(([k, v]) => {
-            if (k !== "apiKey") localStorage.removeItem(v);
-          });
+          // Verify migration succeeded before clearing localStorage
+          const verify = await loadUserData(uid);
+          if (verify && (verify.receipts || []).length >= (migrated.receipts || []).length) {
+            Object.entries(LS_KEYS).forEach(([k, v]) => {
+              if (k !== "apiKey") localStorage.removeItem(v);
+            });
+          }
           applyData(migrated);
         } else {
+          // Check if localStorage has receipts that Firestore is missing (recovery)
+          const lsReceipts = lsGet(LS_KEYS.receipts, []);
+          if (lsReceipts.length > 0 && (data.receipts || []).length === 0) {
+            data.receipts = lsReceipts;
+            await updateField(uid, "receipts", lsReceipts);
+          } else if (lsReceipts.length > 0) {
+            // Merge any localStorage receipts not already in Firestore (by id)
+            const existingIds = new Set((data.receipts || []).map(r => r.id));
+            const missing = lsReceipts.filter(r => !existingIds.has(r.id));
+            if (missing.length > 0) {
+              data.receipts = [...missing, ...(data.receipts || [])];
+              await updateField(uid, "receipts", data.receipts);
+            }
+          }
           applyData(data);
         }
         setDataLoaded(true);
@@ -4975,7 +4994,13 @@ export default function App({ uid }) {
     if (dataLoaded) initialLoadDone.current = true;
   }, [dataLoaded]);
 
-  useEffect(() => { if (initialLoadDone.current) updateField(uid, "receipts", receipts); }, [receipts]);
+  useEffect(() => {
+    if (initialLoadDone.current) {
+      updateField(uid, "receipts", receipts);
+      // Keep localStorage backup for recovery
+      lsSet(LS_KEYS.receipts, receipts);
+    }
+  }, [receipts]);
   useEffect(() => { if (initialLoadDone.current) updateField(uid, "expenses", expenses); }, [expenses]);
   useEffect(() => { if (initialLoadDone.current) updateField(uid, "budgets", budgets); }, [budgets]);
   useEffect(() => { if (initialLoadDone.current) updateField(uid, "recurring", recurring); }, [recurring]);
@@ -5020,8 +5045,8 @@ export default function App({ uid }) {
         });
         const parsed = await scanReceipt(b64, file.type, key);
         const corrected = applyLearnedCorrections(parsed);
-        // Store original AI output for learning, show corrected version for review
-        setPendingReview({ ...corrected, id, _original: parsed });
+        // Enqueue for review instead of overwriting
+        setReviewQueue(q => [...q, { ...corrected, id, _original: parsed }]);
         haptic(30);
       } catch (e) {
         setErrors(p => [...p, `${file.name}: ${e.message}`]);
@@ -5090,7 +5115,7 @@ export default function App({ uid }) {
             try {
               const parsed = await parseTextReceipt(text, apiKey);
               const corrected = applyLearnedCorrections(parsed);
-              setPendingReview({ ...corrected, id, _original: parsed });
+              setReviewQueue(q => [...q, { ...corrected, id, _original: parsed }]);
               haptic(30);
             } catch (e) {
               setErrors(p => [...p, `Tekst: ${e.message}`]);
@@ -5101,21 +5126,25 @@ export default function App({ uid }) {
         />
       )}
 
-      {/* Receipt Review Modal */}
-      {pendingReview && (
+      {/* Receipt Review Modal — processes queue one at a time */}
+      {reviewQueue.length > 0 && (
         <ReceiptReviewModal
-          receipt={pendingReview}
+          key={reviewQueue[0].id}
+          receipt={reviewQueue[0]}
           onConfirm={(reviewed) => {
-            // Learn from user corrections vs original AI parse
-            if (pendingReview._original) {
-              learnFromCorrections(pendingReview._original, reviewed);
+            const current = reviewQueueRef.current[0];
+            if (current) {
+              // Learn from user corrections vs original AI parse
+              if (current._original) {
+                learnFromCorrections(current._original, reviewed);
+              }
+              const { _original, ...rest } = current;
+              setReceipts(p => [{ ...reviewed, id: rest.id }, ...p]);
             }
-            const { _original, ...rest } = pendingReview;
-            setReceipts(p => [{ ...reviewed, id: rest.id }, ...p]);
-            setPendingReview(null);
+            setReviewQueue(q => q.slice(1));
             haptic(30);
           }}
-          onCancel={() => setPendingReview(null)}
+          onCancel={() => setReviewQueue(q => q.slice(1))}
         />
       )}
 
