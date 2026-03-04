@@ -4732,6 +4732,11 @@ function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, cus
   const [type,     setType]     = useState("one-time");
   const [name,     setName]     = useState("");
   const [amount,   setAmount]   = useState("");
+  const [quantity, setQuantity] = useState("1");
+  const [unit,     setUnit]     = useState("");
+  const [unitPrice,setUnitPrice]= useState("");
+  const [discount, setDiscount] = useState("");
+  const [discountLabel, setDiscountLabel] = useState("");
   const [category, setCategory] = useState("Inne");
   const [date,     setDate]     = useState(new Date().toISOString().slice(0,10));
   const [store,    setStore]    = useState("");
@@ -4748,6 +4753,16 @@ function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, cus
     else nameRef.current?.focus();
   }, [textMode]);
 
+  // Auto-calculate total from quantity × unit_price - discount
+  useEffect(() => {
+    const q = parseFloat(quantity) || 1;
+    const up = parseFloat(unitPrice);
+    if (up > 0) {
+      const disc = parseFloat(discount) || 0;
+      setAmount((q * up - disc).toFixed(2));
+    }
+  }, [quantity, unitPrice, discount]);
+
   // Close on overlay click
   const overlayRef = useRef();
 
@@ -4758,6 +4773,12 @@ function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, cus
       id:       Date.now() + Math.random(),
       name:     name.trim(),
       amount:   parseFloat(amount),
+      quantity: parseFloat(quantity) || 1,
+      unit:     unit.trim() || null,
+      unit_price: parseFloat(unitPrice) || null,
+      total_price: parseFloat(amount),
+      discount: parseFloat(discount) || null,
+      discount_label: discountLabel.trim() || null,
       category,
       date,
       store:    store.trim(),
@@ -4832,16 +4853,52 @@ function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, cus
                 ))}
               </div>
 
-              {/* Name + amount row */}
+              {/* Name */}
+              <div style={{ marginBottom:14 }}>
+                <label htmlFor="qa-name" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Nazwa</label>
+                <input id="qa-name" ref={nameRef} className="field" value={name}
+                  onChange={e => setName(e.target.value)} onKeyDown={e => e.key==="Enter" && submit()}
+                  placeholder="np. Młotek, Spotify, Pralka…" />
+              </div>
+
+              {/* Quantity + Unit + Unit Price row */}
               <div style={{ display:"flex", gap:10, marginBottom:14 }}>
-                <div style={{ flex:2, minWidth:0 }}>
-                  <label htmlFor="qa-name" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Nazwa</label>
-                  <input id="qa-name" ref={nameRef} className="field" value={name}
-                    onChange={e => setName(e.target.value)} onKeyDown={e => e.key==="Enter" && submit()}
-                    placeholder="np. Młotek, Spotify, Pralka…" />
+                <div style={{ flex:1, minWidth:70 }}>
+                  <label htmlFor="qa-qty" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Ilość</label>
+                  <input id="qa-qty" className="field" type="number" min="0" step="0.01"
+                    value={quantity} onChange={e => setQuantity(e.target.value)}
+                    placeholder="1" style={{ textAlign:"right" }} />
+                </div>
+                <div style={{ flex:1, minWidth:60 }}>
+                  <label htmlFor="qa-unit" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Jedn.</label>
+                  <input id="qa-unit" className="field" value={unit}
+                    onChange={e => setUnit(e.target.value)}
+                    placeholder="szt, kg, l…" />
                 </div>
                 <div style={{ flex:1, minWidth:90 }}>
-                  <label htmlFor="qa-amt" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Kwota (PLN)</label>
+                  <label htmlFor="qa-uprice" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Cena jedn.</label>
+                  <input id="qa-uprice" className="field" type="number" min="0" step="0.01"
+                    value={unitPrice} onChange={e => setUnitPrice(e.target.value)}
+                    placeholder="0.00" style={{ textAlign:"right" }} />
+                </div>
+              </div>
+
+              {/* Discount + Total row */}
+              <div style={{ display:"flex", gap:10, marginBottom:14 }}>
+                <div style={{ flex:1, minWidth:80 }}>
+                  <label htmlFor="qa-disc" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Zniżka (zł)</label>
+                  <input id="qa-disc" className="field" type="number" min="0" step="0.01"
+                    value={discount} onChange={e => setDiscount(e.target.value)}
+                    placeholder="0.00" style={{ textAlign:"right" }} />
+                </div>
+                <div style={{ flex:1, minWidth:80 }}>
+                  <label htmlFor="qa-disclbl" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Opis zniżki</label>
+                  <input id="qa-disclbl" className="field" value={discountLabel}
+                    onChange={e => setDiscountLabel(e.target.value)}
+                    placeholder="np. Karta Moja" />
+                </div>
+                <div style={{ flex:1, minWidth:90 }}>
+                  <label htmlFor="qa-amt" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Razem (PLN)</label>
                   <input id="qa-amt" className="field" type="number" min="0" step="0.01"
                     value={amount} onChange={e => setAmount(e.target.value)}
                     onKeyDown={e => e.key==="Enter" && submit()} placeholder="0.00" style={{ textAlign:"right" }} />
