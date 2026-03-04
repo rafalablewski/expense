@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "./firebase";
-import { loadUserData, saveAllUserData, updateField } from "./firestore";
+import { loadUserData, saveAllUserData, updateField, subscribeUserData } from "./firestore";
 
 /* ══════════════════════════════════════════
    KUCHNIAPP — Complete redesign
@@ -5330,9 +5330,14 @@ export default function App({ uid }) {
   const reviewQueueRef = useRef(reviewQueue);
   reviewQueueRef.current = reviewQueue;
 
-  // Load data from Firestore on mount
+  // Counter of in-flight local writes — when >0 we skip onSnapshot echoes
+  const pendingWrites = useRef(0);
+
+  // Load data from Firestore on mount, then subscribe to real-time updates
   useEffect(() => {
     let cancelled = false;
+    let unsubscribe = null;
+
     (async () => {
       try {
         const data = await loadUserData(uid);
@@ -5377,6 +5382,15 @@ export default function App({ uid }) {
           applyData(data);
         }
         setDataLoaded(true);
+
+        // Subscribe to real-time Firestore updates (cross-tab / cross-device sync)
+        if (!cancelled) {
+          unsubscribe = subscribeUserData(uid, (remoteData) => {
+            // Skip echoes of our own local writes
+            if (pendingWrites.current > 0) return;
+            applyData(remoteData);
+          });
+        }
       } catch (e) {
         console.error("Failed to load data from Firestore:", e);
         setErrors(["Nie udało się załadować danych. Odśwież stronę."]);
@@ -5384,7 +5398,7 @@ export default function App({ uid }) {
         setDataLoaded(true);
       }
     })();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; if (unsubscribe) unsubscribe(); };
   }, [uid]);
 
   function applyData(d) {
@@ -5416,6 +5430,14 @@ export default function App({ uid }) {
   const prevDarkMode  = useRef(null);
   const prevOnboarded = useRef(null);
 
+  // Write to Firestore while guarding against onSnapshot echo loops
+  const guardedWrite = useCallback((field, value) => {
+    pendingWrites.current++;
+    updateField(uid, field, value).finally(() => {
+      setTimeout(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); }, 1500);
+    });
+  }, [uid]);
+
   useEffect(() => {
     if (!initialLoadDone.current) {
       // Even before Firestore load completes (or if it fails), save non-empty
@@ -5425,49 +5447,49 @@ export default function App({ uid }) {
     }
     if (prevReceipts.current === null) { prevReceipts.current = receipts; return; }
     prevReceipts.current = receipts;
-    updateField(uid, "receipts", receipts);
+    guardedWrite("receipts", receipts);
     lsSet(LS_KEYS.receipts, receipts);
   }, [receipts]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevExpenses.current === null) { prevExpenses.current = expenses; return; }
     prevExpenses.current = expenses;
-    updateField(uid, "expenses", expenses);
+    guardedWrite("expenses", expenses);
   }, [expenses]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevBudgets.current === null) { prevBudgets.current = budgets; return; }
     prevBudgets.current = budgets;
-    updateField(uid, "budgets", budgets);
+    guardedWrite("budgets", budgets);
   }, [budgets]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevRecurring.current === null) { prevRecurring.current = recurring; return; }
     prevRecurring.current = recurring;
-    updateField(uid, "recurring", recurring);
+    guardedWrite("recurring", recurring);
   }, [recurring]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
-    updateField(uid, "customStores", customStores);
+    guardedWrite("customStores", customStores);
   }, [customStores]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevCurrency.current === null) { prevCurrency.current = currency; return; }
     prevCurrency.current = currency;
-    updateField(uid, "currency", currency);
+    guardedWrite("currency", currency);
   }, [currency]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevDarkMode.current === null) { prevDarkMode.current = darkMode; return; }
     prevDarkMode.current = darkMode;
-    updateField(uid, "darkMode", darkMode);
+    guardedWrite("darkMode", darkMode);
     lsSet(LS_KEYS.darkMode, darkMode);
   }, [darkMode]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevOnboarded.current === null) { prevOnboarded.current = onboarded; return; }
     prevOnboarded.current = onboarded;
-    updateField(uid, "onboarded", onboarded);
+    guardedWrite("onboarded", onboarded);
   }, [onboarded]);
 
   // Unified allItems: manual expenses + receipt items
