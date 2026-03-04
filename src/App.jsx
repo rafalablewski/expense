@@ -4919,6 +4919,8 @@ export default function App({ uid }) {
   const pendingFilesRef = useRef(null);
   const pageRef = useRef();
   const initialLoadDone = useRef(false);
+  const reviewQueueRef = useRef(reviewQueue);
+  reviewQueueRef.current = reviewQueue;
 
   // Load data from Firestore on mount
   useEffect(() => {
@@ -5127,15 +5129,18 @@ export default function App({ uid }) {
       {/* Receipt Review Modal — processes queue one at a time */}
       {reviewQueue.length > 0 && (
         <ReceiptReviewModal
+          key={reviewQueue[0].id}
           receipt={reviewQueue[0]}
           onConfirm={(reviewed) => {
-            const current = reviewQueue[0];
-            // Learn from user corrections vs original AI parse
-            if (current._original) {
-              learnFromCorrections(current._original, reviewed);
+            const current = reviewQueueRef.current[0];
+            if (current) {
+              // Learn from user corrections vs original AI parse
+              if (current._original) {
+                learnFromCorrections(current._original, reviewed);
+              }
+              const { _original, ...rest } = current;
+              setReceipts(p => [{ ...reviewed, id: rest.id }, ...p]);
             }
-            const { _original, ...rest } = current;
-            setReceipts(p => [{ ...reviewed, id: rest.id }, ...p]);
             setReviewQueue(q => q.slice(1));
             haptic(30);
           }}
