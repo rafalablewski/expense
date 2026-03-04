@@ -379,7 +379,7 @@ body {
   line-height: 1;
 }
 [data-dark="1"] .rv-item-num { background: rgba(255,255,255,0.08); }
-.rv-item-r1 .rv-i-total { flex: 1; min-width: 0; }
+.rv-item-r1 .rv-i-name { flex: 1; min-width: 0; }
 .rv-del-btn {
   background: none;
   border: none;
@@ -393,8 +393,15 @@ body {
   transition: color .15s, background .15s;
 }
 .rv-del-btn:hover { color: ${$.red}; background: ${$.redBg}; }
-/* Row 2: name (full width) */
-.rv-item-r-name { margin-bottom: 6px; }
+/* Row 2: category | total price */
+.rv-item-r2 {
+  display: flex;
+  gap: 6px;
+  align-items: end;
+  margin-bottom: 2px;
+}
+.rv-item-r2 > div { flex: 1; min-width: 0; }
+.rv-item-r2 .rv-i-cat { flex: 1.5; }
 /* Suggestions row */
 .rv-suggest {
   display: flex;
@@ -425,14 +432,14 @@ body {
   line-height: 1.3;
 }
 .rv-suggest-pill:hover { background: ${$.green}; color: #fff; }
-/* Row 3: cat | qty | price */
+/* Row 3 (expanded): unit | discount */
 .rv-item-r3 {
   display: flex;
   gap: 6px;
+  margin-top: 6px;
   align-items: end;
 }
 .rv-item-r3 > div { flex: 1; min-width: 0; }
-.rv-item-r3 .rv-i-cat { flex: 1.5; }
 /* More toggle */
 .rv-more-toggle {
   background: none;
@@ -479,6 +486,8 @@ body {
 }
 @media (max-width: 480px) {
   .rv-meta { grid-template-columns: 1fr 1fr; }
+  .rv-item-r2 { flex-wrap: wrap; }
+  .rv-item-r2 > div { min-width: calc(50% - 3px); }
   .rv-item-r3 { flex-wrap: wrap; }
   .rv-item-r3 > div { min-width: calc(50% - 3px); }
   .rv-item-r4 { flex-wrap: wrap; }
@@ -1659,21 +1668,14 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
             const suggestions = item._suggestions;
             return (
               <div key={item._key} className="rv-item">
-                {/* Row 1: # badge, total price, delete */}
+                {/* Row 1: # badge, product name, delete */}
                 <div className="rv-item-r1">
                   <div className="rv-item-num">{idx + 1}</div>
-                  <div className="rv-i-total">
-                    <input className="field" type="number" step="0.01" value={item.total_price ?? 0}
-                      onChange={e => updateItem(idx, "total_price", e.target.value)}
-                      placeholder="0.00" style={{ textAlign:"right", fontWeight:700 }} />
+                  <div className="rv-i-name">
+                    <input className="field" value={item.name || ""} onChange={e => updateItem(idx, "name", e.target.value)}
+                      placeholder="Nazwa produktu" style={{ fontWeight:600 }} />
                   </div>
                   <button className="rv-del-btn" onClick={() => removeItem(idx)} title="Usuń" aria-label="Usuń produkt">✕</button>
-                </div>
-
-                {/* Row 2: name (full width) */}
-                <div className="rv-item-r-name">
-                  <input className="field" value={item.name || ""} onChange={e => updateItem(idx, "name", e.target.value)}
-                    placeholder="Nazwa produktu" style={{ fontWeight:600 }} />
                 </div>
 
                 {/* Suggestions (when ambiguous) */}
@@ -1689,8 +1691,8 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                   </div>
                 )}
 
-                {/* Row 3: category | qty | price */}
-                <div className="rv-item-r3">
+                {/* Row 2: category | total price */}
+                <div className="rv-item-r2">
                   <div className="rv-i-cat">
                     <label className="rv-lbl">Kategoria</label>
                     <select className="field" value={item.category || "Inne"} onChange={e => updateItem(idx, "category", e.target.value)}
@@ -1699,14 +1701,10 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                     </select>
                   </div>
                   <div>
-                    <label className="rv-lbl">Ilość</label>
-                    <input className="field" type="number" step="0.001" value={item.quantity ?? 1}
-                      onChange={e => updateItem(idx, "quantity", e.target.value)} style={{ textAlign:"right" }} />
-                  </div>
-                  <div>
                     <label className="rv-lbl">Cena</label>
-                    <input className="field" type="number" step="0.01" value={item.unit_price ?? ""}
-                      onChange={e => updateItem(idx, "unit_price", e.target.value)} placeholder="—" style={{ textAlign:"right" }} />
+                    <input className="field" type="number" step="0.01" value={item.total_price ?? 0}
+                      onChange={e => updateItem(idx, "total_price", e.target.value)}
+                      placeholder="0.00" style={{ textAlign:"right", fontWeight:700 }} />
                   </div>
                 </div>
 
@@ -1715,9 +1713,9 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                   {isExpanded ? "▲ Mniej" : "▼ Więcej"}
                 </button>
 
-                {/* Row 4 (expanded): jednostka | zniżka | cena jednostkowa */}
+                {/* Expanded: Row 3 — jednostka | zniżka */}
                 {isExpanded && (<>
-                  <div className="rv-item-r4">
+                  <div className="rv-item-r3">
                     <div>
                       <label className="rv-lbl">Jednostka</label>
                       <input className="field" value={item.unit || ""} onChange={e => updateItem(idx, "unit", e.target.value)}
@@ -1728,10 +1726,18 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                       <input className="field" type="number" step="0.01" value={item.discount ?? ""}
                         onChange={e => updateItem(idx, "discount", e.target.value)} placeholder="0.00" style={{ textAlign:"right" }} />
                     </div>
+                  </div>
+                  {/* Row 4: cena jednostkowa | ilość */}
+                  <div className="rv-item-r4">
                     <div>
                       <label className="rv-lbl">Cena jedn.</label>
                       <input className="field" type="number" step="0.01" value={item.unit_price ?? ""}
                         onChange={e => updateItem(idx, "unit_price", e.target.value)} placeholder="—" style={{ textAlign:"right" }} />
+                    </div>
+                    <div>
+                      <label className="rv-lbl">Ilość</label>
+                      <input className="field" type="number" step="0.001" value={item.quantity ?? 1}
+                        onChange={e => updateItem(idx, "quantity", e.target.value)} style={{ textAlign:"right" }} />
                     </div>
                   </div>
                   {/* Row 5 (expanded): etykieta (full width) */}
