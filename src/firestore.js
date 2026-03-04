@@ -12,6 +12,7 @@ const DEFAULTS = {
   darkMode: false,
   onboarded: false,
   corrections: { names: {}, categories: {} },
+  customStores: [],
 };
 
 export async function loadUserData(uid) {
