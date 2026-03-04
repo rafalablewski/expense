@@ -303,7 +303,7 @@ body {
   border-radius: 24px 24px 0 0;
   border: 1px solid rgba(255,255,255,0.90);
   border-bottom: none;
-  padding: 0 0 env(safe-area-inset-bottom, 16px);
+  padding: 0 0 env(safe-area-inset-bottom, 12px);
   box-shadow: 0 -12px 60px rgba(0,0,0,0.18);
   animation: slideUp .38s cubic-bezier(.16,1,.3,1) both;
 }
@@ -315,86 +315,86 @@ body {
   width: 36px; height: 4px;
   border-radius: 2px;
   background: rgba(0,0,0,0.15);
-  margin: 12px auto 0;
+  margin: 10px auto 0;
 }
 [data-dark="1"] .rv-handle { background: rgba(255,255,255,0.20); }
 .rv-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px 12px;
+  padding: 12px 20px 8px;
 }
 .rv-title {
   font-family: 'Bricolage Grotesque', sans-serif;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
   letter-spacing: -.03em;
   color: ${$.ink0};
 }
 [data-dark="1"] .rv-title { color: #F5F5F7; }
-.rv-body { padding: 0 24px 24px; }
-.rv-label {
-  font-size: 11px;
+.rv-body { padding: 0 20px 16px; }
+.rv-lbl {
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: .07em;
   text-transform: uppercase;
   color: ${$.ink3};
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   display: block;
 }
-.rv-row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 14px;
+.rv-meta {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
 }
-.rv-row > div { flex: 1; min-width: 0; }
 .rv-item {
   background: rgba(255,255,255,0.40);
   border: 1px solid rgba(255,255,255,0.60);
-  border-radius: 14px;
-  padding: 14px 16px;
-  margin-bottom: 8px;
-  animation: slideDown .25s ease both;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  animation: slideDown .2s ease both;
 }
 [data-dark="1"] .rv-item {
   background: rgba(255,255,255,0.06);
   border-color: rgba(255,255,255,0.12);
 }
-.rv-item-top {
+.rv-item-r1 {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 8px;
 }
-.rv-item-top .rv-item-name { flex: 2; min-width: 0; }
-.rv-item-top .rv-item-price { flex: 1; min-width: 80px; }
+.rv-item-r1 .rv-i-name { flex: 1; min-width: 0; }
+.rv-item-r1 .rv-i-price { width: 90px; flex-shrink: 0; }
 .rv-item-num {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   color: ${$.ink3};
   background: rgba(0,0,0,0.04);
-  border-radius: 6px;
-  padding: 3px 7px;
+  border-radius: 5px;
+  padding: 2px 6px;
   flex-shrink: 0;
   line-height: 1;
 }
 [data-dark="1"] .rv-item-num { background: rgba(255,255,255,0.08); }
-.rv-item-row2 {
+.rv-item-r2 {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  margin-top: 6px;
   align-items: end;
 }
-.rv-item-row2 > div { flex: 1; min-width: 0; }
-.rv-item-row2 .rv-item-cat { flex: 1.5; }
+.rv-item-r2 > div { flex: 1; min-width: 0; }
+.rv-item-r2 .rv-i-cat { flex: 1.5; }
 .rv-del-btn {
   background: none;
   border: none;
   color: ${$.ink3};
-  font-size: 16px;
+  font-size: 14px;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
+  padding: 2px 4px;
+  border-radius: 5px;
   line-height: 1;
   flex-shrink: 0;
   transition: color .15s, background .15s;
@@ -404,26 +404,34 @@ body {
   background: none;
   border: none;
   color: ${$.ink3};
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   cursor: pointer;
-  padding: 6px 0 0;
+  padding: 4px 0 0;
   font-family: 'Plus Jakarta Sans', sans-serif;
   transition: color .15s;
 }
 .rv-more-toggle:hover { color: ${$.green}; }
+.rv-item-r3 {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  align-items: end;
+}
+.rv-item-r3 > div { flex: 1; min-width: 0; }
 .rv-footer {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  padding: 16px 24px;
+  padding: 12px 20px;
   border-top: 1px solid rgba(255,255,255,0.45);
 }
 @media (max-width: 480px) {
-  .rv-row { flex-direction: column; gap: 10px; }
-  .rv-item-top { flex-wrap: wrap; }
-  .rv-item-row2 { flex-wrap: wrap; }
-  .rv-item-row2 > div { min-width: calc(50% - 4px); }
+  .rv-meta { grid-template-columns: 1fr 1fr; }
+  .rv-item-r2 { flex-wrap: wrap; }
+  .rv-item-r2 > div { min-width: calc(50% - 3px); }
+  .rv-item-r3 { flex-wrap: wrap; }
+  .rv-item-r3 > div { min-width: calc(50% - 3px); }
 }
 
 /* Type toggle */
@@ -1550,105 +1558,96 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
         </div>
 
         <div className="rv-body">
-          {/* Store + Date */}
-          <div className="rv-row">
-            <div style={{ flex: 2 }}>
-              <label className="rv-label">Sklep</label>
-              <input className="field" value={data.store} onChange={e => updateField("store", e.target.value)} placeholder="Nazwa sklepu" />
+          {/* Store, Date, Total, Discounts — all in one compact grid */}
+          <div className="rv-meta">
+            <div>
+              <label className="rv-lbl">Sklep</label>
+              <input className="field" value={data.store} onChange={e => updateField("store", e.target.value)} placeholder="Nazwa" />
             </div>
             <div>
-              <label className="rv-label">Data</label>
+              <label className="rv-lbl">Data</label>
               <input className="field" type="date" value={data.date} onChange={e => updateField("date", e.target.value)} />
             </div>
-          </div>
-
-          {/* Total + Discounts */}
-          <div className="rv-row">
             <div>
-              <label className="rv-label">Suma (PLN)</label>
+              <label className="rv-lbl">Suma</label>
               <input className="field" type="number" step="0.01" value={data.total}
                 onChange={e => updateField("total", e.target.value)} placeholder="0.00" style={{ textAlign:"right" }} />
             </div>
             <div>
-              <label className="rv-label">Zniżki łącznie</label>
+              <label className="rv-lbl">Zniżki</label>
               <input className="field" type="number" step="0.01" value={data.total_discounts || 0}
                 onChange={e => updateField("total_discounts", e.target.value)} placeholder="0.00" style={{ textAlign:"right" }} />
             </div>
           </div>
 
-          {/* Divider + Items header */}
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10, marginTop:6 }}>
-            <div className="rv-label" style={{ marginBottom:0 }}>
-              Produkty · {data.items.length}
-            </div>
+          {/* Items header */}
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+            <div className="rv-lbl" style={{ marginBottom:0 }}>Produkty · {data.items.length}</div>
             <button onClick={addItem}
-              style={{ background:$.greenBg, border:`1px solid ${$.greenRim}`, borderRadius:8, padding:"5px 12px",
-                fontSize:12, fontWeight:700, color:$.green, cursor:"pointer", fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
+              style={{ background:$.greenBg, border:`1px solid ${$.greenRim}`, borderRadius:7, padding:"4px 10px",
+                fontSize:11, fontWeight:700, color:$.green, cursor:"pointer", fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
               + Dodaj
             </button>
           </div>
 
-          {/* Items list */}
+          {/* Items */}
           {data.items.map((item, idx) => {
             const isExpanded = expandedItem === idx;
             return (
               <div key={item._key} className="rv-item">
-                {/* Row 1: number, name, total price, delete */}
-                <div className="rv-item-top">
+                {/* Row 1: #, name, price, delete */}
+                <div className="rv-item-r1">
                   <div className="rv-item-num">{idx + 1}</div>
-                  <div className="rv-item-name">
+                  <div className="rv-i-name">
                     <input className="field" value={item.name || ""} onChange={e => updateItem(idx, "name", e.target.value)}
                       placeholder="Nazwa produktu" style={{ fontWeight:600 }} />
                   </div>
-                  <div className="rv-item-price">
+                  <div className="rv-i-price">
                     <input className="field" type="number" step="0.01" value={item.total_price ?? 0}
                       onChange={e => updateItem(idx, "total_price", e.target.value)}
                       placeholder="0.00" style={{ textAlign:"right", fontWeight:600 }} />
                   </div>
                   <button className="rv-del-btn" onClick={() => removeItem(idx)} title="Usuń" aria-label="Usuń produkt">✕</button>
                 </div>
-
-                {/* Row 2: category, quantity, unit price */}
-                <div className="rv-item-row2">
-                  <div className="rv-item-cat">
-                    <label className="rv-label">Kategoria</label>
+                {/* Row 2: cat, qty, unit price */}
+                <div className="rv-item-r2">
+                  <div className="rv-i-cat">
+                    <label className="rv-lbl">Kategoria</label>
                     <select className="field" value={item.category || "Inne"} onChange={e => updateItem(idx, "category", e.target.value)}
                       style={{ cursor:"pointer" }}>
                       {ALL_CATS.map(c => <option key={c} value={c}>{CAT_ICONS[c] || ""} {c}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="rv-label">Ilość</label>
+                    <label className="rv-lbl">Ilość</label>
                     <input className="field" type="number" step="0.001" value={item.quantity ?? 1}
                       onChange={e => updateItem(idx, "quantity", e.target.value)} style={{ textAlign:"right" }} />
                   </div>
                   <div>
-                    <label className="rv-label">Cena jedn.</label>
+                    <label className="rv-lbl">Cena j.</label>
                     <input className="field" type="number" step="0.01" value={item.unit_price ?? ""}
                       onChange={e => updateItem(idx, "unit_price", e.target.value)} placeholder="—" style={{ textAlign:"right" }} />
                   </div>
                 </div>
-
-                {/* Toggle for extra fields */}
+                {/* Expand toggle */}
                 <button className="rv-more-toggle" onClick={() => setExpandedItem(isExpanded ? null : idx)}>
-                  {isExpanded ? "▲ Mniej" : "▼ Więcej opcji"}
+                  {isExpanded ? "▲ Mniej" : "▼ Więcej"}
                 </button>
-
-                {/* Expanded: unit, discount, discount label */}
+                {/* Row 3: unit, discount, discount label */}
                 {isExpanded && (
-                  <div className="rv-item-row2" style={{ marginTop:10 }}>
+                  <div className="rv-item-r3">
                     <div>
-                      <label className="rv-label">Jednostka</label>
+                      <label className="rv-lbl">Jednostka</label>
                       <input className="field" value={item.unit || ""} onChange={e => updateItem(idx, "unit", e.target.value)}
-                        placeholder="szt, kg, L…" />
+                        placeholder="szt, kg…" />
                     </div>
                     <div>
-                      <label className="rv-label">Zniżka</label>
+                      <label className="rv-lbl">Zniżka</label>
                       <input className="field" type="number" step="0.01" value={item.discount ?? ""}
                         onChange={e => updateItem(idx, "discount", e.target.value)} placeholder="0.00" style={{ textAlign:"right" }} />
                     </div>
                     <div>
-                      <label className="rv-label">Etykieta zniżki</label>
+                      <label className="rv-lbl">Etykieta</label>
                       <input className="field" value={item.discount_label || ""}
                         onChange={e => updateItem(idx, "discount_label", e.target.value)} placeholder="np. -20%" />
                     </div>
@@ -1659,10 +1658,9 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
           })}
         </div>
 
-        {/* Footer */}
         <div className="rv-footer">
           <button className="btn-secondary" onClick={onCancel}>Odrzuć</button>
-          <button className="btn-primary" onClick={handleConfirm}>Zatwierdź paragon</button>
+          <button className="btn-primary" onClick={handleConfirm}>Zatwierdź</button>
         </div>
       </div>
     </div>
