@@ -4916,6 +4916,7 @@ export default function App({ uid }) {
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [reviewQueue, setReviewQueue] = useState([]); // receipts awaiting user approval
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const pendingFilesRef = useRef(null);
   const pageRef = useRef();
   const initialLoadDone = useRef(false);
@@ -4972,6 +4973,7 @@ export default function App({ uid }) {
       } catch (e) {
         console.error("Failed to load data from Firestore:", e);
         setErrors(["Nie udało się załadować danych. Odśwież stronę."]);
+        setLoadFailed(true);
         setDataLoaded(true);
       }
     })();
@@ -4989,10 +4991,10 @@ export default function App({ uid }) {
     initCorrections(uid, d.corrections);
   }
 
-  // Persist to Firestore on change (skip initial load)
+  // Persist to Firestore on change (skip initial load; NEVER write if load failed)
   useEffect(() => {
-    if (dataLoaded) initialLoadDone.current = true;
-  }, [dataLoaded]);
+    if (dataLoaded && !loadFailed) initialLoadDone.current = true;
+  }, [dataLoaded, loadFailed]);
 
   useEffect(() => {
     if (initialLoadDone.current) {
