@@ -426,6 +426,20 @@ body {
   padding: 12px 20px;
   border-top: 1px solid rgba(255,255,255,0.45);
 }
+.rv-info {
+  padding: 10px 20px 14px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: ${$.ink3};
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rv-info-note {
+  font-size: 10px;
+  opacity: 0.7;
+  font-style: italic;
+}
 @media (max-width: 480px) {
   .rv-meta { grid-template-columns: 1fr 1fr; }
   .rv-item-r2 { flex-wrap: wrap; }
@@ -1448,7 +1462,16 @@ Rules:
 - date MUST be in YYYY-MM-DD format. Extract from receipt header/footer. NEVER return null for date.
 - Product names: read carefully, expand abbreviations into readable Polish names (e.g. "PomidGustBel400g" → "Pomidory Gusto Bello 400g").
 - Categorize food products correctly: tomatoes/vegetables → "Warzywa", fruits → "Owoce", etc.
-- Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.`
+- Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.${(() => {
+  const c = getCorrections();
+  const nameEntries = Object.entries(c.names);
+  const catEntries = Object.entries(c.categories);
+  if (!nameEntries.length && !catEntries.length) return "";
+  let hint = "\n\nUser corrections from past receipts — apply these:";
+  if (nameEntries.length) hint += "\nName fixes: " + nameEntries.slice(-30).map(([k,v]) => `"${k}" → "${v}"`).join(", ");
+  if (catEntries.length) hint += "\nCategory fixes: " + catEntries.slice(-30).map(([k,v]) => `"${k}" → ${v}`).join(", ");
+  return hint;
+})()}`
           }
         ]
       }]
@@ -1661,6 +1684,19 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
         <div className="rv-footer">
           <button className="btn-secondary" onClick={onCancel}>Odrzuć</button>
           <button className="btn-primary" onClick={handleConfirm}>Zatwierdź</button>
+        </div>
+
+        {/* Learning info */}
+        <div className="rv-info">
+          {(() => {
+            const s = getCorrectionStats();
+            return s.names + s.categories > 0
+              ? <span>Nauczono: {s.names} nazw, {s.categories} kategorii — poprawki stosowane automatycznie.</span>
+              : <span>Popraw błędy AI — aplikacja zapamięta Twoje korekty na przyszłość.</span>;
+          })()}
+          <span className="rv-info-note">
+            Korekty działają lokalnie (słownik). Uczenie modelu AI w czasie rzeczywistym wymaga treningu na serwerze (server-side ML) — nie jest dostępne w trybie przeglądarkowym.
+          </span>
         </div>
       </div>
     </div>
@@ -4476,6 +4512,7 @@ const LS_KEYS = {
   darkMode: "maszka_darkMode",
   onboarded: "maszka_onboarded",
   apiKey: "maszka_apiKey",
+  corrections: "maszka_corrections",
 };
 function lsGet(key, fallback) {
   try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback; }
@@ -4483,6 +4520,70 @@ function lsGet(key, fallback) {
 }
 function lsSet(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+}
+
+/* ─── Correction Learning System ─────────────── */
+// Stored shape: { names: { "AI_NAME": "USER_NAME", ... }, categories: { "PRODUCT_lower": "Category", ... } }
+function getCorrections() { return lsGet(LS_KEYS.corrections, { names: {}, categories: {} }); }
+function saveCorrections(c) { lsSet(LS_KEYS.corrections, c); }
+
+function learnFromCorrections(original, confirmed) {
+  const corr = getCorrections();
+  let changed = false;
+  const origItems = original.items || [];
+  const confItems = confirmed.items || [];
+  // Match items by index (user edits in-place)
+  const len = Math.min(origItems.length, confItems.length);
+  for (let i = 0; i < len; i++) {
+    const oi = origItems[i];
+    const ci = confItems[i];
+    // Learn name corrections
+    if (oi.name && ci.name && oi.name !== ci.name) {
+      corr.names[oi.name.trim()] = ci.name.trim();
+      changed = true;
+    }
+    // Learn category corrections (keyed by confirmed name)
+    if (ci.name && oi.category !== ci.category) {
+      corr.categories[ci.name.trim().toLowerCase()] = ci.category;
+      changed = true;
+    }
+    // Also learn category for original name if different
+    if (oi.name && ci.name && oi.name !== ci.name && ci.category) {
+      corr.categories[oi.name.trim().toLowerCase()] = ci.category;
+    }
+  }
+  if (changed) saveCorrections(corr);
+  return corr;
+}
+
+function applyLearnedCorrections(parsed) {
+  const corr = getCorrections();
+  if (!parsed.items?.length) return parsed;
+  const hasNames = Object.keys(corr.names).length > 0;
+  const hasCats = Object.keys(corr.categories).length > 0;
+  if (!hasNames && !hasCats) return parsed;
+  return {
+    ...parsed,
+    items: parsed.items.map(it => {
+      let name = it.name;
+      let category = it.category;
+      // Apply name correction
+      if (hasNames && name && corr.names[name.trim()]) {
+        name = corr.names[name.trim()];
+      }
+      // Apply category correction (check both original and corrected name)
+      const lookupKey = (name || "").trim().toLowerCase();
+      if (hasCats && corr.categories[lookupKey]) {
+        category = corr.categories[lookupKey];
+      }
+      return { ...it, name, category };
+    }),
+  };
+}
+
+function getCorrectionStats() {
+  const corr = getCorrections();
+  return { names: Object.keys(corr.names).length, categories: Object.keys(corr.categories).length };
 }
 
 export default function App() {
@@ -4568,8 +4669,9 @@ export default function App() {
           r.readAsDataURL(file);
         });
         const parsed = await scanReceipt(b64, file.type, key);
-        // Show review modal instead of adding directly
-        setPendingReview({ ...parsed, id });
+        const corrected = applyLearnedCorrections(parsed);
+        // Store original AI output for learning, show corrected version for review
+        setPendingReview({ ...corrected, id, _original: parsed });
         haptic(30);
       } catch (e) {
         setErrors(p => [...p, `${file.name}: ${e.message}`]);
@@ -4625,7 +4727,12 @@ export default function App() {
         <ReceiptReviewModal
           receipt={pendingReview}
           onConfirm={(reviewed) => {
-            setReceipts(p => [{ ...reviewed, id: pendingReview.id }, ...p]);
+            // Learn from user corrections vs original AI parse
+            if (pendingReview._original) {
+              learnFromCorrections(pendingReview._original, reviewed);
+            }
+            const { _original, ...rest } = pendingReview;
+            setReceipts(p => [{ ...reviewed, id: rest.id }, ...p]);
             setPendingReview(null);
             haptic(30);
           }}
