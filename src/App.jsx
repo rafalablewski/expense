@@ -1561,6 +1561,77 @@ Rules:
   return JSON.parse(raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim());
 }
 
+function getCorrectionsHint() {
+  const c = getCorrections();
+  const nameEntries = Object.entries(c.names);
+  const catEntries = Object.entries(c.categories);
+  if (!nameEntries.length && !catEntries.length) return "";
+  let hint = "\n\nUser corrections from past receipts — apply these:";
+  if (nameEntries.length) hint += "\nName fixes: " + nameEntries.slice(-30).map(([k,v]) => {
+    const arr = Array.isArray(v) ? v : [v];
+    return arr.length === 1 ? `"${k}" → "${arr[0]}"` : `"${k}" → one of [${arr.map(x => `"${x}"`).join(", ")}] (ambiguous, pick best match based on context)`;
+  }).join(", ");
+  if (catEntries.length) hint += "\nCategory fixes: " + catEntries.slice(-30).map(([k,v]) => `"${k}" → ${v}`).join(", ");
+  return hint;
+}
+
+async function parseTextReceipt(text, apiKey) {
+  if (!apiKey) throw new Error("Brak klucza API — ustaw go w ustawieniach (ikona klucza)");
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 2048,
+      messages: [{
+        role: "user",
+        content: `Parse the following Polish shopping list / receipt text into structured JSON. Each line is a product. Respond with ONLY raw JSON — no markdown, no backticks, no commentary.
+
+{
+  "store": string | null,
+  "date": "${new Date().toISOString().slice(0, 10)}",
+  "items": [
+    {
+      "name": string,
+      "quantity": number | null,
+      "unit": string | null,
+      "unit_price": number | null,
+      "total_price": number,
+      "discount": number | null,
+      "discount_label": string | null,
+      "category": "Nabiał"|"Mięso"|"Warzywa"|"Owoce"|"Napoje"|"Pieczywo"|"Słodycze"|"Chemia"|"Paliwo"|"Subskrypcje"|"Restauracje"|"Transport"|"Rozrywka"|"Elektronika"|"Odzież"|"Zdrowie"|"Narzędzia"|"Meble"|"AGD"|"Ogród"|"Zwierzęta"|"Podróże"|"Sport"|"Kosmetyki"|"Edukacja"|"Prezenty"|"Dom"|"Inne"
+    }
+  ],
+  "total": number | null,
+  "total_discounts": number | null
+}
+
+Rules:
+- Each line is a separate product. Extract name, quantity, unit, and price from the text.
+- If price is missing for a product, set total_price to 0.
+- If quantity is mentioned (e.g. "2kg", "3 szt", "3 jogurty"), extract it. Otherwise default to 1.
+- Calculate unit_price = total_price / quantity when both are known.
+- "total" = sum of all total_price values.
+- Categorize products into the correct Polish category.
+- Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.${getCorrectionsHint()}
+
+Text to parse:
+${text}`
+      }]
+    })
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || "API error");
+  const raw = data.content?.find(b => b.type === "text")?.text || "";
+  return JSON.parse(raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim());
+}
+
 /* ─── Drop Zone ──────────────────────────────── */
 function DropZone({ onFiles }) {
   const [drag, setDrag] = useState(false);
@@ -1650,6 +1721,28 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     }));
     setExpandedItem(data.items.length);
   };
+
+  const warnings = useMemo(() => {
+    const w = [];
+    const itemsSum = data.items.reduce((s, it) => s + (parseFloat(it.total_price) || 0), 0);
+    const total = parseFloat(data.total) || 0;
+    if (Math.abs(total - itemsSum) > 0.01) {
+      w.push(`Suma (${total.toFixed(2)}) nie zgadza się z sumą pozycji (${itemsSum.toFixed(2)})`);
+    }
+    data.items.forEach((it, idx) => {
+      const up = parseFloat(it.unit_price);
+      const qty = parseFloat(it.quantity);
+      const tp = parseFloat(it.total_price) || 0;
+      const disc = parseFloat(it.discount) || 0;
+      if (up && qty) {
+        const expected = up * qty - disc;
+        if (Math.abs(tp - expected) > 0.01) {
+          w.push(`Produkt ${idx + 1} "${it.name || "?"}": cena (${tp.toFixed(2)}) \u2260 cena jedn. \u00d7 ilo\u015b\u0107 \u2212 zni\u017cka (${expected.toFixed(2)})`);
+        }
+      }
+    });
+    return w;
+  }, [data]);
 
   const handleConfirm = () => {
     haptic(20);
@@ -1812,6 +1905,13 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
               </div>
             );
           })}
+
+          {warnings.length > 0 && (
+            <div style={{ margin: "12px 0", padding: "10px 14px", background: "#FEF3C7", border: "1px solid #F59E0B", borderRadius: 10, fontSize: 13, color: "#92400E", lineHeight: 1.6 }}>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>{"\u26A0"} Uwaga — niezgodności:</div>
+              {warnings.map((w, i) => <div key={i}>• {w}</div>)}
+            </div>
+          )}
         </div>
 
         <div className="rv-footer">
@@ -3323,12 +3423,19 @@ function BudgetsView({ receipts, expenses = [], allItems = [], budgets, setBudge
   // Current month spending per category
   const now = new Date();
   const monthItems = useMemo(() => {
-    return receipts.flatMap(r => {
+    const receiptItems = receipts.flatMap(r => {
       const d = parseDate(r.date);
       if (!d || d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return [];
       return (r.items || []).map(it => ({ ...it }));
     });
-  }, [receipts]);
+    const manualItems = expenses
+      .filter(e => {
+        const d = parseDate(e.date);
+        return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      })
+      .map(e => ({ name: e.name, total_price: e.amount, category: e.category }));
+    return [...receiptItems, ...manualItems];
+  }, [receipts, expenses]);
 
   const spending = useMemo(() => {
     const map = {};
@@ -3670,7 +3777,13 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
   const totalSaved = receipts.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
 
   // Budget alerts
-  const monthItems = useMemo(() => thisMonth.flatMap(r => r.items || []), [thisMonth]);
+  const monthItems = useMemo(() => {
+    const fromReceipts = thisMonth.flatMap(r => r.items || []);
+    const fromExpenses = thisMonthExpenses.map(e => ({
+      name: e.name, total_price: e.amount, category: e.category,
+    }));
+    return [...fromReceipts, ...fromExpenses];
+  }, [thisMonth, thisMonthExpenses]);
   const monthSpending = useMemo(() => {
     const map = {};
     monthItems.forEach(it => { const c = it.category || "Inne"; map[c] = (map[c] || 0) + (parseFloat(it.total_price) || 0); });
@@ -4310,7 +4423,7 @@ const EXPENSE_TYPES = [
   { id: "recurring", label: "Cykliczny",    icon: "🔄", sub: "subskrypcja, abonament" },
 ];
 
-function QuickAddExpense({ onAdd, onClose }) {
+function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey }) {
   const [type,     setType]     = useState("one-time");
   const [name,     setName]     = useState("");
   const [amount,   setAmount]   = useState("");
@@ -4320,9 +4433,15 @@ function QuickAddExpense({ onAdd, onClose }) {
   const [note,     setNote]     = useState("");
   const [cycle,    setCycle]    = useState("Miesięcznie");
   const [catGroup, setCatGroup] = useState("Jednorazowe");
+  const [textMode, setTextMode] = useState(false);
+  const [textVal,  setTextVal]  = useState("");
   const nameRef = useRef();
+  const textRef = useRef();
 
-  useEffect(() => { nameRef.current?.focus(); }, []);
+  useEffect(() => {
+    if (textMode) textRef.current?.focus();
+    else nameRef.current?.focus();
+  }, [textMode]);
 
   // Close on overlay click
   const overlayRef = useRef();
@@ -4354,101 +4473,136 @@ function QuickAddExpense({ onAdd, onClose }) {
       <div className="qa-drawer">
         <div className="qa-handle" aria-hidden="true" />
         <div className="qa-head">
-          <div className="qa-title">Dodaj wydatek</div>
-          <button onClick={onClose} aria-label="Zamknij"
-            style={{ background:"none", border:"none", cursor:"pointer", fontSize:22, color:$.ink3, padding:"4px 8px", borderRadius:8 }}>✕</button>
+          <div className="qa-title">{textMode ? "Wpisz listę" : "Dodaj wydatek"}</div>
+          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+            <button onClick={() => setTextMode(m => !m)}
+              style={{ background:textMode ? $.greenBg : "rgba(0,0,0,0.04)", border:`1px solid ${textMode ? $.greenRim : "rgba(0,0,0,0.08)"}`,
+                borderRadius:8, padding:"5px 12px", fontSize:12, fontWeight:700, cursor:"pointer",
+                color:textMode ? "#05964E" : $.ink2, fontFamily:"'Plus Jakarta Sans',sans-serif",
+                minHeight:32, display:"inline-flex", alignItems:"center", gap:4, transition:"all .15s" }}>
+              {textMode ? "Formularz" : "Wpisz listę"}
+            </button>
+            <button onClick={onClose} aria-label="Zamknij"
+              style={{ background:"none", border:"none", cursor:"pointer", fontSize:22, color:$.ink3, padding:"4px 8px", borderRadius:8 }}>✕</button>
+          </div>
         </div>
         <div className="qa-body">
 
-          {/* Type */}
-          <div style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:10 }}>Rodzaj</div>
-          <div className="type-row">
-            {EXPENSE_TYPES.map(t => (
-              <button key={t.id} className={`type-btn${type === t.id ? " on" : ""}`}
-                onClick={() => setType(t.id)} aria-pressed={type === t.id}>
-                <div className="tb-icon">{t.icon}</div>
-                <div>
-                  <div style={{ fontWeight:700, fontSize:14, color:type===t.id ? $.green : $.ink0, letterSpacing:"-.01em" }}>{t.label}</div>
-                  <div style={{ fontSize:11, color:$.ink3, marginTop:1 }}>{t.sub}</div>
-                </div>
+          {textMode ? (
+            <>
+              <div style={{ fontSize:13, color:$.ink2, marginBottom:12, lineHeight:1.6 }}>
+                Wpisz produkty — każdy w nowej linii. AI odczyta nazwy, ilości i ceny.
+              </div>
+              <textarea ref={textRef} className="field" value={textVal} onChange={e => setTextVal(e.target.value)}
+                placeholder={"mleko 2zł\n2kg ziemniaków 6zł\n3 jogurty greckie activia\nchleb razowy 5.50\nmasło extra 200g 8.99zł"}
+                style={{ width:"100%", minHeight:200, resize:"vertical", fontFamily:"'Plus Jakarta Sans',sans-serif",
+                  fontSize:14, lineHeight:1.7, padding:"12px 14px", boxSizing:"border-box" }} />
+              <button className="btn-primary" onClick={() => {
+                  if (!textVal.trim()) return;
+                  if (!apiKey) { onNeedKey(); return; }
+                  haptic(20);
+                  onTextReceipt(textVal.trim());
+                }}
+                disabled={!textVal.trim()}
+                style={{ width:"100%", justifyContent:"center", minHeight:52, fontSize:16, marginTop:14,
+                  opacity: textVal.trim() ? 1 : 0.4 }}
+                aria-label="Analizuj z AI">
+                Analizuj z AI
               </button>
-            ))}
-          </div>
-
-          {/* Name + amount row */}
-          <div style={{ display:"flex", gap:10, marginBottom:14 }}>
-            <div style={{ flex:2, minWidth:0 }}>
-              <label htmlFor="qa-name" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Nazwa</label>
-              <input id="qa-name" ref={nameRef} className="field" value={name}
-                onChange={e => setName(e.target.value)} onKeyDown={e => e.key==="Enter" && submit()}
-                placeholder="np. Młotek, Spotify, Pralka…" />
-            </div>
-            <div style={{ flex:1, minWidth:90 }}>
-              <label htmlFor="qa-amt" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Kwota (PLN)</label>
-              <input id="qa-amt" className="field" type="number" min="0" step="0.01"
-                value={amount} onChange={e => setAmount(e.target.value)}
-                onKeyDown={e => e.key==="Enter" && submit()} placeholder="0.00" style={{ textAlign:"right" }} />
-            </div>
-          </div>
-
-          {/* Cycle (only for recurring) */}
-          {type === "recurring" && (
-            <div style={{ marginBottom:14 }}>
-              <div style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:8 }}>Cykl płatności</div>
-              <div className="pills-row" role="group" aria-label="Cykl">
-                {REC_CYCLES.map(c => (
-                  <button key={c} className={`pill${cycle===c?" on":""}`} onClick={() => setCycle(c)} aria-pressed={cycle===c}>{c}</button>
+            </>
+          ) : (
+            <>
+              {/* Type */}
+              <div style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:10 }}>Rodzaj</div>
+              <div className="type-row">
+                {EXPENSE_TYPES.map(t => (
+                  <button key={t.id} className={`type-btn${type === t.id ? " on" : ""}`}
+                    onClick={() => setType(t.id)} aria-pressed={type === t.id}>
+                    <div className="tb-icon">{t.icon}</div>
+                    <div>
+                      <div style={{ fontWeight:700, fontSize:14, color:type===t.id ? $.green : $.ink0, letterSpacing:"-.01em" }}>{t.label}</div>
+                      <div style={{ fontSize:11, color:$.ink3, marginTop:1 }}>{t.sub}</div>
+                    </div>
+                  </button>
                 ))}
               </div>
-            </div>
+
+              {/* Name + amount row */}
+              <div style={{ display:"flex", gap:10, marginBottom:14 }}>
+                <div style={{ flex:2, minWidth:0 }}>
+                  <label htmlFor="qa-name" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Nazwa</label>
+                  <input id="qa-name" ref={nameRef} className="field" value={name}
+                    onChange={e => setName(e.target.value)} onKeyDown={e => e.key==="Enter" && submit()}
+                    placeholder="np. Młotek, Spotify, Pralka…" />
+                </div>
+                <div style={{ flex:1, minWidth:90 }}>
+                  <label htmlFor="qa-amt" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Kwota (PLN)</label>
+                  <input id="qa-amt" className="field" type="number" min="0" step="0.01"
+                    value={amount} onChange={e => setAmount(e.target.value)}
+                    onKeyDown={e => e.key==="Enter" && submit()} placeholder="0.00" style={{ textAlign:"right" }} />
+                </div>
+              </div>
+
+              {/* Cycle (only for recurring) */}
+              {type === "recurring" && (
+                <div style={{ marginBottom:14 }}>
+                  <div style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:8 }}>Cykl płatności</div>
+                  <div className="pills-row" role="group" aria-label="Cykl">
+                    {REC_CYCLES.map(c => (
+                      <button key={c} className={`pill${cycle===c?" on":""}`} onClick={() => setCycle(c)} aria-pressed={cycle===c}>{c}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Category */}
+              <div style={{ marginBottom:14 }}>
+                <div style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:8 }}>Kategoria</div>
+                {/* Group tabs */}
+                <div className="pills-row" style={{ marginBottom:10 }} role="group" aria-label="Grupa kategorii">
+                  {allCatGroups.map(([grp]) => (
+                    <button key={grp} className={`pill${catGroup===grp?" on":""}`} onClick={() => setCatGroup(grp)} aria-pressed={catGroup===grp}>{grp}</button>
+                  ))}
+                </div>
+                {/* Cat grid */}
+                <div className="cat-grid" role="group" aria-label="Wybierz kategorię">
+                  {(CAT_GROUPS[catGroup] || []).map(cat => (
+                    <button key={cat} className={`cat-tile${category===cat?" on":""}`}
+                      onClick={() => setCategory(cat)} aria-pressed={category===cat} aria-label={cat}>
+                      {CAT_ICONS[cat] || "📦"}
+                      <span>{cat}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Date + store row */}
+              <div style={{ display:"flex", gap:10, marginBottom:14 }}>
+                <div style={{ flex:1 }}>
+                  <label htmlFor="qa-date" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Data</label>
+                  <input id="qa-date" className="field" type="date" value={date} onChange={e => setDate(e.target.value)} />
+                </div>
+                <div style={{ flex:1 }}>
+                  <label htmlFor="qa-store" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Sklep / źródło</label>
+                  <input id="qa-store" className="field" value={store} onChange={e => setStore(e.target.value)} placeholder="np. Leroy Merlin, Amazon…" />
+                </div>
+              </div>
+
+              {/* Note */}
+              <div style={{ marginBottom:20 }}>
+                <label htmlFor="qa-note" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Notatka (opcjonalnie)</label>
+                <input id="qa-note" className="field" value={note} onChange={e => setNote(e.target.value)} placeholder="Do czego służy, gdzie kupiłeś…" />
+              </div>
+
+              {/* Submit */}
+              <button className="btn-primary" onClick={submit}
+                disabled={!name.trim() || !parseFloat(amount)}
+                style={{ width:"100%", justifyContent:"center", minHeight:52, fontSize:16, opacity: name.trim() && parseFloat(amount) ? 1 : 0.4 }}
+                aria-label="Dodaj wydatek">
+                {type==="recurring" ? "🔄 Dodaj cykliczny" : "✦ Dodaj wydatek"}
+              </button>
+            </>
           )}
-
-          {/* Category */}
-          <div style={{ marginBottom:14 }}>
-            <div style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:8 }}>Kategoria</div>
-            {/* Group tabs */}
-            <div className="pills-row" style={{ marginBottom:10 }} role="group" aria-label="Grupa kategorii">
-              {allCatGroups.map(([grp]) => (
-                <button key={grp} className={`pill${catGroup===grp?" on":""}`} onClick={() => setCatGroup(grp)} aria-pressed={catGroup===grp}>{grp}</button>
-              ))}
-            </div>
-            {/* Cat grid */}
-            <div className="cat-grid" role="group" aria-label="Wybierz kategorię">
-              {(CAT_GROUPS[catGroup] || []).map(cat => (
-                <button key={cat} className={`cat-tile${category===cat?" on":""}`}
-                  onClick={() => setCategory(cat)} aria-pressed={category===cat} aria-label={cat}>
-                  {CAT_ICONS[cat] || "📦"}
-                  <span>{cat}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Date + store row */}
-          <div style={{ display:"flex", gap:10, marginBottom:14 }}>
-            <div style={{ flex:1 }}>
-              <label htmlFor="qa-date" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Data</label>
-              <input id="qa-date" className="field" type="date" value={date} onChange={e => setDate(e.target.value)} />
-            </div>
-            <div style={{ flex:1 }}>
-              <label htmlFor="qa-store" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Sklep / źródło</label>
-              <input id="qa-store" className="field" value={store} onChange={e => setStore(e.target.value)} placeholder="np. Leroy Merlin, Amazon…" />
-            </div>
-          </div>
-
-          {/* Note */}
-          <div style={{ marginBottom:20 }}>
-            <label htmlFor="qa-note" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Notatka (opcjonalnie)</label>
-            <input id="qa-note" className="field" value={note} onChange={e => setNote(e.target.value)} placeholder="Do czego służy, gdzie kupiłeś…" />
-          </div>
-
-          {/* Submit */}
-          <button className="btn-primary" onClick={submit}
-            disabled={!name.trim() || !parseFloat(amount)}
-            style={{ width:"100%", justifyContent:"center", minHeight:52, fontSize:16, opacity: name.trim() && parseFloat(amount) ? 1 : 0.4 }}
-            aria-label="Dodaj wydatek">
-            {type==="recurring" ? "🔄 Dodaj cykliczny" : "✦ Dodaj wydatek"}
-          </button>
         </div>
       </div>
     </div>
@@ -4775,6 +4929,15 @@ export default function App() {
     lsSet("maszka_migrated_v1", true);
   }, []);
 
+  // One-time fix: receipt dated 2026-01-02 should be 2026-03-02
+  useEffect(() => {
+    if (lsGet("_migrated_date_fix_20260302", false)) return;
+    setReceipts(prev => prev.map(r =>
+      r.date === "2026-01-02" ? { ...r, date: "2026-03-02" } : r
+    ));
+    lsSet("_migrated_date_fix_20260302", true);
+  }, []);
+
   // Persist to localStorage on change
   useEffect(() => { lsSet(LS_KEYS.receipts, receipts); }, [receipts]);
   useEffect(() => { lsSet(LS_KEYS.expenses, expenses); }, [expenses]);
@@ -4870,6 +5033,23 @@ export default function App() {
         <QuickAddExpense
           onAdd={addExpense}
           onClose={() => setShowQA(false)}
+          apiKey={apiKey}
+          onNeedKey={() => setShowKeyModal(true)}
+          onTextReceipt={async (text) => {
+            setShowQA(false);
+            const id = Date.now() + Math.random();
+            setProcessing(p => [...p, { id, name: "Analiza tekstu..." }]);
+            try {
+              const parsed = await parseTextReceipt(text, apiKey);
+              const corrected = applyLearnedCorrections(parsed);
+              setPendingReview({ ...corrected, id, _original: parsed });
+              haptic(30);
+            } catch (e) {
+              setErrors(p => [...p, `Tekst: ${e.message}`]);
+            } finally {
+              setProcessing(p => p.filter(x => x.id !== id));
+            }
+          }}
         />
       )}
 
