@@ -1651,6 +1651,28 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     setExpandedItem(data.items.length);
   };
 
+  const warnings = useMemo(() => {
+    const w = [];
+    const itemsSum = data.items.reduce((s, it) => s + (parseFloat(it.total_price) || 0), 0);
+    const total = parseFloat(data.total) || 0;
+    if (Math.abs(total - itemsSum) > 0.01) {
+      w.push(`Suma (${total.toFixed(2)}) nie zgadza się z sumą pozycji (${itemsSum.toFixed(2)})`);
+    }
+    data.items.forEach((it, idx) => {
+      const up = parseFloat(it.unit_price);
+      const qty = parseFloat(it.quantity);
+      const tp = parseFloat(it.total_price) || 0;
+      const disc = parseFloat(it.discount) || 0;
+      if (up && qty) {
+        const expected = up * qty - disc;
+        if (Math.abs(tp - expected) > 0.01) {
+          w.push(`Produkt ${idx + 1} "${it.name || "?"}": cena (${tp.toFixed(2)}) \u2260 cena jedn. \u00d7 ilo\u015b\u0107 \u2212 zni\u017cka (${expected.toFixed(2)})`);
+        }
+      }
+    });
+    return w;
+  }, [data]);
+
   const handleConfirm = () => {
     haptic(20);
     const cleaned = {
@@ -1812,6 +1834,13 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
               </div>
             );
           })}
+
+          {warnings.length > 0 && (
+            <div style={{ margin: "12px 0", padding: "10px 14px", background: "#FEF3C7", border: "1px solid #F59E0B", borderRadius: 10, fontSize: 13, color: "#92400E", lineHeight: 1.6 }}>
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>{"\u26A0"} Uwaga — niezgodności:</div>
+              {warnings.map((w, i) => <div key={i}>• {w}</div>)}
+            </div>
+          )}
         </div>
 
         <div className="rv-footer">
