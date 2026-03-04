@@ -3848,36 +3848,39 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
 
           {/* ── Main widgets ── */}
           <div className="widget-grid au">
-            {/* This month */}
+            {/* Total month: receipts + expenses + subscriptions */}
             <div className="widget">
-              <div className="widget-label">Ten miesiąc</div>
+              <div className="widget-label">Razem / miesiąc</div>
               <div className="widget-big" style={{ color: $.green }}>
-                {convertAmt(monthSpent, currency)}
+                {convertAmt(monthSpent + recurringMonthly, currency)}
                 <span style={{ fontSize: 18, color: $.ink3, marginLeft: 6 }}>{sym}</span>
               </div>
               <div style={{ fontSize: 12, color: $.ink2, marginTop: 8 }}>
-                {thisMonth.length} paragonów{thisMonthExpenses.length > 0 ? ` · ${thisMonthExpenses.length} wydatków` : ""} · {monthName}
+                paragony + subskrypcje · {monthName}
               </div>
               <button onClick={() => go("stats")} style={{ marginTop: 12, background: "none", border: "none", color: $.green, fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
                 Zobacz statystyki →
               </button>
             </div>
 
-            {/* Total saved */}
+            {/* Just receipts */}
             <div className="widget">
-              <div className="widget-label">Zaoszczędzono</div>
-              <div className="widget-big" style={{ color: $.red }}>
-                {convertAmt(totalSaved, currency)}
+              <div className="widget-label">Paragony</div>
+              <div className="widget-big" style={{ color: $.ink0 }}>
+                {convertAmt(monthReceiptSpent + monthExpenseSpent, currency)}
                 <span style={{ fontSize: 18, color: $.ink3, marginLeft: 6 }}>{sym}</span>
               </div>
               <div style={{ fontSize: 12, color: $.ink2, marginTop: 8 }}>
-                dzięki rabatom i promocjom
+                {thisMonth.length} paragonów{thisMonthExpenses.length > 0 ? ` · ${thisMonthExpenses.length} wydatków` : ""} · {monthName}
               </div>
+              <button onClick={() => go("receipts")} style={{ marginTop: 12, background: "none", border: "none", color: $.green, fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+                Wszystkie paragony →
+              </button>
             </div>
 
-            {/* Recurring */}
+            {/* Just subscriptions */}
             <div className="widget">
-              <div className="widget-label">Cykliczne / mies.</div>
+              <div className="widget-label">Subskrypcje</div>
               <div className="widget-big" style={{ color: $.ink0 }}>
                 {convertAmt(recurringMonthly, currency)}
                 <span style={{ fontSize: 18, color: $.ink3, marginLeft: 6 }}>{sym}</span>
@@ -3890,15 +3893,15 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
               </button>
             </div>
 
-            {/* All time */}
+            {/* Savings */}
             <div className="widget">
-              <div className="widget-label">Łącznie wydano</div>
-              <div className="widget-big" style={{ color: $.ink0 }}>
-                {convertAmt(totalSpent, currency)}
+              <div className="widget-label">Zaoszczędzono</div>
+              <div className="widget-big" style={{ color: $.red }}>
+                {convertAmt(totalSaved, currency)}
                 <span style={{ fontSize: 18, color: $.ink3, marginLeft: 6 }}>{sym}</span>
               </div>
               <div style={{ fontSize: 12, color: $.ink2, marginTop: 8 }}>
-                ze {receipts.length} paragonów
+                dzięki rabatom i promocjom
               </div>
             </div>
           </div>
