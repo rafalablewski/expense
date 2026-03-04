@@ -147,6 +147,13 @@ body {
 @keyframes checkPop { 0%{transform:scale(0)} 60%{transform:scale(1.2)} 100%{transform:scale(1)} }
 @keyframes slideDown { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:none} }
 
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
 /* ── DARK MODE ── */
 [data-dark="1"] body {
@@ -338,10 +345,11 @@ body {
   font-weight: 700;
   letter-spacing: .07em;
   text-transform: uppercase;
-  color: ${$.ink3};
+  color: ${$.ink2};
   margin-bottom: 4px;
   display: block;
 }
+[data-dark="1"] .rv-lbl { color: rgba(255,255,255,0.55); }
 .rv-meta {
   display: grid;
   grid-template-columns: 1fr 2fr 1fr 1fr;
@@ -383,16 +391,21 @@ body {
 .rv-del-btn {
   background: none;
   border: none;
-  color: ${$.ink3};
-  font-size: 14px;
+  color: ${$.ink2};
+  font-size: 15px;
   cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 5px;
-  line-height: 1;
+  min-width: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
   flex-shrink: 0;
   transition: color .15s, background .15s;
 }
 .rv-del-btn:hover { color: ${$.red}; background: ${$.redBg}; }
+[data-dark="1"] .rv-del-btn { color: rgba(255,255,255,0.50); }
+[data-dark="1"] .rv-del-btn:hover { color: #FF6B6B; background: rgba(217,48,37,0.15); }
 /* Row 2: category | total price */
 .rv-item-r2 {
   display: flex;
@@ -419,19 +432,24 @@ body {
   margin-right: 2px;
 }
 .rv-suggest-pill {
-  font-size: 11px;
+  font-size: 12px;
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-weight: 600;
-  padding: 3px 10px;
-  border-radius: 8px;
+  padding: 6px 14px;
+  min-height: 34px;
+  border-radius: 10px;
   border: 1.5px solid ${$.greenRim};
   background: ${$.greenBg};
-  color: ${$.green};
+  color: #05964E;
   cursor: pointer;
   transition: all .15s;
   line-height: 1.3;
+  display: inline-flex;
+  align-items: center;
 }
 .rv-suggest-pill:hover { background: ${$.green}; color: #fff; }
+[data-dark="1"] .rv-suggest-pill { border-color: rgba(6,193,103,0.35); background: rgba(6,193,103,0.12); color: #3DDC84; }
+[data-dark="1"] .rv-suggest-pill:hover { background: ${$.green}; color: #fff; }
 /* Row 3 (expanded): unit | discount */
 .rv-item-r3 {
   display: flex;
@@ -444,15 +462,23 @@ body {
 .rv-more-toggle {
   background: none;
   border: none;
-  color: ${$.ink3};
-  font-size: 10px;
+  color: ${$.ink2};
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  padding: 4px 0 0;
+  padding: 6px 12px;
+  margin-top: 2px;
+  min-height: 32px;
+  border-radius: 8px;
   font-family: 'Plus Jakarta Sans', sans-serif;
-  transition: color .15s;
+  transition: color .15s, background .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
-.rv-more-toggle:hover { color: ${$.green}; }
+.rv-more-toggle:hover { color: ${$.green}; background: rgba(6,193,103,0.06); }
+[data-dark="1"] .rv-more-toggle { color: rgba(255,255,255,0.50); }
+[data-dark="1"] .rv-more-toggle:hover { color: ${$.green}; background: rgba(6,193,103,0.12); }
 /* Row 4 (expanded): unit | discount | unit_price */
 .rv-item-r4 {
   display: flex;
@@ -470,15 +496,17 @@ body {
   padding: 12px 20px;
   border-top: 1px solid rgba(255,255,255,0.45);
 }
+[data-dark="1"] .rv-footer { border-color: rgba(255,255,255,0.10); }
 .rv-info {
   padding: 10px 20px 14px;
   font-size: 11px;
   line-height: 1.5;
-  color: ${$.ink3};
+  color: ${$.ink2};
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
+[data-dark="1"] .rv-info { color: rgba(255,255,255,0.45); }
 .rv-info-note {
   font-size: 10px;
   opacity: 0.7;
@@ -1582,6 +1610,26 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
   }));
   const [expandedItem, setExpandedItem] = useState(null);
   const overlayRef = useRef();
+  const drawerRef = useRef();
+  const firstFieldRef = useRef();
+
+  /* ── Focus trap & keyboard ── */
+  useEffect(() => {
+    firstFieldRef.current?.focus();
+    const handleKey = e => {
+      if (e.key === "Escape") { onCancel(); return; }
+      if (e.key !== "Tab" || !drawerRef.current) return;
+      const focusable = drawerRef.current.querySelectorAll(
+        'input,select,textarea,button,[tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusable.length) return;
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [onCancel]);
 
   const updateField = (field, val) => setData(d => ({ ...d, [field]: val }));
   const updateItem = (idx, field, val) => setData(d => ({
@@ -1589,10 +1637,12 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     items: d.items.map((it, i) => i === idx ? { ...it, [field]: val } : it),
   }));
   const removeItem = idx => {
+    haptic(12);
     setData(d => ({ ...d, items: d.items.filter((_, i) => i !== idx) }));
     setExpandedItem(null);
   };
   const addItem = () => {
+    haptic(12);
     const key = Date.now();
     setData(d => ({
       ...d,
@@ -1602,6 +1652,7 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
   };
 
   const handleConfirm = () => {
+    haptic(20);
     const cleaned = {
       ...data,
       total: parseFloat(data.total) || 0,
@@ -1620,44 +1671,47 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
   return (
     <div className="rv-overlay" ref={overlayRef}
       onClick={e => e.target === overlayRef.current && onCancel()}
-      role="dialog" aria-modal="true" aria-label="Sprawdź paragon">
-      <div className="rv-drawer">
+      role="dialog" aria-modal="true" aria-labelledby="rv-dialog-title">
+      <div className="rv-drawer" ref={drawerRef}>
         <div className="rv-handle" aria-hidden="true" />
         <div className="rv-head">
-          <div className="rv-title">Sprawdź paragon</div>
+          <h2 id="rv-dialog-title" className="rv-title">Sprawdź paragon</h2>
           <button onClick={onCancel} aria-label="Zamknij"
-            style={{ background:"none", border:"none", cursor:"pointer", fontSize:22, color:$.ink3, padding:"4px 8px", borderRadius:8 }}>✕</button>
+            style={{ background:"none", border:"none", cursor:"pointer", fontSize:18, color:$.ink2, padding:"8px 10px",
+              borderRadius:10, minWidth:36, minHeight:36, display:"flex", alignItems:"center", justifyContent:"center",
+              transition:"background .15s, color .15s" }}>✕</button>
         </div>
 
         <div className="rv-body">
           {/* Header: date | shop | price | discounts */}
           <div className="rv-meta">
             <div>
-              <label className="rv-lbl">Data</label>
-              <input className="field" type="date" value={data.date} onChange={e => updateField("date", e.target.value)} />
+              <label className="rv-lbl" htmlFor="rv-date">Data</label>
+              <input id="rv-date" ref={firstFieldRef} className="field" type="date" value={data.date} onChange={e => updateField("date", e.target.value)} />
             </div>
             <div>
-              <label className="rv-lbl">Sklep</label>
-              <input className="field" value={data.store} onChange={e => updateField("store", e.target.value)} placeholder="Nazwa" />
+              <label className="rv-lbl" htmlFor="rv-store">Sklep</label>
+              <input id="rv-store" className="field" value={data.store} onChange={e => updateField("store", e.target.value)} placeholder="Nazwa" />
             </div>
             <div>
-              <label className="rv-lbl">Suma</label>
-              <input className="field" type="number" step="0.01" value={data.total}
+              <label className="rv-lbl" htmlFor="rv-total">Suma</label>
+              <input id="rv-total" className="field" type="number" step="0.01" value={data.total}
                 onChange={e => updateField("total", e.target.value)} placeholder="0.00" style={{ textAlign:"right" }} />
             </div>
             <div>
-              <label className="rv-lbl">Zniżki</label>
-              <input className="field" type="number" step="0.01" value={data.total_discounts || 0}
+              <label className="rv-lbl" htmlFor="rv-discounts">Zniżki</label>
+              <input id="rv-discounts" className="field" type="number" step="0.01" value={data.total_discounts || 0}
                 onChange={e => updateField("total_discounts", e.target.value)} placeholder="0.00" style={{ textAlign:"right" }} />
             </div>
           </div>
 
           {/* Items header */}
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-            <div className="rv-lbl" style={{ marginBottom:0 }}>Produkty · {data.items.length}</div>
-            <button onClick={addItem}
-              style={{ background:$.greenBg, border:`1px solid ${$.greenRim}`, borderRadius:7, padding:"4px 10px",
-                fontSize:11, fontWeight:700, color:$.green, cursor:"pointer", fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
+            <div className="rv-lbl" style={{ marginBottom:0 }} aria-live="polite" aria-atomic="true">Produkty · {data.items.length}</div>
+            <button onClick={addItem} aria-label="Dodaj produkt"
+              style={{ background:$.greenBg, border:`1px solid ${$.greenRim}`, borderRadius:8, padding:"6px 14px",
+                fontSize:12, fontWeight:700, color:"#05964E", cursor:"pointer", fontFamily:"'Plus Jakarta Sans',sans-serif",
+                minHeight:34, display:"inline-flex", alignItems:"center", gap:4, transition:"background .15s" }}>
               + Dodaj
             </button>
           </div>
@@ -1666,25 +1720,27 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
           {data.items.map((item, idx) => {
             const isExpanded = expandedItem === idx;
             const suggestions = item._suggestions;
+            const itemId = `rv-item-${item._key}`;
             return (
-              <div key={item._key} className="rv-item">
+              <div key={item._key} className="rv-item" role="group" aria-label={`Produkt ${idx + 1}: ${item.name || "bez nazwy"}`}>
                 {/* Row 1: # badge, product name, delete */}
                 <div className="rv-item-r1">
-                  <div className="rv-item-num">{idx + 1}</div>
+                  <div className="rv-item-num" aria-hidden="true">{idx + 1}</div>
                   <div className="rv-i-name">
-                    <input className="field" value={item.name || ""} onChange={e => updateItem(idx, "name", e.target.value)}
-                      placeholder="Nazwa produktu" style={{ fontWeight:600 }} />
+                    <input id={`${itemId}-name`} className="field" value={item.name || ""} onChange={e => updateItem(idx, "name", e.target.value)}
+                      placeholder="Nazwa produktu" aria-label={`Nazwa produktu ${idx + 1}`} style={{ fontWeight:600 }} />
                   </div>
-                  <button className="rv-del-btn" onClick={() => removeItem(idx)} title="Usuń" aria-label="Usuń produkt">✕</button>
+                  <button className="rv-del-btn" onClick={() => removeItem(idx)} title="Usuń" aria-label={`Usuń produkt ${idx + 1}${item.name ? ": " + item.name : ""}`}>✕</button>
                 </div>
 
                 {/* Suggestions (when ambiguous) */}
                 {suggestions && suggestions.length > 1 && (
-                  <div className="rv-suggest">
-                    <span className="rv-suggest-lbl">Może:</span>
+                  <div className="rv-suggest" role="group" aria-label="Sugerowane nazwy">
+                    <span className="rv-suggest-lbl" aria-hidden="true">Może:</span>
                     {suggestions.map(s => (
                       <button key={s} className="rv-suggest-pill"
-                        onClick={() => { updateItem(idx, "name", s); updateItem(idx, "_suggestions", null); }}>
+                        aria-label={`Użyj nazwy: ${s}`}
+                        onClick={() => { haptic(10); updateItem(idx, "name", s); updateItem(idx, "_suggestions", null); }}>
                         {s}
                       </button>
                     ))}
@@ -1694,59 +1750,65 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                 {/* Row 2: category | total price */}
                 <div className="rv-item-r2">
                   <div className="rv-i-cat">
-                    <label className="rv-lbl">Kategoria</label>
-                    <select className="field" value={item.category || "Inne"} onChange={e => updateItem(idx, "category", e.target.value)}
+                    <label className="rv-lbl" htmlFor={`${itemId}-cat`}>Kategoria</label>
+                    <select id={`${itemId}-cat`} className="field" value={item.category || "Inne"} onChange={e => updateItem(idx, "category", e.target.value)}
                       style={{ cursor:"pointer" }}>
                       {ALL_CATS.map(c => <option key={c} value={c}>{CAT_ICONS[c] || ""} {c}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="rv-lbl">Cena</label>
-                    <input className="field" type="number" step="0.01" value={item.total_price ?? 0}
+                    <label className="rv-lbl" htmlFor={`${itemId}-price`}>Cena</label>
+                    <input id={`${itemId}-price`} className="field" type="number" step="0.01" value={item.total_price ?? 0}
                       onChange={e => updateItem(idx, "total_price", e.target.value)}
                       placeholder="0.00" style={{ textAlign:"right", fontWeight:700 }} />
                   </div>
                 </div>
 
                 {/* More toggle */}
-                <button className="rv-more-toggle" onClick={() => setExpandedItem(isExpanded ? null : idx)}>
+                <button className="rv-more-toggle"
+                  aria-expanded={isExpanded}
+                  aria-controls={`${itemId}-details`}
+                  onClick={() => { haptic(10); setExpandedItem(isExpanded ? null : idx); }}>
                   {isExpanded ? "▲ Mniej" : "▼ Więcej"}
                 </button>
 
-                {/* Expanded: Row 3 — jednostka | zniżka */}
-                {isExpanded && (<>
-                  <div className="rv-item-r3">
-                    <div>
-                      <label className="rv-lbl">Jednostka</label>
-                      <input className="field" value={item.unit || ""} onChange={e => updateItem(idx, "unit", e.target.value)}
-                        placeholder="szt, kg…" />
+                {/* Expanded details */}
+                {isExpanded && (
+                  <div id={`${itemId}-details`} role="group" aria-label="Szczegóły produktu">
+                    {/* Row 3: jednostka | zniżka */}
+                    <div className="rv-item-r3">
+                      <div>
+                        <label className="rv-lbl" htmlFor={`${itemId}-unit`}>Jednostka</label>
+                        <input id={`${itemId}-unit`} className="field" value={item.unit || ""} onChange={e => updateItem(idx, "unit", e.target.value)}
+                          placeholder="szt, kg…" />
+                      </div>
+                      <div>
+                        <label className="rv-lbl" htmlFor={`${itemId}-discount`}>Zniżka</label>
+                        <input id={`${itemId}-discount`} className="field" type="number" step="0.01" value={item.discount ?? ""}
+                          onChange={e => updateItem(idx, "discount", e.target.value)} placeholder="0.00" style={{ textAlign:"right" }} />
+                      </div>
                     </div>
-                    <div>
-                      <label className="rv-lbl">Zniżka</label>
-                      <input className="field" type="number" step="0.01" value={item.discount ?? ""}
-                        onChange={e => updateItem(idx, "discount", e.target.value)} placeholder="0.00" style={{ textAlign:"right" }} />
+                    {/* Row 4: cena jednostkowa | ilość */}
+                    <div className="rv-item-r4">
+                      <div>
+                        <label className="rv-lbl" htmlFor={`${itemId}-uprice`}>Cena jedn.</label>
+                        <input id={`${itemId}-uprice`} className="field" type="number" step="0.01" value={item.unit_price ?? ""}
+                          onChange={e => updateItem(idx, "unit_price", e.target.value)} placeholder="—" style={{ textAlign:"right" }} />
+                      </div>
+                      <div>
+                        <label className="rv-lbl" htmlFor={`${itemId}-qty`}>Ilość</label>
+                        <input id={`${itemId}-qty`} className="field" type="number" step="0.001" value={item.quantity ?? 1}
+                          onChange={e => updateItem(idx, "quantity", e.target.value)} style={{ textAlign:"right" }} />
+                      </div>
+                    </div>
+                    {/* Row 5: etykieta zniżki (full width) */}
+                    <div className="rv-item-r5">
+                      <label className="rv-lbl" htmlFor={`${itemId}-dlabel`}>Etykieta zniżki</label>
+                      <input id={`${itemId}-dlabel`} className="field" value={item.discount_label || ""}
+                        onChange={e => updateItem(idx, "discount_label", e.target.value)} placeholder="np. -20%, PROMO, 2+1 gratis…" />
                     </div>
                   </div>
-                  {/* Row 4: cena jednostkowa | ilość */}
-                  <div className="rv-item-r4">
-                    <div>
-                      <label className="rv-lbl">Cena jedn.</label>
-                      <input className="field" type="number" step="0.01" value={item.unit_price ?? ""}
-                        onChange={e => updateItem(idx, "unit_price", e.target.value)} placeholder="—" style={{ textAlign:"right" }} />
-                    </div>
-                    <div>
-                      <label className="rv-lbl">Ilość</label>
-                      <input className="field" type="number" step="0.001" value={item.quantity ?? 1}
-                        onChange={e => updateItem(idx, "quantity", e.target.value)} style={{ textAlign:"right" }} />
-                    </div>
-                  </div>
-                  {/* Row 5 (expanded): etykieta (full width) */}
-                  <div className="rv-item-r5">
-                    <label className="rv-lbl">Etykieta zniżki</label>
-                    <input className="field" value={item.discount_label || ""}
-                      onChange={e => updateItem(idx, "discount_label", e.target.value)} placeholder="np. -20%, PROMO, 2+1 gratis…" />
-                  </div>
-                </>)}
+                )}
               </div>
             );
           })}
@@ -1758,7 +1820,7 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
         </div>
 
         {/* Learning info */}
-        <div className="rv-info">
+        <div className="rv-info" role="note">
           {(() => {
             const s = getCorrectionStats();
             return s.names + s.categories > 0
