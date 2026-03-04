@@ -4211,7 +4211,7 @@ export default function App() {
         setProcessing(p => p.filter(x => x.id !== id));
       }
     }
-  }, []);
+  }, [apiKey]);
 
   const go = id => {
     setView(id);
