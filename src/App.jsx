@@ -279,161 +279,152 @@ body {
 }
 .qa-body { padding: 0 24px 24px; }
 
-/* ── RECEIPT REVIEW MODAL ── */
-.review-overlay {
+/* ── RECEIPT REVIEW (bottom-sheet, matches QA drawer) ── */
+.rv-overlay {
   position: fixed;
   inset: 0;
   z-index: 700;
-  background: rgba(0,0,0,0.50);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(0,0,0,0.40);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   animation: fadeIn .2s ease both;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  padding: 16px;
 }
-.review-card {
+.rv-drawer {
   width: 100%;
-  max-width: 680px;
-  max-height: 90dvh;
+  max-width: 640px;
+  max-height: 92dvh;
   overflow-y: auto;
-  background: rgba(248,255,252,0.97);
+  background: rgba(248,255,252,0.96);
   backdrop-filter: blur(40px) saturate(200%);
   -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border-radius: 24px 24px 0 0;
   border: 1px solid rgba(255,255,255,0.90);
-  border-radius: 24px;
-  box-shadow: 0 24px 80px rgba(0,0,0,0.22);
-  animation: fadeUp .4s cubic-bezier(.16,1,.3,1) both;
+  border-bottom: none;
+  padding: 0 0 env(safe-area-inset-bottom, 16px);
+  box-shadow: 0 -12px 60px rgba(0,0,0,0.18);
+  animation: slideUp .38s cubic-bezier(.16,1,.3,1) both;
 }
-[data-dark="1"] .review-card {
-  background: rgba(12,22,15,0.96);
+[data-dark="1"] .rv-drawer {
+  background: rgba(12,22,15,0.95);
   border-color: rgba(255,255,255,0.12);
 }
-.review-head {
+.rv-handle {
+  width: 36px; height: 4px;
+  border-radius: 2px;
+  background: rgba(0,0,0,0.15);
+  margin: 12px auto 0;
+}
+[data-dark="1"] .rv-handle { background: rgba(255,255,255,0.20); }
+.rv-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px 24px 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.50);
+  padding: 16px 24px 12px;
 }
-.review-title {
+.rv-title {
   font-family: 'Bricolage Grotesque', sans-serif;
   font-size: 20px;
   font-weight: 800;
   letter-spacing: -.03em;
   color: ${$.ink0};
 }
-.review-body { padding: 20px 24px; }
-.review-field-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.review-field-row-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.review-label {
+[data-dark="1"] .rv-title { color: #F5F5F7; }
+.rv-body { padding: 0 24px 24px; }
+.rv-label {
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: .06em;
+  letter-spacing: .07em;
   text-transform: uppercase;
   color: ${$.ink3};
   margin-bottom: 6px;
+  display: block;
 }
-.review-input {
-  width: 100%;
-  padding: 9px 12px;
-  font-size: 14px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  border: 1.5px solid rgba(255,255,255,0.65);
-  border-radius: 10px;
-  background: rgba(255,255,255,0.50);
-  color: ${$.ink0};
-  outline: none;
-  transition: border-color .15s;
+.rv-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
 }
-.review-input:focus { border-color: ${$.green}; }
-[data-dark="1"] .review-input {
-  background: rgba(255,255,255,0.07);
-  border-color: rgba(255,255,255,0.18);
-  color: #F5F5F7;
-}
-.review-item-card {
+.rv-row > div { flex: 1; min-width: 0; }
+.rv-item {
   background: rgba(255,255,255,0.40);
   border: 1px solid rgba(255,255,255,0.60);
   border-radius: 14px;
   padding: 14px 16px;
-  margin-bottom: 10px;
-  animation: slideDown .3s ease both;
+  margin-bottom: 8px;
+  animation: slideDown .25s ease both;
 }
-[data-dark="1"] .review-item-card {
+[data-dark="1"] .rv-item {
   background: rgba(255,255,255,0.06);
   border-color: rgba(255,255,255,0.12);
 }
-.review-item-grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
+.rv-item-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.rv-item-top .rv-item-name { flex: 2; min-width: 0; }
+.rv-item-top .rv-item-price { flex: 1; min-width: 80px; }
+.rv-item-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: ${$.ink3};
+  background: rgba(0,0,0,0.04);
+  border-radius: 6px;
+  padding: 3px 7px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+[data-dark="1"] .rv-item-num { background: rgba(255,255,255,0.08); }
+.rv-item-row2 {
+  display: flex;
   gap: 8px;
   align-items: end;
 }
-@media (max-width: 560px) {
-  .review-item-grid { grid-template-columns: 1fr 1fr; }
-  .review-field-row { grid-template-columns: 1fr; }
-  .review-field-row-2 { grid-template-columns: 1fr; }
-}
-.review-cat-select {
-  width: 100%;
-  padding: 9px 12px;
-  font-size: 13px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  border: 1.5px solid rgba(255,255,255,0.65);
-  border-radius: 10px;
-  background: rgba(255,255,255,0.50);
-  color: ${$.ink0};
-  outline: none;
+.rv-item-row2 > div { flex: 1; min-width: 0; }
+.rv-item-row2 .rv-item-cat { flex: 1.5; }
+.rv-del-btn {
+  background: none;
+  border: none;
+  color: ${$.ink3};
+  font-size: 16px;
   cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color .15s, background .15s;
 }
-.review-cat-select:focus { border-color: ${$.green}; }
-[data-dark="1"] .review-cat-select {
-  background: rgba(255,255,255,0.07);
-  border-color: rgba(255,255,255,0.18);
-  color: #F5F5F7;
+.rv-del-btn:hover { color: ${$.red}; background: ${$.redBg}; }
+.rv-more-toggle {
+  background: none;
+  border: none;
+  color: ${$.ink3};
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 0 0;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  transition: color .15s;
 }
-.review-footer {
+.rv-more-toggle:hover { color: ${$.green}; }
+.rv-footer {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
   padding: 16px 24px;
-  border-top: 1px solid rgba(255,255,255,0.50);
+  border-top: 1px solid rgba(255,255,255,0.45);
 }
-.review-item-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
+@media (max-width: 480px) {
+  .rv-row { flex-direction: column; gap: 10px; }
+  .rv-item-top { flex-wrap: wrap; }
+  .rv-item-row2 { flex-wrap: wrap; }
+  .rv-item-row2 > div { min-width: calc(50% - 4px); }
 }
-.review-item-num {
-  font-size: 12px;
-  font-weight: 700;
-  color: ${$.ink3};
-}
-.review-remove-btn {
-  background: none;
-  border: none;
-  color: ${$.red};
-  font-size: 18px;
-  cursor: pointer;
-  padding: 0 4px;
-  line-height: 1;
-  opacity: 0.7;
-  transition: opacity .15s;
-}
-.review-remove-btn:hover { opacity: 1; }
 
 /* Type toggle */
 .type-row {
@@ -1498,7 +1489,7 @@ function DropZone({ onFiles }) {
   );
 }
 
-/* ─── Receipt Review Modal ───────────────────── */
+/* ─── Receipt Review Drawer ──────────────────── */
 const ALL_CATS = Object.keys(CATS);
 
 function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
@@ -1509,20 +1500,26 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     total_discounts: receipt.total_discounts ?? 0,
     items: (receipt.items || []).map((it, i) => ({ ...it, _key: i })),
   }));
+  const [expandedItem, setExpandedItem] = useState(null);
+  const overlayRef = useRef();
 
   const updateField = (field, val) => setData(d => ({ ...d, [field]: val }));
   const updateItem = (idx, field, val) => setData(d => ({
     ...d,
     items: d.items.map((it, i) => i === idx ? { ...it, [field]: val } : it),
   }));
-  const removeItem = idx => setData(d => ({
-    ...d,
-    items: d.items.filter((_, i) => i !== idx),
-  }));
-  const addItem = () => setData(d => ({
-    ...d,
-    items: [...d.items, { _key: Date.now(), name: "", quantity: 1, unit: null, unit_price: 0, total_price: 0, discount: null, discount_label: null, category: "Inne" }],
-  }));
+  const removeItem = idx => {
+    setData(d => ({ ...d, items: d.items.filter((_, i) => i !== idx) }));
+    setExpandedItem(null);
+  };
+  const addItem = () => {
+    const key = Date.now();
+    setData(d => ({
+      ...d,
+      items: [...d.items, { _key: key, name: "", quantity: 1, unit: null, unit_price: 0, total_price: 0, discount: null, discount_label: null, category: "Inne" }],
+    }));
+    setExpandedItem(data.items.length);
+  };
 
   const handleConfirm = () => {
     const cleaned = {
@@ -1541,94 +1538,129 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
   };
 
   return (
-    <div className="review-overlay" onClick={onCancel}>
-      <div className="review-card" onClick={e => e.stopPropagation()}>
-        <div className="review-head">
-          <div className="review-title">Sprawdź paragon</div>
-          <button onClick={onCancel} style={{ background: "none", border: "none", fontSize: 22, cursor: "pointer", color: $.ink2, lineHeight: 1 }}>×</button>
+    <div className="rv-overlay" ref={overlayRef}
+      onClick={e => e.target === overlayRef.current && onCancel()}
+      role="dialog" aria-modal="true" aria-label="Sprawdź paragon">
+      <div className="rv-drawer">
+        <div className="rv-handle" aria-hidden="true" />
+        <div className="rv-head">
+          <div className="rv-title">Sprawdź paragon</div>
+          <button onClick={onCancel} aria-label="Zamknij"
+            style={{ background:"none", border:"none", cursor:"pointer", fontSize:22, color:$.ink3, padding:"4px 8px", borderRadius:8 }}>✕</button>
         </div>
 
-        <div className="review-body">
-          {/* Store, Date, Total */}
-          <div className="review-field-row">
-            <div>
-              <div className="review-label">Sklep</div>
-              <input className="review-input" value={data.store} onChange={e => updateField("store", e.target.value)} placeholder="Nazwa sklepu" />
+        <div className="rv-body">
+          {/* Store + Date */}
+          <div className="rv-row">
+            <div style={{ flex: 2 }}>
+              <label className="rv-label">Sklep</label>
+              <input className="field" value={data.store} onChange={e => updateField("store", e.target.value)} placeholder="Nazwa sklepu" />
             </div>
             <div>
-              <div className="review-label">Data</div>
-              <input className="review-input" type="date" value={data.date} onChange={e => updateField("date", e.target.value)} />
-            </div>
-            <div>
-              <div className="review-label">Suma</div>
-              <input className="review-input" type="number" step="0.01" value={data.total} onChange={e => updateField("total", e.target.value)} />
+              <label className="rv-label">Data</label>
+              <input className="field" type="date" value={data.date} onChange={e => updateField("date", e.target.value)} />
             </div>
           </div>
 
-          <div className="review-field-row-2" style={{ marginBottom: 20 }}>
+          {/* Total + Discounts */}
+          <div className="rv-row">
             <div>
-              <div className="review-label">Zniżki łącznie</div>
-              <input className="review-input" type="number" step="0.01" value={data.total_discounts || 0} onChange={e => updateField("total_discounts", e.target.value)} />
+              <label className="rv-label">Suma (PLN)</label>
+              <input className="field" type="number" step="0.01" value={data.total}
+                onChange={e => updateField("total", e.target.value)} placeholder="0.00" style={{ textAlign:"right" }} />
+            </div>
+            <div>
+              <label className="rv-label">Zniżki łącznie</label>
+              <input className="field" type="number" step="0.01" value={data.total_discounts || 0}
+                onChange={e => updateField("total_discounts", e.target.value)} placeholder="0.00" style={{ textAlign:"right" }} />
             </div>
           </div>
 
-          {/* Items */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <div className="review-label" style={{ marginBottom: 0 }}>Produkty ({data.items.length})</div>
-            <button onClick={addItem} style={{ background: $.greenBg, border: `1px solid ${$.greenRim}`, borderRadius: 8, padding: "5px 12px", fontSize: 12, fontWeight: 700, color: $.green, cursor: "pointer", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+          {/* Divider + Items header */}
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10, marginTop:6 }}>
+            <div className="rv-label" style={{ marginBottom:0 }}>
+              Produkty · {data.items.length}
+            </div>
+            <button onClick={addItem}
+              style={{ background:$.greenBg, border:`1px solid ${$.greenRim}`, borderRadius:8, padding:"5px 12px",
+                fontSize:12, fontWeight:700, color:$.green, cursor:"pointer", fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
               + Dodaj
             </button>
           </div>
 
-          {data.items.map((item, idx) => (
-            <div key={item._key} className="review-item-card">
-              <div className="review-item-header">
-                <div className="review-item-num">#{idx + 1}</div>
-                <button className="review-remove-btn" onClick={() => removeItem(idx)} title="Usuń">×</button>
+          {/* Items list */}
+          {data.items.map((item, idx) => {
+            const isExpanded = expandedItem === idx;
+            return (
+              <div key={item._key} className="rv-item">
+                {/* Row 1: number, name, total price, delete */}
+                <div className="rv-item-top">
+                  <div className="rv-item-num">{idx + 1}</div>
+                  <div className="rv-item-name">
+                    <input className="field" value={item.name || ""} onChange={e => updateItem(idx, "name", e.target.value)}
+                      placeholder="Nazwa produktu" style={{ fontWeight:600 }} />
+                  </div>
+                  <div className="rv-item-price">
+                    <input className="field" type="number" step="0.01" value={item.total_price ?? 0}
+                      onChange={e => updateItem(idx, "total_price", e.target.value)}
+                      placeholder="0.00" style={{ textAlign:"right", fontWeight:600 }} />
+                  </div>
+                  <button className="rv-del-btn" onClick={() => removeItem(idx)} title="Usuń" aria-label="Usuń produkt">✕</button>
+                </div>
+
+                {/* Row 2: category, quantity, unit price */}
+                <div className="rv-item-row2">
+                  <div className="rv-item-cat">
+                    <label className="rv-label">Kategoria</label>
+                    <select className="field" value={item.category || "Inne"} onChange={e => updateItem(idx, "category", e.target.value)}
+                      style={{ cursor:"pointer" }}>
+                      {ALL_CATS.map(c => <option key={c} value={c}>{CAT_ICONS[c] || ""} {c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="rv-label">Ilość</label>
+                    <input className="field" type="number" step="0.001" value={item.quantity ?? 1}
+                      onChange={e => updateItem(idx, "quantity", e.target.value)} style={{ textAlign:"right" }} />
+                  </div>
+                  <div>
+                    <label className="rv-label">Cena jedn.</label>
+                    <input className="field" type="number" step="0.01" value={item.unit_price ?? ""}
+                      onChange={e => updateItem(idx, "unit_price", e.target.value)} placeholder="—" style={{ textAlign:"right" }} />
+                  </div>
+                </div>
+
+                {/* Toggle for extra fields */}
+                <button className="rv-more-toggle" onClick={() => setExpandedItem(isExpanded ? null : idx)}>
+                  {isExpanded ? "▲ Mniej" : "▼ Więcej opcji"}
+                </button>
+
+                {/* Expanded: unit, discount, discount label */}
+                {isExpanded && (
+                  <div className="rv-item-row2" style={{ marginTop:10 }}>
+                    <div>
+                      <label className="rv-label">Jednostka</label>
+                      <input className="field" value={item.unit || ""} onChange={e => updateItem(idx, "unit", e.target.value)}
+                        placeholder="szt, kg, L…" />
+                    </div>
+                    <div>
+                      <label className="rv-label">Zniżka</label>
+                      <input className="field" type="number" step="0.01" value={item.discount ?? ""}
+                        onChange={e => updateItem(idx, "discount", e.target.value)} placeholder="0.00" style={{ textAlign:"right" }} />
+                    </div>
+                    <div>
+                      <label className="rv-label">Etykieta zniżki</label>
+                      <input className="field" value={item.discount_label || ""}
+                        onChange={e => updateItem(idx, "discount_label", e.target.value)} placeholder="np. -20%" />
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="review-item-grid">
-                <div>
-                  <div className="review-label">Nazwa</div>
-                  <input className="review-input" value={item.name || ""} onChange={e => updateItem(idx, "name", e.target.value)} placeholder="Nazwa produktu" />
-                </div>
-                <div>
-                  <div className="review-label">Ilość</div>
-                  <input className="review-input" type="number" step="0.001" value={item.quantity ?? 1} onChange={e => updateItem(idx, "quantity", e.target.value)} />
-                </div>
-                <div>
-                  <div className="review-label">Cena jedn.</div>
-                  <input className="review-input" type="number" step="0.01" value={item.unit_price ?? ""} onChange={e => updateItem(idx, "unit_price", e.target.value)} />
-                </div>
-                <div>
-                  <div className="review-label">Razem</div>
-                  <input className="review-input" type="number" step="0.01" value={item.total_price ?? 0} onChange={e => updateItem(idx, "total_price", e.target.value)} />
-                </div>
-              </div>
-              <div className="review-item-grid" style={{ marginTop: 8 }}>
-                <div>
-                  <div className="review-label">Kategoria</div>
-                  <select className="review-cat-select" value={item.category || "Inne"} onChange={e => updateItem(idx, "category", e.target.value)}>
-                    {ALL_CATS.map(c => <option key={c} value={c}>{CAT_ICONS[c] || ""} {c}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <div className="review-label">Jednostka</div>
-                  <input className="review-input" value={item.unit || ""} onChange={e => updateItem(idx, "unit", e.target.value)} placeholder="szt, kg, L..." />
-                </div>
-                <div>
-                  <div className="review-label">Zniżka</div>
-                  <input className="review-input" type="number" step="0.01" value={item.discount ?? ""} onChange={e => updateItem(idx, "discount", e.target.value)} placeholder="0.00" />
-                </div>
-                <div>
-                  <div className="review-label">Etykieta zniżki</div>
-                  <input className="review-input" value={item.discount_label || ""} onChange={e => updateItem(idx, "discount_label", e.target.value)} placeholder="np. -20%" />
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        <div className="review-footer">
+        {/* Footer */}
+        <div className="rv-footer">
           <button className="btn-secondary" onClick={onCancel}>Odrzuć</button>
           <button className="btn-primary" onClick={handleConfirm}>Zatwierdź paragon</button>
         </div>
