@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
 
 const userRef = (uid) => doc(db, "users", uid);
@@ -33,4 +33,18 @@ export async function updateField(uid, field, value) {
   } catch (e) {
     console.error(`Firestore updateField(${field}) failed:`, e);
   }
+}
+
+/**
+ * Subscribe to real-time updates for a user's document.
+ * Returns an unsubscribe function.
+ */
+export function subscribeUserData(uid, callback) {
+  return onSnapshot(userRef(uid), (snap) => {
+    if (snap.exists()) {
+      callback({ ...DEFAULTS, ...snap.data() });
+    }
+  }, (err) => {
+    console.error("Firestore realtime listener error:", err);
+  });
 }
