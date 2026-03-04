@@ -1244,11 +1244,14 @@ function Empty({ icon, title, sub }) {
 }
 
 /* ─── Claude API ─────────────────────────────── */
-async function scanReceipt(b64, mt) {
+async function scanReceipt(b64, mt, apiKey) {
+  if (!apiKey) throw new Error("Brak klucza API — ustaw go w ustawieniach (ikona klucza)");
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
       "anthropic-dangerous-direct-browser-access": "true",
     },
     body: JSON.stringify({
@@ -1735,7 +1738,7 @@ function ShoppingView({ receipts }) {
   );
 }
 
-function MealPlanView({ receipts }) {
+function MealPlanView({ receipts, apiKey }) {
   const DAYS  = ["Pon","Wt","Śr","Czw","Pt","Sob","Ndz"];
   const MEALS = ["Śniadanie","Obiad","Kolacja"];
   const [plan,     setPlan]     = useState({}); // {`${day}-${meal}`: text}
@@ -1758,10 +1761,13 @@ function MealPlanView({ receipts }) {
   }, [receipts]);
 
   const callClaude = async (prompt) => {
+    if (!apiKey) throw new Error("Brak klucza API");
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
         "anthropic-dangerous-direct-browser-access": "true",
       },
       body: JSON.stringify({
@@ -4117,19 +4123,49 @@ const VIEWS = [
 const MOBILE_VIEWS = VIEWS.filter(v => v.mobile);
 
 /* ─── ROOT APP ───────────────────────────────── */
+/* ─── localStorage helpers ────────────────────── */
+const LS_KEYS = {
+  receipts: "maszka_receipts",
+  expenses: "maszka_expenses",
+  budgets: "maszka_budgets",
+  recurring: "maszka_recurring",
+  currency: "maszka_currency",
+  darkMode: "maszka_darkMode",
+  onboarded: "maszka_onboarded",
+  apiKey: "maszka_apiKey",
+};
+function lsGet(key, fallback) {
+  try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback; }
+  catch { return fallback; }
+}
+function lsSet(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+}
+
 export default function App() {
   const [view,      setView]      = useState("home");
-  const [receipts,  setReceipts]  = useState([]);
-  const [expenses,  setExpenses]  = useState([]);  // manual entries
+  const [receipts,  setReceipts]  = useState(() => lsGet(LS_KEYS.receipts, []));
+  const [expenses,  setExpenses]  = useState(() => lsGet(LS_KEYS.expenses, []));
   const [processing,setProcessing]= useState([]);
   const [errors,    setErrors]    = useState([]);
-  const [budgets,   setBudgets]   = useState({});
-  const [recurring, setRecurring] = useState([]);
-  const [currency,  setCurrency]  = useState("PLN");
-  const [darkMode,  setDarkMode]  = useState(false);
-  const [onboarded, setOnboarded] = useState(false);
+  const [budgets,   setBudgets]   = useState(() => lsGet(LS_KEYS.budgets, {}));
+  const [recurring, setRecurring] = useState(() => lsGet(LS_KEYS.recurring, []));
+  const [currency,  setCurrency]  = useState(() => lsGet(LS_KEYS.currency, "PLN"));
+  const [darkMode,  setDarkMode]  = useState(() => lsGet(LS_KEYS.darkMode, false));
+  const [onboarded, setOnboarded] = useState(() => lsGet(LS_KEYS.onboarded, false));
   const [showQA,    setShowQA]    = useState(false);
+  const [apiKey,    setApiKey]    = useState(() => lsGet(LS_KEYS.apiKey, ""));
+  const [showKeyModal, setShowKeyModal] = useState(false);
   const pageRef = useRef();
+
+  // Persist to localStorage on change
+  useEffect(() => { lsSet(LS_KEYS.receipts, receipts); }, [receipts]);
+  useEffect(() => { lsSet(LS_KEYS.expenses, expenses); }, [expenses]);
+  useEffect(() => { lsSet(LS_KEYS.budgets, budgets); }, [budgets]);
+  useEffect(() => { lsSet(LS_KEYS.recurring, recurring); }, [recurring]);
+  useEffect(() => { lsSet(LS_KEYS.currency, currency); }, [currency]);
+  useEffect(() => { lsSet(LS_KEYS.darkMode, darkMode); }, [darkMode]);
+  useEffect(() => { lsSet(LS_KEYS.onboarded, onboarded); }, [onboarded]);
 
   // Unified allItems: manual expenses + receipt items
   const allItems = useMemo(() => [
@@ -4166,7 +4202,7 @@ export default function App() {
           r.onerror = rej;
           r.readAsDataURL(file);
         });
-        const parsed = await scanReceipt(b64, file.type);
+        const parsed = await scanReceipt(b64, file.type, apiKey);
         setReceipts(p => [{ ...parsed, id }, ...p]);
         haptic(30);
       } catch (e) {
@@ -4175,7 +4211,7 @@ export default function App() {
         setProcessing(p => p.filter(x => x.id !== id));
       }
     }
-  }, []);
+  }, [apiKey]);
 
   const go = id => {
     setView(id);
@@ -4199,6 +4235,40 @@ export default function App() {
           onAdd={addExpense}
           onClose={() => setShowQA(false)}
         />
+      )}
+
+      {/* API Key Modal */}
+      {showKeyModal && (
+        <div style={{ position:"fixed", inset:0, zIndex:10000, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}
+          onClick={() => setShowKeyModal(false)}>
+          <div style={{ background:"var(--dark,0) == 1 ? #1a1a1a : #fff", backgroundColor: darkMode ? "#1a1a1a" : "#fff",
+            borderRadius:20, padding:"32px 28px", maxWidth:420, width:"100%", boxShadow:"0 20px 60px rgba(0,0,0,0.3)" }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize:18, fontWeight:800, color: darkMode ? "#fff" : $.ink0, marginBottom:4 }}>Klucz API Anthropic</div>
+            <div style={{ fontSize:13, color: darkMode ? "#aaa" : $.ink2, marginBottom:16 }}>
+              Wymagany do skanowania paragonów i planowania posiłków. Klucz jest przechowywany tylko lokalnie w przeglądarce.
+            </div>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={e => { setApiKey(e.target.value); lsSet(LS_KEYS.apiKey, e.target.value); }}
+              placeholder="sk-ant-..."
+              style={{ width:"100%", padding:"10px 14px", fontSize:14, border:`2px solid ${darkMode ? "#333" : "#e0e0e0"}`,
+                borderRadius:12, background: darkMode ? "#222" : "#f9f9f9", color: darkMode ? "#fff" : $.ink0,
+                outline:"none", boxSizing:"border-box", fontFamily:"monospace" }}
+              onFocus={e => e.target.style.borderColor = $.green}
+              onBlur={e => e.target.style.borderColor = darkMode ? "#333" : "#e0e0e0"}
+            />
+            <div style={{ display:"flex", gap:10, marginTop:16, justifyContent:"flex-end" }}>
+              <button onClick={() => setShowKeyModal(false)}
+                style={{ padding:"8px 20px", borderRadius:10, border:"none", background:$.green, color:"#fff",
+                  fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                Zapisz
+              </button>
+            </div>
+            {apiKey && <div style={{ marginTop:12, fontSize:12, color:$.green, fontWeight:600 }}>Klucz ustawiony ({apiKey.slice(0,10)}...)</div>}
+          </div>
+        </div>
       )}
 
       {/* Skip link */}
@@ -4259,6 +4329,14 @@ export default function App() {
             Dodaj
           </button>
 
+          {/* API Key */}
+          <button className="dark-btn" onClick={() => { setShowKeyModal(true); haptic(12); }}
+            aria-label="Klucz API" title="Klucz API"
+            style={{ position:"relative" }}>
+            🔑
+            {!apiKey && <span style={{ position:"absolute", top:2, right:2, width:8, height:8, borderRadius:"50%", background:$.red }} />}
+          </button>
+
           {/* Dark mode */}
           <button className="dark-btn" onClick={() => { setDarkMode(d => !d); haptic(12); }}
             aria-label={darkMode ? "Tryb jasny" : "Tryb ciemny"} title={darkMode ? "Tryb jasny" : "Tryb ciemny"}>
@@ -4291,7 +4369,7 @@ export default function App() {
         {view === "stats"     && <StatsView receipts={receipts} expenses={expenses} allItems={allItems} currency={currency} />}
         {view === "inflation"  && <InflationView receipts={receipts} currency={currency} />}
         {view === "prediction" && <PredictionView receipts={receipts} currency={currency} />}
-        {view === "mealplan"   && <MealPlanView receipts={receipts} />}
+        {view === "mealplan"   && <MealPlanView receipts={receipts} apiKey={apiKey} />}
         {view === "export"     && <ExportView receipts={receipts} />}
       </main>
 
