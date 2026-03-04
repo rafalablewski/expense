@@ -4156,6 +4156,7 @@ export default function App() {
   const [showQA,    setShowQA]    = useState(false);
   const [apiKey,    setApiKey]    = useState(() => lsGet(LS_KEYS.apiKey, ""));
   const [showKeyModal, setShowKeyModal] = useState(false);
+  const pendingFilesRef = useRef(null);
   const pageRef = useRef();
 
   // Persist to localStorage on change
@@ -4191,7 +4192,7 @@ export default function App() {
     document.documentElement.setAttribute("data-dark", darkMode ? "1" : "0");
   }, [darkMode]);
 
-  const handleFiles = useCallback(async files => {
+  const processFiles = useCallback(async (files, key) => {
     for (const file of files) {
       const id = Date.now() + Math.random();
       setProcessing(p => [...p, { id, name: file.name }]);
@@ -4202,7 +4203,7 @@ export default function App() {
           r.onerror = rej;
           r.readAsDataURL(file);
         });
-        const parsed = await scanReceipt(b64, file.type, apiKey);
+        const parsed = await scanReceipt(b64, file.type, key);
         setReceipts(p => [{ ...parsed, id }, ...p]);
         haptic(30);
       } catch (e) {
@@ -4211,7 +4212,24 @@ export default function App() {
         setProcessing(p => p.filter(x => x.id !== id));
       }
     }
-  }, [apiKey]);
+  }, []);
+
+  const handleFiles = useCallback(async files => {
+    if (!apiKey) {
+      pendingFilesRef.current = files;
+      setShowKeyModal(true);
+      return;
+    }
+    processFiles(files, apiKey);
+  }, [apiKey, processFiles]);
+
+  useEffect(() => {
+    if (apiKey && pendingFilesRef.current) {
+      const files = pendingFilesRef.current;
+      pendingFilesRef.current = null;
+      processFiles(files, apiKey);
+    }
+  }, [apiKey, processFiles]);
 
   const go = id => {
     setView(id);
