@@ -1575,6 +1575,8 @@ async function scanReceipt(b64, mt, apiKey) {
 
 {
   "store": string | null,
+  "address": string | null,
+  "zip_code": string | null,
   "date": "YYYY-MM-DD",
   "items": [
     {
@@ -1594,6 +1596,8 @@ async function scanReceipt(b64, mt, apiKey) {
 
 Rules:
 - date MUST be in YYYY-MM-DD format. Extract from receipt header/footer. NEVER return null for date.
+- address: Extract the store's street address from the receipt header (e.g. "ul. Warszawska 15"). Return null if not found.
+- zip_code: Extract the postal/zip code (e.g. "00-001"). Return null if not found.
 - Product names: read carefully, expand abbreviations into readable Polish names (e.g. "PomidGustBel400g" → "Pomidory Gusto Bello 400g").
 - Categorize food products correctly: tomatoes/vegetables → "Warzywa", fruits → "Owoce", etc.
 - Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.
@@ -1655,6 +1659,8 @@ async function parseTextReceipt(text, apiKey) {
 
 {
   "store": string | null,
+  "address": string | null,
+  "zip_code": string | null,
   "date": "${new Date().toISOString().slice(0, 10)}",
   "items": [
     {
@@ -1678,6 +1684,8 @@ Rules:
 - If quantity is mentioned (e.g. "2kg", "3 szt", "3 jogurty"), extract it. Otherwise default to 1.
 - Calculate unit_price = total_price / quantity when both are known.
 - "total" = sum of all total_price values.
+- address: Extract the store's street address if present. Return null if not found.
+- zip_code: Extract the postal/zip code if present. Return null if not found.
 - Categorize products into the correct Polish category.
 - Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.
 - Grains, cereals, pasta, flour, rice (ryż, kasza, kasza pęczak, kasza jęczmienna, kasza gryczana, makaron, mąka, płatki) → category "Pieczywo". These are grain/carb products, NOT vegetables.${getCorrectionsHint()}
@@ -1736,6 +1744,8 @@ const ALL_CATS = Object.keys(CATS);
 function ReceiptReviewModal({ receipt, onConfirm, onCancel, customStores, onAddCustomStore }) {
   const [data, setData] = useState(() => ({
     store: receipt.store || "",
+    address: receipt.address || "",
+    zip_code: receipt.zip_code || "",
     date: receipt.date || new Date().toISOString().slice(0, 10),
     total: receipt.total ?? 0,
     total_discounts: receipt.total_discounts ?? 0,
@@ -1847,6 +1857,14 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel, customStores, onAddC
             <div>
               <label className="rv-lbl" htmlFor="rv-store">Sklep</label>
               <StorePickerInput id="rv-store" value={data.store} onChange={v => updateField("store", v)} customStores={customStores} onAddCustomStore={onAddCustomStore} placeholder="Nazwa sklepu" />
+            </div>
+            <div>
+              <label className="rv-lbl" htmlFor="rv-address">Adres</label>
+              <input id="rv-address" className="field" value={data.address} onChange={e => updateField("address", e.target.value)} placeholder="ul. Przykładowa 1" />
+            </div>
+            <div>
+              <label className="rv-lbl" htmlFor="rv-zip">Kod pocztowy</label>
+              <input id="rv-zip" className="field" value={data.zip_code} onChange={e => updateField("zip_code", e.target.value)} placeholder="00-000" />
             </div>
             <div>
               <label className="rv-lbl" htmlFor="rv-total">Suma</label>
@@ -2024,6 +2042,7 @@ function ReceiptCard({ r, onDelete, delay = 0 }) {
           </div>
           <div className="receipt-meta">
             {r.date || "Brak daty"} · {r.items?.length || 0} produktów
+            {(r.address || r.zip_code) && ` · ${[r.address, r.zip_code].filter(Boolean).join(", ")}`}
           </div>
         </div>
 
@@ -3040,18 +3059,25 @@ function StoresView({ receipts }) {
     });
   }, [receipts, range]);
 
-  // ── Build store summary map ──
+  // ── Build store summary map (grouped by store name, with locations) ──
   const storeMap = useMemo(() => {
     const map = {};
     filtered.forEach(r => {
       const key = (r.store || "Nieznany sklep").trim();
-      if (!map[key]) map[key] = { name: key, visits: 0, total: 0, saved: 0, items: [], lastDate: null };
+      if (!map[key]) map[key] = { name: key, visits: 0, total: 0, saved: 0, items: [], lastDate: null, locations: {} };
       map[key].visits++;
       map[key].total  += parseFloat(r.total) || 0;
       map[key].saved  += parseFloat(r.total_discounts) || 0;
       (r.items || []).forEach(it => map[key].items.push({ ...it, date: r.date }));
       const d = parseDate(r.date);
       if (d && (!map[key].lastDate || d > map[key].lastDate)) map[key].lastDate = d;
+      // Track locations by address/zip
+      const locKey = [r.zip_code, r.address].filter(Boolean).join(" ") || null;
+      if (locKey) {
+        if (!map[key].locations[locKey]) map[key].locations[locKey] = { address: r.address || "", zip_code: r.zip_code || "", visits: 0, total: 0 };
+        map[key].locations[locKey].visits++;
+        map[key].locations[locKey].total += parseFloat(r.total) || 0;
+      }
     });
     return map;
   }, [filtered]);
@@ -3208,6 +3234,7 @@ function StoresView({ receipts }) {
                       </div>
                       <div style={{ fontSize: 12, color: $.ink2, marginTop: 5, display: "flex", gap: 14, flexWrap: "wrap" }}>
                         <span>{st.visits} wizyt</span>
+                        {Object.keys(st.locations).length > 0 && <span>📍 {Object.keys(st.locations).length} lokalizacj{Object.keys(st.locations).length === 1 ? "a" : "e"}</span>}
                         <span>śr. {avg.toFixed(0)} zł/wizyta</span>
                         {st.saved > 0 && <span style={{ color: $.red }}>−{st.saved.toFixed(2)} zł saved</span>}
                         <span style={{ color: $.ink3 }}>ost. {fmtDate(st.lastDate)}</span>
@@ -3246,6 +3273,30 @@ function StoresView({ receipts }) {
                 </div>
               ))}
             </div>
+
+            {/* Locations */}
+            {drillStore && Object.keys(drillStore.locations).length > 0 && (
+              <div className="au1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: $.ink3, marginBottom: 4 }}>
+                  Lokalizacje · {Object.keys(drillStore.locations).length}
+                </div>
+                {Object.values(drillStore.locations).map((loc, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", gap: 12,
+                    background: $.glass, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+                    border: "1px solid rgba(255,255,255,0.72)", borderRadius: 12, padding: "10px 16px",
+                  }}>
+                    <span style={{ fontSize: 16 }}>📍</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: $.ink0 }}>
+                        {[loc.address, loc.zip_code].filter(Boolean).join(", ")}
+                      </div>
+                      <div style={{ fontSize: 12, color: $.ink3 }}>{loc.visits} wizyt · {loc.total.toFixed(2)} zł</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Drill filters */}
             <div className="au1" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -4039,6 +4090,12 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
       .slice(0, 5);
   }, [allItems]);
 
+  // Top 3 most expensive items (reactive — recalculates on every receipt change)
+  const top3Items = useMemo(() =>
+    [...allItems].sort((a, b) => (parseFloat(b.total_price) || 0) - (parseFloat(a.total_price) || 0)).slice(0, 3),
+    [allItems]
+  );
+
   // Recent receipts
   const recent = receipts.slice(0, 3);
 
@@ -4179,6 +4236,35 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
             </div>
           )}
 
+          {/* ── Top 3 najdroższe zakupy ── */}
+          {top3Items.length > 0 && (
+            <div className="au2">
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: $.ink3, marginBottom: 12 }}>Top 3 najdroższe zakupy</div>
+              <div className="card" style={{ overflow: "hidden" }}>
+                {top3Items.map((it, i) => (
+                  <div key={i} style={{
+                    padding: "13px 20px",
+                    borderBottom: i < top3Items.length - 1 ? "1px solid rgba(255,255,255,0.40)" : "none",
+                    display: "flex", alignItems: "center", gap: 14,
+                  }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: i === 0 ? "rgba(234,179,8,0.12)" : $.greenBg, border: `1px solid ${i === 0 ? "rgba(234,179,8,0.25)" : $.greenRim}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
+                      {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: $.ink0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.name}</div>
+                      <div style={{ fontSize: 12, color: $.ink3, marginTop: 2 }}>
+                        {it.store || "—"}{it.date ? ` · ${it.date}` : ""}
+                      </div>
+                    </div>
+                    <div className="mono" style={{ fontSize: 15, fontWeight: 700, color: $.green, flexShrink: 0 }}>
+                      {convertAmt(parseFloat(it.total_price) || 0, currency)} {sym}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* ── Recent receipts ── */}
           {recent.length > 0 && (
             <div className="au3">
@@ -4196,7 +4282,7 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
                     <div style={{ width: 38, height: 38, borderRadius: 10, background: $.greenBg, border: `1px solid ${$.greenRim}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>🧾</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 14, color: $.ink0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.store || "Paragon"}</div>
-                      <div style={{ fontSize: 12, color: $.ink3 }}>{r.date || "—"} · {(r.items || []).length} pozycji</div>
+                      <div style={{ fontSize: 12, color: $.ink3 }}>{r.date || "—"} · {(r.items || []).length} pozycji{(r.address || r.zip_code) ? ` · ${[r.zip_code, r.address].filter(Boolean).join(" ")}` : ""}</div>
                     </div>
                     <div className="mono" style={{ fontSize: 16, fontWeight: 500, color: $.green, flexShrink: 0 }}>
                       {convertAmt(r.total || 0, currency)} {sym}
@@ -5330,7 +5416,7 @@ export default function App({ uid }) {
       date: e.date, store: e.store, note: e.note, source: "manual", type: e.type,
     })),
     ...receipts.flatMap(r =>
-      (r.items || []).map(it => ({ ...it, store: r.store, date: r.date, source: "receipt" }))
+      (r.items || []).map(it => ({ ...it, store: r.store, address: r.address, zip_code: r.zip_code, date: r.date, source: "receipt" }))
     ),
   ], [expenses, receipts]);
 
