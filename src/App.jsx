@@ -4957,14 +4957,14 @@ export default function App({ uid }) {
           const lsReceipts = lsGet(LS_KEYS.receipts, []);
           if (lsReceipts.length > 0 && (data.receipts || []).length === 0) {
             data.receipts = lsReceipts;
-            await updateField(uid, "receipts", lsReceipts);
+            await saveAllUserData(uid, { receipts: lsReceipts });
           } else if (lsReceipts.length > 0) {
             // Merge any localStorage receipts not already in Firestore (by id)
             const existingIds = new Set((data.receipts || []).map(r => r.id));
             const missing = lsReceipts.filter(r => !existingIds.has(r.id));
             if (missing.length > 0) {
               data.receipts = [...missing, ...(data.receipts || [])];
-              await updateField(uid, "receipts", data.receipts);
+              await saveAllUserData(uid, { receipts: data.receipts });
             }
           }
           applyData(data);
@@ -4996,19 +4996,62 @@ export default function App({ uid }) {
     if (dataLoaded && !loadFailed) initialLoadDone.current = true;
   }, [dataLoaded, loadFailed]);
 
+  // Track previous values so we skip the redundant write-back that fires
+  // in the same render cycle where data loads from Firestore.  Without this,
+  // a stale "write loaded data back" can race with the user's first edit and
+  // overwrite it, causing receipts to vanish on refresh.
+  const prevReceipts  = useRef(null);
+  const prevExpenses  = useRef(null);
+  const prevBudgets   = useRef(null);
+  const prevRecurring = useRef(null);
+  const prevCurrency  = useRef(null);
+  const prevDarkMode  = useRef(null);
+  const prevOnboarded = useRef(null);
+
   useEffect(() => {
-    if (initialLoadDone.current) {
-      updateField(uid, "receipts", receipts);
-      // Keep localStorage backup for recovery
-      lsSet(LS_KEYS.receipts, receipts);
-    }
+    if (!initialLoadDone.current) return;
+    if (prevReceipts.current === null) { prevReceipts.current = receipts; return; }
+    prevReceipts.current = receipts;
+    updateField(uid, "receipts", receipts);
+    lsSet(LS_KEYS.receipts, receipts);
   }, [receipts]);
-  useEffect(() => { if (initialLoadDone.current) updateField(uid, "expenses", expenses); }, [expenses]);
-  useEffect(() => { if (initialLoadDone.current) updateField(uid, "budgets", budgets); }, [budgets]);
-  useEffect(() => { if (initialLoadDone.current) updateField(uid, "recurring", recurring); }, [recurring]);
-  useEffect(() => { if (initialLoadDone.current) updateField(uid, "currency", currency); }, [currency]);
-  useEffect(() => { if (initialLoadDone.current) { updateField(uid, "darkMode", darkMode); lsSet(LS_KEYS.darkMode, darkMode); } }, [darkMode]);
-  useEffect(() => { if (initialLoadDone.current) updateField(uid, "onboarded", onboarded); }, [onboarded]);
+  useEffect(() => {
+    if (!initialLoadDone.current) return;
+    if (prevExpenses.current === null) { prevExpenses.current = expenses; return; }
+    prevExpenses.current = expenses;
+    updateField(uid, "expenses", expenses);
+  }, [expenses]);
+  useEffect(() => {
+    if (!initialLoadDone.current) return;
+    if (prevBudgets.current === null) { prevBudgets.current = budgets; return; }
+    prevBudgets.current = budgets;
+    updateField(uid, "budgets", budgets);
+  }, [budgets]);
+  useEffect(() => {
+    if (!initialLoadDone.current) return;
+    if (prevRecurring.current === null) { prevRecurring.current = recurring; return; }
+    prevRecurring.current = recurring;
+    updateField(uid, "recurring", recurring);
+  }, [recurring]);
+  useEffect(() => {
+    if (!initialLoadDone.current) return;
+    if (prevCurrency.current === null) { prevCurrency.current = currency; return; }
+    prevCurrency.current = currency;
+    updateField(uid, "currency", currency);
+  }, [currency]);
+  useEffect(() => {
+    if (!initialLoadDone.current) return;
+    if (prevDarkMode.current === null) { prevDarkMode.current = darkMode; return; }
+    prevDarkMode.current = darkMode;
+    updateField(uid, "darkMode", darkMode);
+    lsSet(LS_KEYS.darkMode, darkMode);
+  }, [darkMode]);
+  useEffect(() => {
+    if (!initialLoadDone.current) return;
+    if (prevOnboarded.current === null) { prevOnboarded.current = onboarded; return; }
+    prevOnboarded.current = onboarded;
+    updateField(uid, "onboarded", onboarded);
+  }, [onboarded]);
 
   // Unified allItems: manual expenses + receipt items
   const allItems = useMemo(() => [
