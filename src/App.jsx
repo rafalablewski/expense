@@ -649,8 +649,10 @@ body {
   font-weight: 700;
   color: ${$.white};
   letter-spacing: -.02em;
-  margin-left: auto;
-  margin-right: auto;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 
@@ -1347,9 +1349,12 @@ body {
 
 /* ── RESPONSIVE ── */
 @media (max-width: 680px) {
+  .topnav { overflow: hidden; }
   .topnav-items { display: none; }
   .topnav-mobile-title { display: block; }
   .topnav-logo { margin-right: auto; }
+  .cur-toggle { display: none; }
+  .topnav .nav-add-btn { display: none; }
   .botnav { display: block; }
   .page { padding-bottom: 100px; }
   .page-hero { padding: 28px 0 22px; }
@@ -4681,6 +4686,7 @@ export default function App() {
 
           {/* Add expense */}
           <button
+            className="nav-add-btn"
             onClick={() => { setShowQA(true); haptic(12); }}
             aria-label="Dodaj wydatek"
             style={{ marginLeft:8, background:$.green, border:"none", borderRadius:99, padding:"6px 14px", cursor:"pointer",
