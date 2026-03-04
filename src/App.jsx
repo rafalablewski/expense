@@ -4957,14 +4957,14 @@ export default function App({ uid }) {
           const lsReceipts = lsGet(LS_KEYS.receipts, []);
           if (lsReceipts.length > 0 && (data.receipts || []).length === 0) {
             data.receipts = lsReceipts;
-            await updateField(uid, "receipts", lsReceipts);
+            await saveAllUserData(uid, { receipts: lsReceipts });
           } else if (lsReceipts.length > 0) {
             // Merge any localStorage receipts not already in Firestore (by id)
             const existingIds = new Set((data.receipts || []).map(r => r.id));
             const missing = lsReceipts.filter(r => !existingIds.has(r.id));
             if (missing.length > 0) {
               data.receipts = [...missing, ...(data.receipts || [])];
-              await updateField(uid, "receipts", data.receipts);
+              await saveAllUserData(uid, { receipts: data.receipts });
             }
           }
           applyData(data);
@@ -4997,10 +4997,10 @@ export default function App({ uid }) {
   }, [dataLoaded, loadFailed]);
 
   useEffect(() => {
+    // Always keep localStorage as a backup, even if Firestore load failed
+    lsSet(LS_KEYS.receipts, receipts);
     if (initialLoadDone.current) {
       updateField(uid, "receipts", receipts);
-      // Keep localStorage backup for recovery
-      lsSet(LS_KEYS.receipts, receipts);
     }
   }, [receipts]);
   useEffect(() => { if (initialLoadDone.current) updateField(uid, "expenses", expenses); }, [expenses]);
