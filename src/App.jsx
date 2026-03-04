@@ -344,7 +344,7 @@ body {
 }
 .rv-meta {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
+  grid-template-columns: 1fr 2fr 1fr 1fr;
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -360,13 +360,13 @@ body {
   background: rgba(255,255,255,0.06);
   border-color: rgba(255,255,255,0.12);
 }
+/* Row 1: # badge + total price + delete */
 .rv-item-r1 {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-bottom: 4px;
 }
-.rv-item-r1 .rv-i-name { flex: 1; min-width: 0; }
-.rv-item-r1 .rv-i-price { width: 90px; flex-shrink: 0; }
 .rv-item-num {
   font-family: 'JetBrains Mono', monospace;
   font-size: 9px;
@@ -379,14 +379,7 @@ body {
   line-height: 1;
 }
 [data-dark="1"] .rv-item-num { background: rgba(255,255,255,0.08); }
-.rv-item-r2 {
-  display: flex;
-  gap: 6px;
-  margin-top: 6px;
-  align-items: end;
-}
-.rv-item-r2 > div { flex: 1; min-width: 0; }
-.rv-item-r2 .rv-i-cat { flex: 1.5; }
+.rv-item-r1 .rv-i-total { flex: 1; min-width: 0; }
 .rv-del-btn {
   background: none;
   border: none;
@@ -400,6 +393,47 @@ body {
   transition: color .15s, background .15s;
 }
 .rv-del-btn:hover { color: ${$.red}; background: ${$.redBg}; }
+/* Row 2: name (full width) */
+.rv-item-r-name { margin-bottom: 6px; }
+/* Suggestions row */
+.rv-suggest {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+  align-items: center;
+}
+.rv-suggest-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  color: ${$.ink3};
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  margin-right: 2px;
+}
+.rv-suggest-pill {
+  font-size: 11px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 8px;
+  border: 1.5px solid ${$.greenRim};
+  background: ${$.greenBg};
+  color: ${$.green};
+  cursor: pointer;
+  transition: all .15s;
+  line-height: 1.3;
+}
+.rv-suggest-pill:hover { background: ${$.green}; color: #fff; }
+/* Row 3: cat | qty | price */
+.rv-item-r3 {
+  display: flex;
+  gap: 6px;
+  align-items: end;
+}
+.rv-item-r3 > div { flex: 1; min-width: 0; }
+.rv-item-r3 .rv-i-cat { flex: 1.5; }
+/* More toggle */
 .rv-more-toggle {
   background: none;
   border: none;
@@ -412,13 +446,16 @@ body {
   transition: color .15s;
 }
 .rv-more-toggle:hover { color: ${$.green}; }
-.rv-item-r3 {
+/* Row 4 (expanded): unit | discount | unit_price */
+.rv-item-r4 {
   display: flex;
   gap: 6px;
   margin-top: 6px;
   align-items: end;
 }
-.rv-item-r3 > div { flex: 1; min-width: 0; }
+.rv-item-r4 > div { flex: 1; min-width: 0; }
+/* Row 5 (expanded): discount label full width */
+.rv-item-r5 { margin-top: 6px; }
 .rv-footer {
   display: flex;
   justify-content: flex-end;
@@ -426,12 +463,26 @@ body {
   padding: 12px 20px;
   border-top: 1px solid rgba(255,255,255,0.45);
 }
+.rv-info {
+  padding: 10px 20px 14px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: ${$.ink3};
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rv-info-note {
+  font-size: 10px;
+  opacity: 0.7;
+  font-style: italic;
+}
 @media (max-width: 480px) {
   .rv-meta { grid-template-columns: 1fr 1fr; }
-  .rv-item-r2 { flex-wrap: wrap; }
-  .rv-item-r2 > div { min-width: calc(50% - 3px); }
   .rv-item-r3 { flex-wrap: wrap; }
   .rv-item-r3 > div { min-width: calc(50% - 3px); }
+  .rv-item-r4 { flex-wrap: wrap; }
+  .rv-item-r4 > div { min-width: calc(50% - 3px); }
 }
 
 /* Type toggle */
@@ -1448,7 +1499,19 @@ Rules:
 - date MUST be in YYYY-MM-DD format. Extract from receipt header/footer. NEVER return null for date.
 - Product names: read carefully, expand abbreviations into readable Polish names (e.g. "PomidGustBel400g" → "Pomidory Gusto Bello 400g").
 - Categorize food products correctly: tomatoes/vegetables → "Warzywa", fruits → "Owoce", etc.
-- Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.`
+- Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.${(() => {
+  const c = getCorrections();
+  const nameEntries = Object.entries(c.names);
+  const catEntries = Object.entries(c.categories);
+  if (!nameEntries.length && !catEntries.length) return "";
+  let hint = "\n\nUser corrections from past receipts — apply these:";
+  if (nameEntries.length) hint += "\nName fixes: " + nameEntries.slice(-30).map(([k,v]) => {
+    const arr = Array.isArray(v) ? v : [v];
+    return arr.length === 1 ? `"${k}" → "${arr[0]}"` : `"${k}" → one of [${arr.map(x => `"${x}"`).join(", ")}] (ambiguous, pick best match based on context)`;
+  }).join(", ");
+  if (catEntries.length) hint += "\nCategory fixes: " + catEntries.slice(-30).map(([k,v]) => `"${k}" → ${v}`).join(", ");
+  return hint;
+})()}`
           }
         ]
       }]
@@ -1534,7 +1597,7 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
       ...data,
       total: parseFloat(data.total) || 0,
       total_discounts: parseFloat(data.total_discounts) || 0,
-      items: data.items.map(({ _key, ...it }) => ({
+      items: data.items.map(({ _key, _suggestions, ...it }) => ({
         ...it,
         quantity: parseFloat(it.quantity) || 1,
         unit_price: parseFloat(it.unit_price) || null,
@@ -1558,15 +1621,15 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
         </div>
 
         <div className="rv-body">
-          {/* Store, Date, Total, Discounts — all in one compact grid */}
+          {/* Header: date | shop | price | discounts */}
           <div className="rv-meta">
-            <div>
-              <label className="rv-lbl">Sklep</label>
-              <input className="field" value={data.store} onChange={e => updateField("store", e.target.value)} placeholder="Nazwa" />
-            </div>
             <div>
               <label className="rv-lbl">Data</label>
               <input className="field" type="date" value={data.date} onChange={e => updateField("date", e.target.value)} />
+            </div>
+            <div>
+              <label className="rv-lbl">Sklep</label>
+              <input className="field" value={data.store} onChange={e => updateField("store", e.target.value)} placeholder="Nazwa" />
             </div>
             <div>
               <label className="rv-lbl">Suma</label>
@@ -1593,24 +1656,41 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
           {/* Items */}
           {data.items.map((item, idx) => {
             const isExpanded = expandedItem === idx;
+            const suggestions = item._suggestions;
             return (
               <div key={item._key} className="rv-item">
-                {/* Row 1: #, name, price, delete */}
+                {/* Row 1: # badge, total price, delete */}
                 <div className="rv-item-r1">
                   <div className="rv-item-num">{idx + 1}</div>
-                  <div className="rv-i-name">
-                    <input className="field" value={item.name || ""} onChange={e => updateItem(idx, "name", e.target.value)}
-                      placeholder="Nazwa produktu" style={{ fontWeight:600 }} />
-                  </div>
-                  <div className="rv-i-price">
+                  <div className="rv-i-total">
                     <input className="field" type="number" step="0.01" value={item.total_price ?? 0}
                       onChange={e => updateItem(idx, "total_price", e.target.value)}
-                      placeholder="0.00" style={{ textAlign:"right", fontWeight:600 }} />
+                      placeholder="0.00" style={{ textAlign:"right", fontWeight:700 }} />
                   </div>
                   <button className="rv-del-btn" onClick={() => removeItem(idx)} title="Usuń" aria-label="Usuń produkt">✕</button>
                 </div>
-                {/* Row 2: cat, qty, unit price */}
-                <div className="rv-item-r2">
+
+                {/* Row 2: name (full width) */}
+                <div className="rv-item-r-name">
+                  <input className="field" value={item.name || ""} onChange={e => updateItem(idx, "name", e.target.value)}
+                    placeholder="Nazwa produktu" style={{ fontWeight:600 }} />
+                </div>
+
+                {/* Suggestions (when ambiguous) */}
+                {suggestions && suggestions.length > 1 && (
+                  <div className="rv-suggest">
+                    <span className="rv-suggest-lbl">Może:</span>
+                    {suggestions.map(s => (
+                      <button key={s} className="rv-suggest-pill"
+                        onClick={() => { updateItem(idx, "name", s); updateItem(idx, "_suggestions", null); }}>
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Row 3: category | qty | price */}
+                <div className="rv-item-r3">
                   <div className="rv-i-cat">
                     <label className="rv-lbl">Kategoria</label>
                     <select className="field" value={item.category || "Inne"} onChange={e => updateItem(idx, "category", e.target.value)}
@@ -1624,18 +1704,20 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                       onChange={e => updateItem(idx, "quantity", e.target.value)} style={{ textAlign:"right" }} />
                   </div>
                   <div>
-                    <label className="rv-lbl">Cena j.</label>
+                    <label className="rv-lbl">Cena</label>
                     <input className="field" type="number" step="0.01" value={item.unit_price ?? ""}
                       onChange={e => updateItem(idx, "unit_price", e.target.value)} placeholder="—" style={{ textAlign:"right" }} />
                   </div>
                 </div>
-                {/* Expand toggle */}
+
+                {/* More toggle */}
                 <button className="rv-more-toggle" onClick={() => setExpandedItem(isExpanded ? null : idx)}>
                   {isExpanded ? "▲ Mniej" : "▼ Więcej"}
                 </button>
-                {/* Row 3: unit, discount, discount label */}
-                {isExpanded && (
-                  <div className="rv-item-r3">
+
+                {/* Row 4 (expanded): jednostka | zniżka | cena jednostkowa */}
+                {isExpanded && (<>
+                  <div className="rv-item-r4">
                     <div>
                       <label className="rv-lbl">Jednostka</label>
                       <input className="field" value={item.unit || ""} onChange={e => updateItem(idx, "unit", e.target.value)}
@@ -1647,12 +1729,18 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                         onChange={e => updateItem(idx, "discount", e.target.value)} placeholder="0.00" style={{ textAlign:"right" }} />
                     </div>
                     <div>
-                      <label className="rv-lbl">Etykieta</label>
-                      <input className="field" value={item.discount_label || ""}
-                        onChange={e => updateItem(idx, "discount_label", e.target.value)} placeholder="np. -20%" />
+                      <label className="rv-lbl">Cena jedn.</label>
+                      <input className="field" type="number" step="0.01" value={item.unit_price ?? ""}
+                        onChange={e => updateItem(idx, "unit_price", e.target.value)} placeholder="—" style={{ textAlign:"right" }} />
                     </div>
                   </div>
-                )}
+                  {/* Row 5 (expanded): etykieta (full width) */}
+                  <div className="rv-item-r5">
+                    <label className="rv-lbl">Etykieta zniżki</label>
+                    <input className="field" value={item.discount_label || ""}
+                      onChange={e => updateItem(idx, "discount_label", e.target.value)} placeholder="np. -20%, PROMO, 2+1 gratis…" />
+                  </div>
+                </>)}
               </div>
             );
           })}
@@ -1661,6 +1749,19 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
         <div className="rv-footer">
           <button className="btn-secondary" onClick={onCancel}>Odrzuć</button>
           <button className="btn-primary" onClick={handleConfirm}>Zatwierdź</button>
+        </div>
+
+        {/* Learning info */}
+        <div className="rv-info">
+          {(() => {
+            const s = getCorrectionStats();
+            return s.names + s.categories > 0
+              ? <span>Nauczono: {s.names} nazw, {s.categories} kategorii — poprawki stosowane automatycznie.</span>
+              : <span>Popraw błędy AI — aplikacja zapamięta Twoje korekty na przyszłość.</span>;
+          })()}
+          <span className="rv-info-note">
+            Korekty działają lokalnie (słownik). Uczenie modelu AI w czasie rzeczywistym wymaga treningu na serwerze (server-side ML) — nie jest dostępne w trybie przeglądarkowym.
+          </span>
         </div>
       </div>
     </div>
@@ -4476,6 +4577,7 @@ const LS_KEYS = {
   darkMode: "maszka_darkMode",
   onboarded: "maszka_onboarded",
   apiKey: "maszka_apiKey",
+  corrections: "maszka_corrections",
 };
 function lsGet(key, fallback) {
   try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback; }
@@ -4483,6 +4585,88 @@ function lsGet(key, fallback) {
 }
 function lsSet(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+}
+
+/* ─── Correction Learning System ─────────────── */
+// Stored shape: { names: { "AI_NAME": ["correction1", "correction2"], ... }, categories: { "product_lower": "Category", ... } }
+function getCorrections() { return lsGet(LS_KEYS.corrections, { names: {}, categories: {} }); }
+function saveCorrections(c) { lsSet(LS_KEYS.corrections, c); }
+
+function learnFromCorrections(original, confirmed) {
+  const corr = getCorrections();
+  let changed = false;
+  const origItems = original.items || [];
+  const confItems = confirmed.items || [];
+  const len = Math.min(origItems.length, confItems.length);
+  for (let i = 0; i < len; i++) {
+    const oi = origItems[i];
+    const ci = confItems[i];
+    // Learn name corrections — store as array of alternatives
+    if (oi.name && ci.name && oi.name !== ci.name) {
+      const key = oi.name.trim();
+      const val = ci.name.trim();
+      if (!corr.names[key]) corr.names[key] = [];
+      if (Array.isArray(corr.names[key])) {
+        if (!corr.names[key].includes(val)) corr.names[key].push(val);
+      } else {
+        // Migrate old string format to array
+        const prev = corr.names[key];
+        corr.names[key] = prev === val ? [val] : [prev, val];
+      }
+      changed = true;
+    }
+    // Learn category corrections (keyed by confirmed name lowercase)
+    if (ci.name && oi.category !== ci.category) {
+      corr.categories[ci.name.trim().toLowerCase()] = ci.category;
+      changed = true;
+    }
+    if (oi.name && ci.name && oi.name !== ci.name && ci.category) {
+      corr.categories[oi.name.trim().toLowerCase()] = ci.category;
+    }
+  }
+  if (changed) saveCorrections(corr);
+  return corr;
+}
+
+function applyLearnedCorrections(parsed) {
+  const corr = getCorrections();
+  if (!parsed.items?.length) return parsed;
+  const hasNames = Object.keys(corr.names).length > 0;
+  const hasCats = Object.keys(corr.categories).length > 0;
+  if (!hasNames && !hasCats) return parsed;
+  return {
+    ...parsed,
+    items: parsed.items.map(it => {
+      let name = it.name;
+      let category = it.category;
+      let _suggestions = null;
+      // Check name corrections
+      if (hasNames && name) {
+        const corrections = corr.names[name.trim()];
+        if (corrections) {
+          const arr = Array.isArray(corrections) ? corrections : [corrections];
+          if (arr.length === 1) {
+            // Unambiguous — auto-apply
+            name = arr[0];
+          } else if (arr.length > 1) {
+            // Ambiguous — mark for suggestion, don't auto-apply
+            _suggestions = arr;
+          }
+        }
+      }
+      // Apply category correction
+      const lookupKey = (name || "").trim().toLowerCase();
+      if (hasCats && corr.categories[lookupKey]) {
+        category = corr.categories[lookupKey];
+      }
+      return { ...it, name, category, _suggestions };
+    }),
+  };
+}
+
+function getCorrectionStats() {
+  const corr = getCorrections();
+  return { names: Object.keys(corr.names).length, categories: Object.keys(corr.categories).length };
 }
 
 export default function App() {
@@ -4568,8 +4752,9 @@ export default function App() {
           r.readAsDataURL(file);
         });
         const parsed = await scanReceipt(b64, file.type, key);
-        // Show review modal instead of adding directly
-        setPendingReview({ ...parsed, id });
+        const corrected = applyLearnedCorrections(parsed);
+        // Store original AI output for learning, show corrected version for review
+        setPendingReview({ ...corrected, id, _original: parsed });
         haptic(30);
       } catch (e) {
         setErrors(p => [...p, `${file.name}: ${e.message}`]);
@@ -4625,7 +4810,12 @@ export default function App() {
         <ReceiptReviewModal
           receipt={pendingReview}
           onConfirm={(reviewed) => {
-            setReceipts(p => [{ ...reviewed, id: pendingReview.id }, ...p]);
+            // Learn from user corrections vs original AI parse
+            if (pendingReview._original) {
+              learnFromCorrections(pendingReview._original, reviewed);
+            }
+            const { _original, ...rest } = pendingReview;
+            setReceipts(p => [{ ...reviewed, id: rest.id }, ...p]);
             setPendingReview(null);
             haptic(30);
           }}
