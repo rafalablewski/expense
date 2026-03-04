@@ -2823,9 +2823,9 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
   // Most visited store
   const topStore = useMemo(() => {
     const map = {};
-    receipts.forEach(r => { if (r.store) map[r.store] = (map[r.store] || 0) + 1; });
-    const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
-    return entries[0] ? { name: entries[0][0], count: entries[0][1] } : null;
+    receipts.forEach(r => { if (r.store) { const k = r.store.trim().toLowerCase(); if (!map[k]) map[k] = { name: r.store.trim(), count: 0 }; map[k].count++; } });
+    const entries = Object.values(map).sort((a, b) => b.count - a.count);
+    return entries[0] || null;
   }, [receipts]);
 
   // Day of week with highest spending
@@ -3059,12 +3059,13 @@ function StoresView({ receipts }) {
     });
   }, [receipts, range]);
 
-  // ── Build store summary map (grouped by store name, with locations) ──
+  // ── Build store summary map (grouped by normalized store name, with locations) ──
   const storeMap = useMemo(() => {
     const map = {};
     filtered.forEach(r => {
-      const key = (r.store || "Nieznany sklep").trim();
-      if (!map[key]) map[key] = { name: key, visits: 0, total: 0, saved: 0, items: [], lastDate: null, locations: {} };
+      const raw = (r.store || "Nieznany sklep").trim();
+      const key = raw.toLowerCase();
+      if (!map[key]) map[key] = { name: raw, visits: 0, total: 0, saved: 0, items: [], lastDate: null, locations: {} };
       map[key].visits++;
       map[key].total  += parseFloat(r.total) || 0;
       map[key].saved  += parseFloat(r.total_discounts) || 0;
@@ -3072,7 +3073,7 @@ function StoresView({ receipts }) {
       const d = parseDate(r.date);
       if (d && (!map[key].lastDate || d > map[key].lastDate)) map[key].lastDate = d;
       // Track locations by address/zip
-      const locKey = [r.zip_code, r.address].filter(Boolean).join(" ") || null;
+      const locKey = [r.zip_code, r.address].filter(Boolean).join(" ").toLowerCase() || null;
       if (locKey) {
         if (!map[key].locations[locKey]) map[key].locations[locKey] = { address: r.address || "", zip_code: r.zip_code || "", visits: 0, total: 0 };
         map[key].locations[locKey].visits++;
@@ -4077,7 +4078,7 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
     });
     return Object.entries(nameMap)
       .filter(([, items]) => {
-        const stores = new Set(items.map(i => i.store).filter(Boolean));
+        const stores = new Set(items.map(i => (i.store || "").trim().toLowerCase()).filter(Boolean));
         return stores.size >= 2;
       })
       .map(([name, items]) => {
