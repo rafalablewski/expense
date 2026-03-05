@@ -2,111 +2,13 @@ import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "./firebase";
 import { loadUserData, saveAllUserData, updateField, subscribeUserData } from "./firestore";
-
-/* ══════════════════════════════════════════
-   KUCHNIAPP — Complete redesign
-   Inspired by: Apple.com × Uber Eats
-   
-   Black nav · White canvas · Bold typography
-   Card-first · Mobile-native · Zero clutter
-══════════════════════════════════════════ */
-
-const $ = {
-  // Core
-  black:   "#000000",
-  white:   "#FFFFFF",
-  canvas:  "transparent",
-
-  // Glass surfaces
-  glass:      "rgba(255,255,255,0.60)",
-  glassFull:  "rgba(255,255,255,0.78)",
-  glassHero:  "rgba(255,255,255,0.55)",
-  glassBorder:"rgba(255,255,255,0.75)",
-  glassHover: "rgba(255,255,255,0.88)",
-
-  // Ink scale
-  ink0:    "#1D1D1F",
-  ink1:    "#3D3D3F",
-  ink2:    "#6E6E73",
-  ink3:    "#AEAEB2",
-  ink4:    "rgba(0,0,0,0.09)",
-
-  // Green — single, purposeful
-  green:   "#06C167",
-  greenBg: "rgba(6,193,103,0.10)",
-  greenRim:"rgba(6,193,103,0.28)",
-
-  // Red — discounts only
-  red:     "#D93025",
-  redBg:   "rgba(217,48,37,0.08)",
-  redRim:  "rgba(217,48,37,0.22)",
-
-  // Amber
-  amber:   "#D97706",
-  amberBg: "rgba(217,119,6,0.08)",
-};
-
-const CATS = {
-  // Grocery / food
-  "Nabiał":        "#0369A1",
-  "Mięso":         "#DC2626",
-  "Warzywa":       "#16A34A",
-  "Owoce":         "#EA580C",
-  "Napoje":        "#6D28D9",
-  "Pieczywo":      "#D97706",
-  "Zboża":         "#B45309",
-  "Słodycze":      "#BE185D",
-  "Chemia":        "#0891B2",
-  // Bills & services
-  "Paliwo":        "#F59E0B",
-  "Subskrypcje":   "#7C3AED",
-  "Restauracje":   "#EF4444",
-  "Transport":     "#8B5CF6",
-  "Rozrywka":      "#F97316",
-  // One-time purchases
-  "Elektronika":   "#3B82F6",
-  "Odzież":        "#EC4899",
-  "Zdrowie":       "#10B981",
-  "Narzędzia":     "#92400E",
-  "Meble":         "#78350F",
-  "AGD":           "#1E3A5F",
-  "Ogród":         "#166534",
-  "Zwierzęta":     "#713F12",
-  "Podróże":       "#0C4A6E",
-  "Sport":         "#064E3B",
-  "Kosmetyki":     "#831843",
-  "Edukacja":      "#1E1B4B",
-  "Prezenty":      "#4A1D96",
-  "Dom":           "#374151",
-  "Inne":          "#6B7280",
-};
-
-// Category groups for UI
-const CAT_GROUPS = {
-  "Spożywcze":   ["Nabiał","Mięso","Warzywa","Owoce","Napoje","Pieczywo","Zboża","Słodycze","Chemia"],
-  "Rachunki":    ["Paliwo","Subskrypcje","Transport","Rozrywka","Restauracje"],
-  "Jednorazowe": ["Elektronika","Odzież","Zdrowie","Narzędzia","Meble","AGD","Ogród","Zwierzęta","Podróże","Sport","Kosmetyki","Edukacja","Prezenty","Dom","Inne"],
-};
-
-// Category icons
-const CAT_ICONS = {
-  "Nabiał":"🥛","Mięso":"🥩","Warzywa":"🥦","Owoce":"🍎","Napoje":"🥤","Pieczywo":"🍞","Zboża":"🌾","Słodycze":"🍬","Chemia":"🧹",
-  "Paliwo":"⛽","Subskrypcje":"📱","Restauracje":"🍽️","Transport":"🚗","Rozrywka":"🎬",
-  "Elektronika":"💻","Odzież":"👔","Zdrowie":"💊","Narzędzia":"🔧","Meble":"🛋️","AGD":"🫙",
-  "Ogród":"🌿","Zwierzęta":"🐾","Podróże":"✈️","Sport":"🏃","Kosmetyki":"💄","Edukacja":"📚","Prezenty":"🎁","Dom":"🏠","Inne":"📦",
-};
-
-
-const DEFAULT_STORES = ["Biedronka","Auchan","Lidl","Netto","InterMarche","Kaufland","Leroy Merlin","Circle K","Shell","BP","Orlen","OBI"];
-
-/* ─── FX Rates (approximate, refreshed manually) ── */
-const FX = { PLN: 1, EUR: 0.234, USD: 0.252 };
-const FX_SYMBOLS = { PLN: "zł", EUR: "€", USD: "$" };
-
-function convertAmt(amt, currency) {
-  const n = parseFloat(amt) || 0;
-  return (n * (FX[currency] || 1)).toFixed(2);
-}
+import $ from "./config/theme";
+import { CATS, ALL_CATS, CAT_GROUPS, CAT_ICONS, DEFAULT_STORES, FX, FX_SYMBOLS } from "./config/defaults";
+import { VIEWS, MOBILE_VIEWS, EXPENSE_TYPES } from "./config/constants";
+import { LS_KEYS, lsGet, lsSet } from "./services/localStorage";
+import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, getCorrectionsHint } from "./services/claude";
+import { initCorrections, getCorrections, saveCorrections, learnFromCorrections, applyLearnedCorrections, getCorrectionStats } from "./hooks/useCorrections";
+import { parseDate, convertAmt, haptic, isRecurringPaused } from "./utils/helpers";
 
 function StorePickerInput({ value, onChange, customStores = [], onAddCustomStore, id, placeholder }) {
   const [open, setOpen] = useState(false);
@@ -164,12 +66,7 @@ function StorePickerInput({ value, onChange, customStores = [], onAddCustomStore
 }
 
 
-/* ─── Haptic feedback ────────────────────────── */
-function haptic(ms = 10) {
-  try { navigator.vibrate && navigator.vibrate(ms); } catch(e) {}
-}
 
-/* CSS has been extracted to src/styles/ — imported via main.jsx */
 /* ─── Helpers ──────────────────────────────── */
 function Zl({ v, size = 14 }) {
   if (v == null || v === "") return <span style={{ color: $.ink3 }}>—</span>;
@@ -202,158 +99,6 @@ function Empty({ icon, title, sub }) {
   );
 }
 
-/* ─── Claude API ─────────────────────────────── */
-async function scanReceipt(b64, mt, apiKey) {
-  if (!apiKey) throw new Error("Brak klucza API — ustaw go w ustawieniach (ikona klucza)");
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 2048,
-      messages: [{
-        role: "user",
-        content: [
-          { type: "image", source: { type: "base64", media_type: mt, data: b64 } },
-          {
-            type: "text",
-            text: `Scan this Polish receipt. Respond with ONLY raw JSON — no markdown, no backticks, no commentary.
-
-{
-  "store": string | null,
-  "address": string | null,
-  "zip_code": string | null,
-  "date": "YYYY-MM-DD",
-  "items": [
-    {
-      "name": string,
-      "quantity": number | null,
-      "unit": string | null,
-      "unit_price": number | null,
-      "total_price": number,
-      "discount": number | null,
-      "discount_label": string | null,
-      "category": "Nabiał"|"Mięso"|"Warzywa"|"Owoce"|"Napoje"|"Pieczywo"|"Zboża"|"Słodycze"|"Chemia"|"Paliwo"|"Subskrypcje"|"Restauracje"|"Transport"|"Rozrywka"|"Elektronika"|"Odzież"|"Zdrowie"|"Narzędzia"|"Meble"|"AGD"|"Ogród"|"Zwierzęta"|"Podróże"|"Sport"|"Kosmetyki"|"Edukacja"|"Prezenty"|"Dom"|"Inne"
-    }
-  ],
-  "total": number | null,
-  "total_discounts": number | null
-}
-
-Rules:
-- date MUST be in YYYY-MM-DD format. Extract from receipt header/footer. NEVER return null for date.
-- address: Extract the store's street address from the receipt header (e.g. "ul. Warszawska 15"). Return null if not found.
-- zip_code: Extract the postal/zip code (e.g. "00-001"). Return null if not found.
-- Product names: read carefully, expand abbreviations into readable Polish names (e.g. "PomidGustBel400g" → "Pomidory Gusto Bello 400g").
-- Categorize food products correctly: tomatoes/vegetables → "Warzywa", fruits → "Owoce", etc.
-- Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.
-- Grains, cereals, pasta, flour, rice (ryż, kasza, kasza pęczak, kasza jęczmienna, kasza gryczana, makaron, mąka, płatki) → category "Zboża". These are grain/carb products, NOT vegetables or bread.
-- Bread, rolls, buns, bagels (chleb, bułka, rogal, bajgiel) → category "Pieczywo".${(() => {
-  const c = getCorrections();
-  const nameEntries = Object.entries(c.names);
-  const catEntries = Object.entries(c.categories);
-  if (!nameEntries.length && !catEntries.length) return "";
-  let hint = "\n\nUser corrections from past receipts — apply these:";
-  if (nameEntries.length) hint += "\nName fixes: " + nameEntries.slice(-30).map(([k,v]) => {
-    const arr = Array.isArray(v) ? v : [v];
-    return arr.length === 1 ? `"${k}" → "${arr[0]}"` : `"${k}" → one of [${arr.map(x => `"${x}"`).join(", ")}] (ambiguous, pick best match based on context)`;
-  }).join(", ");
-  if (catEntries.length) hint += "\nCategory fixes: " + catEntries.slice(-30).map(([k,v]) => `"${k}" → ${v}`).join(", ");
-  return hint;
-})()}`
-          }
-        ]
-      }]
-    })
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message || "API error");
-  const raw = data.content?.find(b => b.type === "text")?.text || "";
-  return JSON.parse(raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim());
-}
-
-function getCorrectionsHint() {
-  const c = getCorrections();
-  const nameEntries = Object.entries(c.names);
-  const catEntries = Object.entries(c.categories);
-  if (!nameEntries.length && !catEntries.length) return "";
-  let hint = "\n\nUser corrections from past receipts — apply these:";
-  if (nameEntries.length) hint += "\nName fixes: " + nameEntries.slice(-30).map(([k,v]) => {
-    const arr = Array.isArray(v) ? v : [v];
-    return arr.length === 1 ? `"${k}" → "${arr[0]}"` : `"${k}" → one of [${arr.map(x => `"${x}"`).join(", ")}] (ambiguous, pick best match based on context)`;
-  }).join(", ");
-  if (catEntries.length) hint += "\nCategory fixes: " + catEntries.slice(-30).map(([k,v]) => `"${k}" → ${v}`).join(", ");
-  return hint;
-}
-
-async function parseTextReceipt(text, apiKey) {
-  if (!apiKey) throw new Error("Brak klucza API — ustaw go w ustawieniach (ikona klucza)");
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 2048,
-      messages: [{
-        role: "user",
-        content: `Parse the following Polish shopping list / receipt text into structured JSON. Each line is a product. Respond with ONLY raw JSON — no markdown, no backticks, no commentary.
-
-{
-  "store": string | null,
-  "address": string | null,
-  "zip_code": string | null,
-  "date": "${new Date().toISOString().slice(0, 10)}",
-  "items": [
-    {
-      "name": string,
-      "quantity": number | null,
-      "unit": string | null,
-      "unit_price": number | null,
-      "total_price": number,
-      "discount": number | null,
-      "discount_label": string | null,
-      "category": "Nabiał"|"Mięso"|"Warzywa"|"Owoce"|"Napoje"|"Pieczywo"|"Zboża"|"Słodycze"|"Chemia"|"Paliwo"|"Subskrypcje"|"Restauracje"|"Transport"|"Rozrywka"|"Elektronika"|"Odzież"|"Zdrowie"|"Narzędzia"|"Meble"|"AGD"|"Ogród"|"Zwierzęta"|"Podróże"|"Sport"|"Kosmetyki"|"Edukacja"|"Prezenty"|"Dom"|"Inne"
-    }
-  ],
-  "total": number | null,
-  "total_discounts": number | null
-}
-
-Rules:
-- Each line is a separate product. Extract name, quantity, unit, and price from the text.
-- If price is missing for a product, set total_price to 0.
-- If quantity is mentioned (e.g. "2kg", "3 szt", "3 jogurty"), extract it. Otherwise default to 1.
-- Calculate unit_price = total_price / quantity when both are known.
-- "total" = sum of all total_price values.
-- address: Extract the store's street address if present. Return null if not found.
-- zip_code: Extract the postal/zip code if present. Return null if not found.
-- Categorize products into the correct Polish category.
-- Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.
-- Grains, cereals, pasta, flour, rice (ryż, kasza, kasza pęczak, kasza jęczmienna, kasza gryczana, makaron, mąka, płatki) → category "Zboża". These are grain/carb products, NOT vegetables or bread.
-- Bread, rolls, buns, bagels (chleb, bułka, rogal, bajgiel) → category "Pieczywo".${getCorrectionsHint()}
-
-Text to parse:
-${text}`
-      }]
-    })
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message || "API error");
-  const raw = data.content?.find(b => b.type === "text")?.text || "";
-  return JSON.parse(raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim());
-}
 
 /* ─── Drop Zone ──────────────────────────────── */
 function DropZone({ onFiles }) {
@@ -392,7 +137,6 @@ function DropZone({ onFiles }) {
 }
 
 /* ─── Receipt Review Drawer ──────────────────── */
-const ALL_CATS = Object.keys(CATS);
 
 function ReceiptReviewModal({ receipt, onConfirm, onCancel, customStores, onAddCustomStore }) {
   const [data, setData] = useState(() => ({
@@ -1812,14 +1556,6 @@ const TIME_RANGES = [
   { id: "all", label: "Wszystko" },
 ];
 
-function parseDate(str) {
-  if (!str) return null;
-  const m1 = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  const m2 = str.match(/^(\d{2})[./](\d{2})[./](\d{4})/);
-  if (m1) return new Date(+m1[1], +m1[2]-1, +m1[3]);
-  if (m2) return new Date(+m2[3], +m2[2]-1, +m2[1]);
-  return null;
-}
 
 function StoresView({ receipts }) {
   const [range,      setRange]      = useState("all");
@@ -2561,13 +2297,6 @@ function BudgetsView({ receipts, expenses = [], allItems = [], budgets, setBudge
 }
 
 /* ─── RecurringView ──────────────────────────── */
-const isRecurringPaused = (item) => {
-  if (!item.paused) return false;
-  if (item.pauseUntil) {
-    return new Date().toISOString().slice(0, 10) < item.pauseUntil;
-  }
-  return true;
-};
 const REC_CYCLES = ["Miesięcznie","Tygodniowo","Rocznie","Kwartalnie"];
 
 function RecurringView({ recurring, setRecurring, currency }) {
@@ -3504,10 +3233,6 @@ function OnboardingOverlay({ onDone, darkMode }) {
 
 
 /* ─── QuickAddExpense ────────────────────────── */
-const EXPENSE_TYPES = [
-  { id: "one-time",  label: "Jednorazowy",  icon: "🛒", sub: "zakup, sprzęt, usługa" },
-  { id: "recurring", label: "Cykliczny",    icon: "🔄", sub: "subskrypcja, abonament" },
-];
 
 function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, customStores, onAddCustomStore }) {
   const [type,     setType]     = useState("one-time");
@@ -3959,130 +3684,8 @@ function ExpensesView({ expenses, receipts, recurring = [], onDelete, currency }
 }
 
 /* ─── Nav config ─────────────────────────────── */
-const VIEWS = [
-  { id: "home",       label: "Dashboard",   icon: "🏠", mobile: true  },
-  { id: "receipts",   label: "Paragony",    icon: "🧾", mobile: true  },
-  { id: "expenses",   label: "Wydatki",     icon: "💳", mobile: false },
-  { id: "stores",     label: "Sklepy",      icon: "🏪", mobile: false },
-  { id: "shopping",   label: "Lista",       icon: "🛒", mobile: true  },
-  { id: "budgets",    label: "Budżety",     icon: "💰", mobile: true  },
-  { id: "recurring",  label: "Cykliczne",   icon: "🔄", mobile: false },
-  { id: "stats",      label: "Statystyki",  icon: "📊", mobile: true  },
-  { id: "inflation",  label: "Inflacja",    icon: "📈", mobile: false },
-  { id: "prediction", label: "Predykcja",   icon: "🔮", mobile: false },
-  { id: "mealplan",   label: "Planner",     icon: "🗓️", mobile: false },
-  { id: "export",     label: "Eksport",     icon: "⬇️", mobile: false },
-];
-const MOBILE_VIEWS = VIEWS.filter(v => v.mobile);
 
-/* ─── ROOT APP ───────────────────────────────── */
-/* ─── localStorage helpers ────────────────────── */
-const LS_KEYS = {
-  receipts: "maszka_receipts",
-  expenses: "maszka_expenses",
-  budgets: "maszka_budgets",
-  recurring: "maszka_recurring",
-  currency: "maszka_currency",
-  darkMode: "maszka_darkMode",
-  onboarded: "maszka_onboarded",
-  apiKey: "maszka_apiKey",
-  corrections: "maszka_corrections",
-};
-function lsGet(key, fallback) {
-  try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback; }
-  catch { return fallback; }
-}
-function lsSet(key, val) {
-  try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
-}
 
-/* ─── Correction Learning System ─────────────── */
-// Stored shape: { names: { "AI_NAME": ["correction1", "correction2"], ... }, categories: { "product_lower": "Category", ... } }
-let _correctionsCache = { names: {}, categories: {} };
-let _correctionsUid = null;
-function initCorrections(uid, data) { _correctionsUid = uid; _correctionsCache = data || { names: {}, categories: {} }; }
-function getCorrections() { return _correctionsCache; }
-function saveCorrections(c) {
-  _correctionsCache = c;
-  if (_correctionsUid) updateField(_correctionsUid, "corrections", c);
-}
-
-function learnFromCorrections(original, confirmed) {
-  const corr = getCorrections();
-  let changed = false;
-  const origItems = original.items || [];
-  const confItems = confirmed.items || [];
-  const len = Math.min(origItems.length, confItems.length);
-  for (let i = 0; i < len; i++) {
-    const oi = origItems[i];
-    const ci = confItems[i];
-    // Learn name corrections — store as array of alternatives
-    if (oi.name && ci.name && oi.name !== ci.name) {
-      const key = oi.name.trim();
-      const val = ci.name.trim();
-      if (!corr.names[key]) corr.names[key] = [];
-      if (Array.isArray(corr.names[key])) {
-        if (!corr.names[key].includes(val)) corr.names[key].push(val);
-      } else {
-        // Migrate old string format to array
-        const prev = corr.names[key];
-        corr.names[key] = prev === val ? [val] : [prev, val];
-      }
-      changed = true;
-    }
-    // Learn category corrections (keyed by confirmed name lowercase)
-    if (ci.name && oi.category !== ci.category) {
-      corr.categories[ci.name.trim().toLowerCase()] = ci.category;
-      changed = true;
-    }
-    if (oi.name && ci.name && oi.name !== ci.name && ci.category) {
-      corr.categories[oi.name.trim().toLowerCase()] = ci.category;
-    }
-  }
-  if (changed) saveCorrections(corr);
-  return corr;
-}
-
-function applyLearnedCorrections(parsed) {
-  const corr = getCorrections();
-  if (!parsed.items?.length) return parsed;
-  const hasNames = Object.keys(corr.names).length > 0;
-  const hasCats = Object.keys(corr.categories).length > 0;
-  if (!hasNames && !hasCats) return parsed;
-  return {
-    ...parsed,
-    items: parsed.items.map(it => {
-      let name = it.name;
-      let category = it.category;
-      let _suggestions = null;
-      // Check name corrections
-      if (hasNames && name) {
-        const corrections = corr.names[name.trim()];
-        if (corrections) {
-          const arr = Array.isArray(corrections) ? corrections : [corrections];
-          if (arr.length === 1) {
-            // Unambiguous — auto-apply
-            name = arr[0];
-          } else if (arr.length > 1) {
-            // Ambiguous — mark for suggestion, don't auto-apply
-            _suggestions = arr;
-          }
-        }
-      }
-      // Apply category correction
-      const lookupKey = (name || "").trim().toLowerCase();
-      if (hasCats && corr.categories[lookupKey]) {
-        category = corr.categories[lookupKey];
-      }
-      return { ...it, name, category, _suggestions };
-    }),
-  };
-}
-
-function getCorrectionStats() {
-  const corr = getCorrections();
-  return { names: Object.keys(corr.names).length, categories: Object.keys(corr.categories).length };
-}
 
 export default function App({ uid }) {
   const [view,      setView]      = useState("home");
@@ -4305,7 +3908,7 @@ export default function App({ uid }) {
           r.onerror = rej;
           r.readAsDataURL(file);
         });
-        const parsed = await scanReceipt(b64, file.type, key);
+        const parsed = await scanReceiptAPI(b64, file.type, key, getCorrectionsHint(getCorrections()));
         const corrected = applyLearnedCorrections(parsed);
         // Enqueue for review instead of overwriting
         setReviewQueue(q => [...q, { ...corrected, id, _original: parsed }]);
@@ -4377,7 +3980,7 @@ export default function App({ uid }) {
             const id = Date.now() + Math.random();
             setProcessing(p => [...p, { id, name: "Analiza tekstu..." }]);
             try {
-              const parsed = await parseTextReceipt(text, apiKey);
+              const parsed = await parseTextReceiptAPI(text, apiKey, getCorrectionsHint(getCorrections()));
               const corrected = applyLearnedCorrections(parsed);
               setReviewQueue(q => [...q, { ...corrected, id, _original: parsed }]);
               haptic(30);
