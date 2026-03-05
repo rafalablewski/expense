@@ -21,6 +21,7 @@ const REC_CATS = ["Subskrypcje","Zdrowie","Dom","Rozrywka","Transport","Inne"];
 export default function ReceiptsView({ onFiles }) {
   const {
     receipts, setReceipts, updateReceipt,
+    expenses, updateExpense, deleteExpense,
     recurring, setRecurring,
     processing, errors, setErrors,
     currency,
@@ -40,6 +41,38 @@ export default function ReceiptsView({ onFiles }) {
     [receipts]
   );
 
+  // Convert old flat expenses into receipt-shaped objects for display
+  const legacyAsReceipts = useMemo(
+    () => expenses.map(e => ({
+      id: e.id,
+      store: e.store || "",
+      address: "",
+      zip_code: "",
+      city: e.city || "",
+      date: e.date || "",
+      total: e.amount || 0,
+      total_discounts: e.discount || 0,
+      source: "legacy",
+      items: [{
+        name: e.name,
+        quantity: e.quantity || 1,
+        unit: e.unit || null,
+        unit_price: e.unit_price || null,
+        total_price: e.amount || 0,
+        discount: e.discount || null,
+        discount_label: e.discount_label || null,
+        category: e.category || "Inne",
+      }],
+    })),
+    [expenses]
+  );
+
+  // Combined manual entries: new manual receipts + old legacy expenses
+  const allManual = useMemo(
+    () => [...manualReceipts, ...legacyAsReceipts].sort((a, b) => (b.date || "").localeCompare(a.date || "")),
+    [manualReceipts, legacyAsReceipts]
+  );
+
   // Subscriptions with monthly cost
   const toMonthly = (item) => {
     const a = parseFloat(item.amount) || 0;
@@ -56,7 +89,7 @@ export default function ReceiptsView({ onFiles }) {
   // Counts for tab badges
   const counts = {
     receipts: scannedReceipts.length,
-    manual: manualReceipts.length,
+    manual: allManual.length,
     subscriptions: recurring.length,
     invoices: invoiceReceipts.length,
   };
@@ -148,15 +181,39 @@ export default function ReceiptsView({ onFiles }) {
           {/* \u2500\u2500 MANUAL RECEIPTS TAB \u2500\u2500 */}
           {tab === "manual" && (
             <>
-              {manualReceipts.length > 0 ? (
+              {allManual.length > 0 ? (
                 <div>
-                  <div className="section-label">Dodane r\u0119cznie \u00B7 {manualReceipts.length}</div>
+                  <div className="section-label">Dodane r\u0119cznie \u00B7 {allManual.length}</div>
                   <div className="flex-col gap-10">
-                    {manualReceipts.map((r, i) => (
+                    {allManual.map((r, i) => (
                       <ReceiptCard
                         key={r.id} r={r} delay={i * 0.05}
-                        onDelete={() => setReceipts(p => p.filter(x => x.id !== r.id))}
-                        onUpdate={updateReceipt}
+                        onDelete={r.source === "legacy"
+                          ? () => deleteExpense(r.id)
+                          : () => setReceipts(p => p.filter(x => x.id !== r.id))
+                        }
+                        onUpdate={r.source === "legacy"
+                          ? (updated) => {
+                              const item = updated.items?.[0] || {};
+                              updateExpense({
+                                id: r.id,
+                                name: item.name || "",
+                                amount: parseFloat(updated.total) || parseFloat(item.total_price) || 0,
+                                quantity: item.quantity || 1,
+                                unit: item.unit || null,
+                                unit_price: item.unit_price || null,
+                                total_price: parseFloat(item.total_price) || 0,
+                                discount: item.discount || null,
+                                discount_label: item.discount_label || null,
+                                category: item.category || "Inne",
+                                date: updated.date || "",
+                                store: updated.store || "",
+                                city: updated.city || "",
+                                source: "manual",
+                              });
+                            }
+                          : updateReceipt
+                        }
                       />
                     ))}
                   </div>
