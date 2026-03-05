@@ -297,6 +297,10 @@ export function AppDataProvider({ uid, children }) {
     setReceipts(p => p.map(r => r.id === updated.id ? ensureCity(updated) : r));
   }, []);
 
+  const updateExpense = useCallback((updated) => {
+    setExpenses(e => e.map(x => x.id === updated.id ? updated : x));
+  }, []);
+
   const deleteExpense = useCallback((id) => {
     setExpenses(e => e.filter(x => x.id !== id));
   }, []);
@@ -321,6 +325,7 @@ export function AppDataProvider({ uid, children }) {
     // Actions
     addExpense,
     addCustomStore,
+    updateExpense,
     deleteExpense,
     updateReceipt,
     handleFiles,
@@ -332,7 +337,7 @@ export function AppDataProvider({ uid, children }) {
     currency, darkMode, onboarded, apiKey,
     processing, errors, reviewQueue,
     dataLoaded, loadFailed, allItems,
-    addExpense, addCustomStore, deleteExpense, updateReceipt,
+    addExpense, addCustomStore, updateExpense, deleteExpense, updateReceipt,
     handleFiles, processTextReceipt, confirmReceipt, cancelReceipt,
   ]);
 
