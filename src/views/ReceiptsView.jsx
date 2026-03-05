@@ -4,7 +4,7 @@ import ReceiptCard from "../components/receipts/ReceiptCard";
 import { useAppData } from "../contexts/AppDataContext";
 
 export default function ReceiptsView({ onFiles }) {
-  const { receipts, setReceipts, processing, errors, setErrors } = useAppData();
+  const { receipts, setReceipts, updateReceipt, processing, errors, setErrors } = useAppData();
   return (
     <>
       <div className="page-hero">
@@ -41,6 +41,7 @@ export default function ReceiptsView({ onFiles }) {
                   <ReceiptCard
                     key={r.id} r={r} delay={i * 0.05}
                     onDelete={() => setReceipts(p => p.filter(x => x.id !== r.id))}
+                    onUpdate={updateReceipt}
                   />
                 ))}
               </div>

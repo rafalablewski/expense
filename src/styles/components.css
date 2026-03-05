@@ -907,6 +907,7 @@
 .receipt-footer {
   padding: 14px 20px;
   display: flex;
+  gap: 10px;
   justify-content: flex-end;
   border-top: 1px solid rgba(255,255,255,0.45);
   background: rgba(255,255,255,0.45);

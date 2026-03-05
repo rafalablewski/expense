@@ -279,6 +279,10 @@ export function AppDataProvider({ uid, children }) {
     setReviewQueue(q => q.slice(1));
   }, []);
 
+  const updateReceipt = useCallback((updated) => {
+    setReceipts(p => p.map(r => r.id === updated.id ? updated : r));
+  }, []);
+
   const deleteExpense = useCallback((id) => {
     setExpenses(e => e.filter(x => x.id !== id));
   }, []);
@@ -304,6 +308,7 @@ export function AppDataProvider({ uid, children }) {
     addExpense,
     addCustomStore,
     deleteExpense,
+    updateReceipt,
     handleFiles,
     processTextReceipt,
     confirmReceipt,
@@ -313,7 +318,7 @@ export function AppDataProvider({ uid, children }) {
     currency, darkMode, onboarded, apiKey,
     processing, errors, reviewQueue,
     dataLoaded, loadFailed, allItems,
-    addExpense, addCustomStore, deleteExpense,
+    addExpense, addCustomStore, deleteExpense, updateReceipt,
     handleFiles, processTextReceipt, confirmReceipt, cancelReceipt,
   ]);
 
