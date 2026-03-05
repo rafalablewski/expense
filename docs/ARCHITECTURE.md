@@ -69,17 +69,20 @@ src/
 
 ## State Management
 
-Two React Contexts handle all app state:
-
-### AppDataContext
-- User-specific data: receipts, expenses, budgets, recurring, customStores
+### App.jsx (current)
+- User-specific data managed via `useState` in App component: receipts, expenses, budgets, recurring, customStores
 - UI state: view, currency, darkMode, onboarded, processing, errors
-- Persistence: Firestore sync with real-time listener, localStorage backup
-- Mutations: addExpense, handleFiles, guardedWrite
+- Persistence: Firestore sync with real-time listener (`subscribeUserData`), localStorage backup
+- Guarded writes to prevent onSnapshot echo loops
+- Props passed down to views and components
 
 ### ConfigContext
 - App-level config loaded from Firestore: categories, categoryGroups, categoryIcons, defaultStores, fxRates, fxSymbols
 - Loaded once on app start with hardcoded fallbacks for offline resilience
+
+### Future: AppDataContext (Phase 6)
+- Will extract 30+ `useState` from App into React Context
+- Views will access data via `useAppData()` hook instead of props
 
 ## AI Integration
 
