@@ -160,11 +160,6 @@ export default function StatsView() {
   const topCatPct = topCat && totalSpent ? ((topCat.value / totalSpent) * 100).toFixed(0) : 0;
   const savePct   = totalSpent ? ((totalSaved / (totalSpent + totalSaved)) * 100).toFixed(1) : 0;
 
-  // Top 3 most expensive individual items
-  const top3Items = useMemo(() =>
-    [...all].sort((a, b) => (parseFloat(b.total_price) || 0) - (parseFloat(a.total_price) || 0)).slice(0, 3),
-    [all]
-  );
 
   // Most visited store
   const topStore = useMemo(() => {
@@ -344,17 +339,6 @@ export default function StatsView() {
             <div className="section-heading-sm">
               Spostrzeżenia
             </div>
-
-            {top3Items.length > 0 && (
-              <InsightCard
-                icon="🏆"
-                title="Top 3 najdroższe zakupy"
-                sub={top3Items.map((it, i) =>
-                  `${i + 1}. ${it.name} — ${convertAmt(parseFloat(it.total_price) || 0, currency)} ${sym}${it.store ? ` (${it.store})` : ""}`
-                ).join("\n")}
-                accent={false}
-              />
-            )}
 
             {topCat && (
               <InsightCard
