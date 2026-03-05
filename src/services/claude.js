@@ -12,7 +12,7 @@ export async function scanReceipt(b64, mt, apiKey, correctionsHint = "") {
     },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 2048,
+      max_tokens: 8192,
       messages: [{
         role: "user",
         content: [
@@ -77,7 +77,7 @@ export async function parseTextReceipt(text, apiKey, correctionsHint = "") {
     },
     body: JSON.stringify({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 2048,
+      max_tokens: 8192,
       messages: [{
         role: "user",
         content: `Parse the following Polish text into structured JSON. The text may be either a full receipt (paragon fiskalny) or a simple shopping list. Respond with ONLY raw JSON — no markdown, no backticks, no commentary.
