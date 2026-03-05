@@ -52,9 +52,14 @@ export default function ExpensesView() {
     return out;
   }, [allItems, q, cat, src, sort, dateFrom, dateTo]);
 
-  const totalManual  = expenses.reduce((s,e) => s + e.amount, 0);
-  const totalReceipt = receipts.reduce((s,r) => s + (parseFloat(r.total)||0), 0);
-  const totalAll     = totalManual + totalReceipt;
+  const toMonthly = item => {
+    const a = parseFloat(item.amount) || 0;
+    return { "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 }[item.cycle] || a;
+  };
+  const totalManual    = expenses.reduce((s,e) => s + e.amount, 0);
+  const totalReceipt   = receipts.reduce((s,r) => s + (parseFloat(r.total)||0), 0);
+  const totalRecurring = recurring.filter(r => !isRecurringPaused(r)).reduce((s,r) => s + toMonthly(r), 0);
+  const totalAll       = totalManual + totalReceipt + totalRecurring;
 
   return (
     <>
@@ -70,9 +75,9 @@ export default function ExpensesView() {
           {/* Stats */}
           <div className="stat-grid au stat-grid-3">
             {[
-              { l:"Łącznie",      v:convertAmt(totalAll,    currency), u:sym, col:$.ink0  },
-              { l:"Ręcznie",      v:convertAmt(totalManual, currency), u:sym, col:$.green },
-              { l:"Z paragonów",  v:convertAmt(totalReceipt,currency), u:sym, col:"#3B82F6" },
+              { l:"Ręcznie",      v:convertAmt(totalManual,    currency), u:sym, col:$.green },
+              { l:"Z paragonów",  v:convertAmt(totalReceipt,   currency), u:sym, col:"#3B82F6" },
+              { l:"Subskrypcje",  v:convertAmt(totalRecurring, currency), u:sym+"/m", col:"#8B5CF6" },
             ].map(s => (
               <div className="stat-card" key={s.l}>
                 <div className="stat-label">{s.l}</div>
