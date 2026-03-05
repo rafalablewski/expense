@@ -104,3 +104,20 @@
   border-color: rgba(255,255,255,0.15);
   color: #F5F5F7;
 }
+
+/* Document tabs dark */
+[data-dark="1"] .doc-tabs {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.12);
+}
+[data-dark="1"] .doc-tab {
+  color: rgba(255,255,255,0.55);
+}
+[data-dark="1"] .doc-tab:hover {
+  background: rgba(6,193,103,0.12);
+  color: rgba(255,255,255,0.85);
+}
+[data-dark="1"] .doc-tab:not(.doc-tab--active) .doc-tab-badge {
+  background: rgba(255,255,255,0.10);
+  color: rgba(255,255,255,0.50);
+}
