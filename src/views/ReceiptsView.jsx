@@ -4,6 +4,7 @@ import DropZone from "../components/receipts/DropZone";
 import ReceiptCard from "../components/receipts/ReceiptCard";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
+import StorePickerInput from "../components/primitives/StorePickerInput";
 import { useAppData } from "../contexts/AppDataContext";
 import { CATS, ALL_CATS, FX, FX_SYMBOLS } from "../config/defaults";
 import { isRecurringPaused } from "../utils/helpers";
@@ -25,6 +26,7 @@ export default function ReceiptsView({ onFiles }) {
     recurring, setRecurring,
     processing, errors, setErrors,
     currency,
+    customStores, addCustomStore,
   } = useAppData();
 
   const [tab, setTab] = useState("receipts");
@@ -63,7 +65,17 @@ export default function ReceiptsView({ onFiles }) {
   const startEditExpense = (exp) => setEditingExpense({ ...exp });
   const saveExpense = () => {
     if (!editingExpense.name?.trim() || !parseFloat(editingExpense.amount)) return;
-    updateExpense({ ...editingExpense, amount: parseFloat(editingExpense.amount) });
+    updateExpense({
+      ...editingExpense,
+      amount: parseFloat(editingExpense.amount),
+      total_price: parseFloat(editingExpense.amount),
+      quantity: parseFloat(editingExpense.quantity) || 1,
+      unit: editingExpense.unit?.trim() || null,
+      unit_price: parseFloat(editingExpense.unit_price) || null,
+      discount: parseFloat(editingExpense.discount) || null,
+      discount_label: editingExpense.discount_label?.trim() || null,
+      city: editingExpense.city?.trim() || null,
+    });
     setEditingExpense(null);
   };
   const cancelEditExpense = () => setEditingExpense(null);
@@ -169,33 +181,62 @@ export default function ReceiptsView({ onFiles }) {
                           <div key={exp.id} className="card card--p22 au" style={{ animation: `fadeUp .3s cubic-bezier(.16,1,.3,1) both` }}>
                             <div className="section-heading mb-14">Edytuj wydatek</div>
                             <div className="flex-col gap-12">
+                              {/* Name */}
+                              <div className="form-group-lg">
+                                <label className="field-label-sm">Nazwa</label>
+                                <input className="field" value={editingExpense.name}
+                                  onChange={e => setEditingExpense(s => ({ ...s, name: e.target.value }))}
+                                  onKeyDown={e => e.key === "Enter" && saveExpense()} />
+                              </div>
+
+                              {/* Quantity + Unit + Unit Price row */}
                               <div className="flex-row flex-wrap gap-10">
-                                <div className="form-group-lg min-w-160">
-                                  <label className="field-label-sm">Nazwa</label>
-                                  <input className="field" value={editingExpense.name}
-                                    onChange={e => setEditingExpense(s => ({ ...s, name: e.target.value }))}
-                                    onKeyDown={e => e.key === "Enter" && saveExpense()} />
+                                <div className="form-group min-w-70">
+                                  <label className="field-label-sm">Ilość</label>
+                                  <input className="field text-right" type="number" min="0" step="0.01"
+                                    value={editingExpense.quantity ?? 1}
+                                    onChange={e => setEditingExpense(s => ({ ...s, quantity: e.target.value }))}
+                                    placeholder="1" />
                                 </div>
-                                <div className="form-group min-w-100">
-                                  <label className="field-label-sm">Kwota (PLN)</label>
-                                  <input className="field" type="number" min="0" step="0.01"
+                                <div className="form-group min-w-60">
+                                  <label className="field-label-sm">Jedn.</label>
+                                  <input className="field" value={editingExpense.unit || ""}
+                                    onChange={e => setEditingExpense(s => ({ ...s, unit: e.target.value }))}
+                                    placeholder="szt, kg, l…" />
+                                </div>
+                                <div className="form-group min-w-90">
+                                  <label className="field-label-sm">Cena jedn.</label>
+                                  <input className="field text-right" type="number" min="0" step="0.01"
+                                    value={editingExpense.unit_price ?? ""}
+                                    onChange={e => setEditingExpense(s => ({ ...s, unit_price: e.target.value }))}
+                                    placeholder="0.00" />
+                                </div>
+                              </div>
+
+                              {/* Discount + Discount Label + Total row */}
+                              <div className="flex-row flex-wrap gap-10">
+                                <div className="form-group min-w-80">
+                                  <label className="field-label-sm">Zniżka (zł)</label>
+                                  <input className="field text-right" type="number" min="0" step="0.01"
+                                    value={editingExpense.discount ?? ""}
+                                    onChange={e => setEditingExpense(s => ({ ...s, discount: e.target.value }))}
+                                    placeholder="0.00" />
+                                </div>
+                                <div className="form-group min-w-80">
+                                  <label className="field-label-sm">Opis zniżki</label>
+                                  <input className="field" value={editingExpense.discount_label || ""}
+                                    onChange={e => setEditingExpense(s => ({ ...s, discount_label: e.target.value }))}
+                                    placeholder="np. Karta Moja" />
+                                </div>
+                                <div className="form-group min-w-90">
+                                  <label className="field-label-sm">Razem (PLN)</label>
+                                  <input className="field text-right" type="number" min="0" step="0.01"
                                     value={editingExpense.amount}
                                     onChange={e => setEditingExpense(s => ({ ...s, amount: e.target.value }))} />
                                 </div>
                               </div>
-                              <div className="flex-row flex-wrap gap-10">
-                                <div className="form-group min-w-120">
-                                  <label className="field-label-sm">Data</label>
-                                  <input className="field" type="date" value={editingExpense.date || ""}
-                                    onChange={e => setEditingExpense(s => ({ ...s, date: e.target.value }))} />
-                                </div>
-                                <div className="form-group min-w-120">
-                                  <label className="field-label-sm">Sklep</label>
-                                  <input className="field" value={editingExpense.store || ""}
-                                    onChange={e => setEditingExpense(s => ({ ...s, store: e.target.value }))}
-                                    placeholder="np. Biedronka" />
-                                </div>
-                              </div>
+
+                              {/* Category */}
                               <div>
                                 <div className="field-label-sm mb-8">Kategoria</div>
                                 <div className="pills-row" role="group" aria-label="Kategoria">
@@ -206,12 +247,35 @@ export default function ReceiptsView({ onFiles }) {
                                   ))}
                                 </div>
                               </div>
+
+                              {/* Date + Store + City row */}
+                              <div className="flex-row flex-wrap gap-10">
+                                <div className="form-group min-w-120">
+                                  <label className="field-label-sm">Data</label>
+                                  <input className="field" type="date" value={editingExpense.date || ""}
+                                    onChange={e => setEditingExpense(s => ({ ...s, date: e.target.value }))} />
+                                </div>
+                                <div className="form-group min-w-120">
+                                  <label className="field-label-sm">Sklep / źródło</label>
+                                  <StorePickerInput value={editingExpense.store || ""} onChange={v => setEditingExpense(s => ({ ...s, store: v }))}
+                                    customStores={customStores} onAddCustomStore={addCustomStore} placeholder="np. Biedronka" />
+                                </div>
+                                <div className="form-group min-w-90">
+                                  <label className="field-label-sm">Miasto</label>
+                                  <input className="field" value={editingExpense.city || ""}
+                                    onChange={e => setEditingExpense(s => ({ ...s, city: e.target.value }))}
+                                    placeholder="np. Katowice" />
+                                </div>
+                              </div>
+
+                              {/* Note */}
                               <div>
                                 <label className="field-label-sm">Notatka</label>
                                 <input className="field" value={editingExpense.note || ""}
                                   onChange={e => setEditingExpense(s => ({ ...s, note: e.target.value }))}
                                   placeholder="Opcjonalnie" />
                               </div>
+
                               <div className="flex-row gap-10">
                                 <button className="btn-primary" onClick={saveExpense}>Zapisz</button>
                                 <button className="btn-secondary" onClick={cancelEditExpense}>Anuluj</button>
@@ -236,7 +300,20 @@ export default function ReceiptsView({ onFiles }) {
                               <CatChip cat={exp.category} />
                               {exp.date && <span className="item-sub-sm">{exp.date}</span>}
                               {exp.store && <span className="item-sub-sm">{exp.store}</span>}
+                              {exp.city && <span className="item-sub-sm">{exp.city}</span>}
                             </div>
+                            {(exp.quantity > 1 || exp.unit || exp.discount) && (
+                              <div className="flex-row flex-wrap gap-8" style={{ marginTop: 4 }}>
+                                {(exp.quantity > 1 || exp.unit) && (
+                                  <span className="item-sub-sm">{exp.quantity ?? 1}{exp.unit ? ` ${exp.unit}` : ""}{exp.unit_price ? ` × ${exp.unit_price.toFixed(2)}` : ""}</span>
+                                )}
+                                {exp.discount > 0 && (
+                                  <span className="item-sub-sm" style={{ color: "#16a34a" }}>
+                                    -{parseFloat(exp.discount).toFixed(2)}{exp.discount_label ? ` (${exp.discount_label})` : ""}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                             {exp.note && <div className="item-sub-sm" style={{ marginTop: 4, fontStyle: "italic" }}>{exp.note}</div>}
                           </div>
                           <div className="text-right flex-shrink-0">
