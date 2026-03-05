@@ -2768,9 +2768,66 @@ function InsightCard({ icon, title, sub, accent }) {
 }
 
 function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], currency = "PLN" }) {
-  // ── Category breakdown — use merged allItems if provided ──
-  const all = allItemsProp.length > 0 ? allItemsProp :
+  // ── Filter state ──
+  const [activeGroups, setActiveGroups] = useState({ "Spożywcze": true, "Rachunki": true, "Jednorazowe": true });
+  const [selectedStore, setSelectedStore] = useState("");
+
+  // Build set of allowed categories from active groups
+  const allowedCats = useMemo(() => {
+    const set = new Set();
+    Object.entries(CAT_GROUPS).forEach(([group, cats]) => {
+      if (activeGroups[group]) cats.forEach(c => set.add(c));
+    });
+    return set;
+  }, [activeGroups]);
+
+  const toggleGroup = (group) => setActiveGroups(prev => ({ ...prev, [group]: !prev[group] }));
+
+  // ── Merge all items: receipt items + manual expenses (treat manual as receipt) ──
+  const allRaw = allItemsProp.length > 0 ? allItemsProp :
     receipts.flatMap(r => (r.items || []).map(it => ({ ...it, store: r.store, date: r.date })));
+
+  // ── Unique stores for the shop filter ──
+  const storeList = useMemo(() => {
+    const set = new Set();
+    allRaw.forEach(it => { if (it.store) set.add(it.store.trim()); });
+    return [...set].sort((a, b) => a.localeCompare(b, "pl"));
+  }, [allRaw]);
+
+  // ── Apply filters ──
+  const all = useMemo(() => allRaw.filter(item => {
+    const cat = item.category || "Inne";
+    if (!allowedCats.has(cat)) return false;
+    if (selectedStore && (!item.store || item.store.trim() !== selectedStore)) return false;
+    return true;
+  }), [allRaw, allowedCats, selectedStore]);
+
+  // Build a set of receipt IDs that have at least one item passing filters, for filtering receipt-level totals
+  const filteredReceiptIds = useMemo(() => {
+    const ids = new Set();
+    // For receipt-level stats (monthly chart, savings), filter receipts by store only
+    receipts.forEach(r => {
+      if (selectedStore && (!r.store || r.store.trim() !== selectedStore)) return;
+      ids.add(r.id);
+    });
+    return ids;
+  }, [receipts, selectedStore]);
+
+  const filteredReceipts = useMemo(() =>
+    receipts.filter(r => filteredReceiptIds.has(r.id)),
+    [receipts, filteredReceiptIds]
+  );
+  const filteredExpenses = useMemo(() =>
+    expenses.filter(e => {
+      const cat = e.category || "Inne";
+      if (!allowedCats.has(cat)) return false;
+      if (selectedStore && (!e.store || e.store.trim() !== selectedStore)) return false;
+      return true;
+    }),
+    [expenses, allowedCats, selectedStore]
+  );
+
+  // ── Category breakdown ──
   const catTotals = useMemo(() => {
     const map = {};
     all.forEach(item => {
@@ -2795,8 +2852,8 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
       if (!key) return;
       map[key] = (map[key] || 0) + (parseFloat(amount) || 0);
     };
-    receipts.forEach(r => addToMap(r.date, r.total));
-    expenses.forEach(e => addToMap(e.date, e.amount));
+    filteredReceipts.forEach(r => addToMap(r.date, r.total));
+    filteredExpenses.forEach(e => addToMap(e.date, e.amount));
     const months = ["Sty","Lut","Mar","Kwi","Maj","Cze","Lip","Sie","Wrz","Paź","Lis","Gru"];
     return Object.entries(map)
       .sort(([a], [b]) => a.localeCompare(b))
@@ -2805,13 +2862,13 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
         const [, mStr] = key.split("-");
         return { label: months[parseInt(mStr, 10) - 1] || mStr, total };
       });
-  }, [receipts, expenses]);
+  }, [filteredReceipts, filteredExpenses]);
 
   // ── Summary numbers ──
-  const totalSpent  = receipts.reduce((s, r) => s + (parseFloat(r.total) || 0), 0)
-    + expenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-  const totalSaved  = receipts.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
-  const totalCount  = receipts.length + expenses.length;
+  const totalSpent  = filteredReceipts.reduce((s, r) => s + (parseFloat(r.total) || 0), 0)
+    + filteredExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+  const totalSaved  = filteredReceipts.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
+  const totalCount  = filteredReceipts.length + filteredExpenses.length;
   const avgReceipt  = totalCount ? totalSpent / totalCount : 0;
   const maxMonth    = Math.max(...monthData.map(m => m.total), 1);
 
@@ -2829,32 +2886,36 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
   // Most visited store
   const topStore = useMemo(() => {
     const map = {};
-    receipts.forEach(r => { if (r.store) { const k = r.store.trim().toLowerCase(); if (!map[k]) map[k] = { name: r.store.trim(), count: 0 }; map[k].count++; } });
+    filteredReceipts.forEach(r => { if (r.store) { const k = r.store.trim().toLowerCase(); if (!map[k]) map[k] = { name: r.store.trim(), count: 0 }; map[k].count++; } });
     const entries = Object.values(map).sort((a, b) => b.count - a.count);
     return entries[0] || null;
-  }, [receipts]);
+  }, [filteredReceipts]);
 
   // Day of week with highest spending
   const topDayOfWeek = useMemo(() => {
     const days = ["Niedziela", "Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota"];
     const map = new Array(7).fill(0);
-    receipts.forEach(r => {
+    filteredReceipts.forEach(r => {
       const d = parseDate(r.date);
       if (d) map[d.getDay()] += (parseFloat(r.total) || 0);
     });
     const maxVal = Math.max(...map);
     const maxIdx = map.indexOf(maxVal);
     return maxVal > 0 ? { day: days[maxIdx], amount: map[maxIdx] } : null;
-  }, [receipts]);
+  }, [filteredReceipts]);
 
   // Average items per receipt
   const avgItemsPerReceipt = useMemo(() => {
-    if (!receipts.length) return 0;
-    const total = receipts.reduce((s, r) => s + (r.items?.length || 0), 0);
-    return (total / receipts.length).toFixed(1);
-  }, [receipts]);
+    if (!filteredReceipts.length) return 0;
+    const total = filteredReceipts.reduce((s, r) => s + (r.items?.length || 0), 0);
+    return (total / filteredReceipts.length).toFixed(1);
+  }, [filteredReceipts]);
 
-  if (!receipts.length) return (
+  // ── Check if any filter is active ──
+  const anyGroupOff = !activeGroups["Spożywcze"] || !activeGroups["Rachunki"] || !activeGroups["Jednorazowe"];
+  const hasActiveFilter = anyGroupOff || selectedStore !== "";
+
+  if (!receipts.length && !expenses.length) return (
     <>
       <div className="page-hero"><div className="page-hero-inner">
         <h1 className="page-title au">Statystyki</h1>
@@ -2873,12 +2934,76 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
       <div className="page-hero">
         <div className="page-hero-inner">
           <h1 className="page-title au">Statystyki <span>wydatków</span></h1>
-          <p className="page-subtitle au1">{receipts.length} paragon{receipts.length === 1 ? "" : "ów"} · {all.length} pozycji</p>
+          <p className="page-subtitle au1">{totalCount} paragon{totalCount === 1 ? "" : "ów"} · {all.length} pozycji</p>
         </div>
       </div>
 
       <div className="container">
         <div className="section" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+
+          {/* ── Filter bar ── */}
+          <div className="card au" style={{ padding: "16px 20px", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: $.ink3, marginRight: 4 }}>
+              Filtry
+            </div>
+            {Object.keys(CAT_GROUPS).map(group => (
+              <button
+                key={group}
+                onClick={() => toggleGroup(group)}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 20,
+                  border: "1.5px solid",
+                  borderColor: activeGroups[group] ? $.accent : "rgba(0,0,0,0.12)",
+                  background: activeGroups[group] ? $.accent : "transparent",
+                  color: activeGroups[group] ? "#fff" : $.ink2,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all .2s",
+                }}
+              >
+                {group}
+              </button>
+            ))}
+            <div style={{ width: 1, height: 24, background: "rgba(0,0,0,0.08)", margin: "0 4px" }} />
+            <select
+              value={selectedStore}
+              onChange={e => setSelectedStore(e.target.value)}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 20,
+                border: "1.5px solid",
+                borderColor: selectedStore ? $.accent : "rgba(0,0,0,0.12)",
+                background: selectedStore ? $.accent : "transparent",
+                color: selectedStore ? "#fff" : $.ink2,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                appearance: "auto",
+              }}
+            >
+              <option value="">Wszystkie sklepy</option>
+              {storeList.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            {hasActiveFilter && (
+              <button
+                onClick={() => { setActiveGroups({ "Spożywcze": true, "Rachunki": true, "Jednorazowe": true }); setSelectedStore(""); }}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 20,
+                  border: "none",
+                  background: "rgba(0,0,0,0.06)",
+                  color: $.ink2,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Wyczyść filtry
+              </button>
+            )}
+          </div>
 
           {/* ── Top stats row ── */}
           <div className="stat-grid au" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
@@ -2971,7 +3096,7 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
               <InsightCard
                 icon="✦"
                 title={`Zaoszczędziłeś ${savePct}% dzięki rabatom`}
-                sub={`${totalSaved.toFixed(2)} zł zaoszczędzono na ${receipts.length} paragonach`}
+                sub={`${totalSaved.toFixed(2)} zł zaoszczędzono na ${filteredReceipts.length} paragonach`}
                 accent={true}
               />
             )}
@@ -2980,7 +3105,7 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
               <InsightCard
                 icon="🧾"
                 title={`Średni paragon: ${avgReceipt.toFixed(2)} zł`}
-                sub={`Łącznie ${receipts.length} wizyt zakupowych · ${all.length} unikalnych pozycji`}
+                sub={`Łącznie ${totalCount} wizyt zakupowych · ${all.length} unikalnych pozycji`}
                 accent={false}
               />
             )}
@@ -3016,7 +3141,7 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
               <InsightCard
                 icon="🛒"
                 title={`Średnio ${avgItemsPerReceipt} produktów na paragon`}
-                sub={`Na podstawie ${receipts.length} paragonów`}
+                sub={`Na podstawie ${filteredReceipts.length} paragonów`}
                 accent={false}
               />
             )}
