@@ -32,32 +32,27 @@ function StorePickerInput({ value, onChange, customStores = [], onAddCustomStore
   const select = (s) => { onChange(s); setSearch(s); setOpen(false); };
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
+    <div ref={ref} className="store-picker">
       <input id={id} className="field" value={search}
         onChange={e => { setSearch(e.target.value); onChange(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
         placeholder={placeholder || "Wybierz lub wpisz sklep"}
         autoComplete="off" />
       {open && (
-        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 20,
-          background: "white", border: "1px solid #e5e7eb", borderRadius: 10,
-          maxHeight: 220, overflowY: "auto", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", marginTop: 4 }}>
+        <div className="store-picker-dropdown">
           {filtered.map(s => (
-            <div key={s} onClick={() => select(s)}
-              style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, borderBottom: "1px solid #f3f4f6", color: "#1f2937" }}
-              onMouseOver={e => e.currentTarget.style.background = "#f9fafb"}
-              onMouseOut={e => e.currentTarget.style.background = "transparent"}>
+            <div key={s} onClick={() => select(s)} className="store-picker-option">
               {DEFAULT_STORES.includes(s) ? "🏪" : "📝"} {s}
             </div>
           ))}
           {search && !allStores.some(s => s.toLowerCase() === search.toLowerCase()) && (
             <div onClick={() => { if (onAddCustomStore) onAddCustomStore(search); select(search); }}
-              style={{ padding: "10px 14px", cursor: "pointer", fontSize: 14, color: "#06C167", fontWeight: 600 }}>
+              className="store-picker-add">
               + Dodaj "{search}" jako nowy sklep
             </div>
           )}
           {!search && filtered.length === 0 && (
-            <div style={{ padding: "10px 14px", fontSize: 13, color: "#9CA3AF" }}>Brak sklepów</div>
+            <div className="store-picker-empty">Brak sklepów</div>
           )}
         </div>
       )}
@@ -69,25 +64,25 @@ function StorePickerInput({ value, onChange, customStores = [], onAddCustomStore
 
 /* ─── Helpers ──────────────────────────────── */
 function Zl({ v, size = 14 }) {
-  if (v == null || v === "") return <span style={{ color: $.ink3 }}>—</span>;
+  if (v == null || v === "") return <span className="zl-dash">—</span>;
   const n = parseFloat(v);
   return (
     <span className="mono" style={{ fontSize: size }}>
-      {n.toFixed(2)}<span style={{ color: $.ink3, fontSize: size - 2, marginLeft: 2 }}> zł</span>
+      {n.toFixed(2)}<span className="zl-unit" style={{ fontSize: size - 2 }}> zł</span>
     </span>
   );
 }
 function CatChip({ cat }) {
   const c = CATS[cat] || CATS["Inne"];
   return (
-    <span className="chip" style={{ background: c + "15", color: c, border: `1px solid ${c}25` }}>
-      <span style={{ width: 5, height: 5, borderRadius: "50%", background: c, flexShrink: 0 }} aria-hidden="true" />
+    <span className="chip" style={{ '--cat-color': c, background: c + "15", color: c, border: `1px solid ${c}25` }}>
+      <span className="cat-chip-dot" style={{ background: c }} aria-hidden="true" />
       {cat}
     </span>
   );
 }
 function Spinner() {
-  return <div style={{ width: 16, height: 16, border: `2.5px solid ${$.ink4}`, borderTopColor: $.green, borderRadius: "50%", animation: "spin .65s linear infinite", flexShrink: 0 }} role="status" aria-label="Ładowanie" />;
+  return <div className="spinner" role="status" aria-label="Ładowanie" />;
 }
 function Empty({ icon, title, sub }) {
   return (
@@ -119,13 +114,13 @@ function DropZone({ onFiles }) {
       onDragLeave={() => setDrag(false)}
       onDrop={e => { e.preventDefault(); setDrag(false); pick(e.dataTransfer.files); }}
     >
-      <input ref={ref} type="file" accept="image/*" multiple style={{ display: "none" }} onChange={e => pick(e.target.files)} />
-      <div style={{ position: "relative", zIndex: 1 }}>
+      <input ref={ref} type="file" accept="image/*" multiple className="hidden" onChange={e => pick(e.target.files)} />
+      <div className="dropzone-content">
         <div className="dropzone-icon" aria-hidden="true">📸</div>
         <div className="dropzone-title">Skanuj paragon</div>
         <div className="dropzone-sub">
           Przeciągnij zdjęcie tutaj<br />
-          <span style={{ color: $.ink3, fontSize: 13 }}>JPG · PNG · WEBP — Claude automatycznie odczyta dane</span>
+          <span className="dropzone-sub-hint">JPG · PNG · WEBP — Claude automatycznie odczyta dane</span>
         </div>
         <div className="dropzone-hint" aria-hidden="true">
           <svg width="13" height="13" fill="none" viewBox="0 0 13 13"><path d="M6.5 1v11M1 6.5h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
@@ -238,10 +233,7 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel, customStores, onAddC
         <div className="rv-handle" aria-hidden="true" />
         <div className="rv-head">
           <h2 id="rv-dialog-title" className="rv-title">Sprawdź paragon</h2>
-          <button onClick={onCancel} aria-label="Zamknij"
-            style={{ background:"none", border:"none", cursor:"pointer", fontSize:18, color:$.ink2, padding:"8px 10px",
-              borderRadius:10, minWidth:36, minHeight:36, display:"flex", alignItems:"center", justifyContent:"center",
-              transition:"background .15s, color .15s" }}>✕</button>
+          <button onClick={onCancel} aria-label="Zamknij" className="btn-close">✕</button>
         </div>
 
         <div className="rv-body">
@@ -265,23 +257,20 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel, customStores, onAddC
             </div>
             <div>
               <label className="rv-lbl" htmlFor="rv-total">Suma</label>
-              <input id="rv-total" className="field" type="number" step="0.01" value={data.total}
-                onChange={e => updateField("total", e.target.value)} placeholder="0.00" style={{ textAlign:"right" }} />
+              <input id="rv-total" className="field field--text-right" type="number" step="0.01" value={data.total}
+                onChange={e => updateField("total", e.target.value)} placeholder="0.00" />
             </div>
             <div>
               <label className="rv-lbl" htmlFor="rv-discounts">Zniżki</label>
-              <input id="rv-discounts" className="field" type="number" step="0.01" value={data.total_discounts || 0}
-                onChange={e => updateField("total_discounts", e.target.value)} placeholder="0.00" style={{ textAlign:"right" }} />
+              <input id="rv-discounts" className="field field--text-right" type="number" step="0.01" value={data.total_discounts || 0}
+                onChange={e => updateField("total_discounts", e.target.value)} placeholder="0.00" />
             </div>
           </div>
 
           {/* Items header */}
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-            <div className="rv-lbl" style={{ marginBottom:0 }} aria-live="polite" aria-atomic="true">Produkty · {data.items.length}</div>
-            <button onClick={addItem} aria-label="Dodaj produkt"
-              style={{ background:$.greenBg, border:`1px solid ${$.greenRim}`, borderRadius:8, padding:"6px 14px",
-                fontSize:12, fontWeight:700, color:"#05964E", cursor:"pointer", fontFamily:"'Plus Jakarta Sans',sans-serif",
-                minHeight:34, display:"inline-flex", alignItems:"center", gap:4, transition:"background .15s" }}>
+          <div className="rv-items-header">
+            <div className="rv-lbl mb-0" aria-live="polite" aria-atomic="true">Produkty · {data.items.length}</div>
+            <button onClick={addItem} aria-label="Dodaj produkt" className="btn-add-item">
               + Dodaj
             </button>
           </div>
@@ -297,8 +286,8 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel, customStores, onAddC
                 <div className="rv-item-r1">
                   <div className="rv-item-num" aria-hidden="true">{idx + 1}</div>
                   <div className="rv-i-name">
-                    <input id={`${itemId}-name`} className="field" value={item.name || ""} onChange={e => updateItem(idx, "name", e.target.value)}
-                      placeholder="Nazwa produktu" aria-label={`Nazwa produktu ${idx + 1}`} style={{ fontWeight:600 }} />
+                    <input id={`${itemId}-name`} className="field field--bold" value={item.name || ""} onChange={e => updateItem(idx, "name", e.target.value)}
+                      placeholder="Nazwa produktu" aria-label={`Nazwa produktu ${idx + 1}`} />
                   </div>
                   <button className="rv-del-btn" onClick={() => removeItem(idx)} title="Usuń" aria-label={`Usuń produkt ${idx + 1}${item.name ? ": " + item.name : ""}`}>✕</button>
                 </div>
@@ -321,16 +310,15 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel, customStores, onAddC
                 <div className="rv-item-r2">
                   <div className="rv-i-cat">
                     <label className="rv-lbl" htmlFor={`${itemId}-cat`}>Kategoria</label>
-                    <select id={`${itemId}-cat`} className="field" value={item.category || "Inne"} onChange={e => updateItem(idx, "category", e.target.value)}
-                      style={{ cursor:"pointer" }}>
+                    <select id={`${itemId}-cat`} className="field field--cursor" value={item.category || "Inne"} onChange={e => updateItem(idx, "category", e.target.value)}>
                       {ALL_CATS.map(c => <option key={c} value={c}>{CAT_ICONS[c] || ""} {c}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="rv-lbl" htmlFor={`${itemId}-price`}>Cena</label>
-                    <input id={`${itemId}-price`} className="field" type="number" step="0.01" value={item.total_price ?? 0}
+                    <input id={`${itemId}-price`} className="field field--text-right field--bold700" type="number" step="0.01" value={item.total_price ?? 0}
                       onChange={e => updateItem(idx, "total_price", e.target.value)}
-                      placeholder="0.00" style={{ textAlign:"right", fontWeight:700 }} />
+                      placeholder="0.00" />
                   </div>
                 </div>
 
@@ -354,21 +342,21 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel, customStores, onAddC
                       </div>
                       <div>
                         <label className="rv-lbl" htmlFor={`${itemId}-discount`}>Zniżka</label>
-                        <input id={`${itemId}-discount`} className="field" type="number" step="0.01" value={item.discount ?? ""}
-                          onChange={e => updateItem(idx, "discount", e.target.value)} placeholder="0.00" style={{ textAlign:"right" }} />
+                        <input id={`${itemId}-discount`} className="field field--text-right" type="number" step="0.01" value={item.discount ?? ""}
+                          onChange={e => updateItem(idx, "discount", e.target.value)} placeholder="0.00" />
                       </div>
                     </div>
                     {/* Row 4: cena jednostkowa | ilość */}
                     <div className="rv-item-r4">
                       <div>
                         <label className="rv-lbl" htmlFor={`${itemId}-uprice`}>Cena jedn.</label>
-                        <input id={`${itemId}-uprice`} className="field" type="number" step="0.01" value={item.unit_price ?? ""}
-                          onChange={e => updateItem(idx, "unit_price", e.target.value)} placeholder="—" style={{ textAlign:"right" }} />
+                        <input id={`${itemId}-uprice`} className="field field--text-right" type="number" step="0.01" value={item.unit_price ?? ""}
+                          onChange={e => updateItem(idx, "unit_price", e.target.value)} placeholder="—" />
                       </div>
                       <div>
                         <label className="rv-lbl" htmlFor={`${itemId}-qty`}>Ilość</label>
-                        <input id={`${itemId}-qty`} className="field" type="number" step="0.001" value={item.quantity ?? 1}
-                          onChange={e => updateItem(idx, "quantity", e.target.value)} style={{ textAlign:"right" }} />
+                        <input id={`${itemId}-qty`} className="field field--text-right" type="number" step="0.001" value={item.quantity ?? 1}
+                          onChange={e => updateItem(idx, "quantity", e.target.value)} />
                       </div>
                     </div>
                     {/* Row 5: etykieta zniżki (full width) */}
@@ -384,8 +372,8 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel, customStores, onAddC
           })}
 
           {warnings.length > 0 && (
-            <div style={{ margin: "12px 0", padding: "10px 14px", background: "#FEF3C7", border: "1px solid #F59E0B", borderRadius: 10, fontSize: 13, color: "#92400E", lineHeight: 1.6 }}>
-              <div style={{ fontWeight: 700, marginBottom: 4 }}>{"\u26A0"} Uwaga — niezgodności:</div>
+            <div className="warnings-box">
+              <div className="warnings-title">{"\u26A0"} Uwaga — niezgodności:</div>
               {warnings.map((w, i) => <div key={i}>• {w}</div>)}
             </div>
           )}
@@ -432,9 +420,8 @@ function ReceiptCard({ r, onDelete, delay = 0 }) {
       >
         <div className="receipt-store-icon" aria-hidden="true">🧾</div>
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div id={`${bid}-name`} className="receipt-name"
-            style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div className="flex-1-min0">
+          <div id={`${bid}-name`} className="receipt-name text-ellipsis">
             {r.store || "Paragon"}
           </div>
           <div className="receipt-meta">
@@ -443,40 +430,29 @@ function ReceiptCard({ r, onDelete, delay = 0 }) {
           </div>
         </div>
 
-        <div style={{ textAlign: "right", flexShrink: 0 }}>
-          <div className="mono" style={{ fontSize: 20, fontWeight: 500, color: $.green, lineHeight: 1 }}>
+        <div className="text-right flex-shrink0">
+          <div className="mono receipt-total">
             {parseFloat(r.total || 0).toFixed(2)}
-            <span style={{ fontSize: 12, color: $.ink3, marginLeft: 3 }}>zł</span>
+            <span className="receipt-total-unit">zł</span>
           </div>
           {saved > 0 && (
-            <div style={{ fontSize: 12, color: $.red, fontWeight: 700, marginTop: 3 }}>
+            <div className="receipt-saved">
               −{saved.toFixed(2)} zł saved
             </div>
           )}
         </div>
 
-        <div
-          aria-hidden="true"
-          style={{
-            width: 28, height: 28, borderRadius: "50%",
-            background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.65)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            marginLeft: 8, flexShrink: 0,
-            transition: "transform .25s cubic-bezier(.16,1,.3,1)",
-            transform: open ? "rotate(180deg)" : "none",
-            fontSize: 10, color: $.ink2,
-          }}
-        >▼</div>
+        <div aria-hidden="true" className={`receipt-chevron${open ? " receipt-chevron--open" : ""}`}>▼</div>
       </button>
 
       {open && (
-        <div id={`${bid}-body`} style={{ borderTop: `1px solid rgba(255,255,255,0.45)` }}>
+        <div id={`${bid}-body`} className="receipt-body-border">
           <div className="tbl-wrap">
             <table className="tbl">
               <thead>
                 <tr>
                   {["Produkt", "Kat.", "Ilość", "Cena jedn.", "Opust", "Razem"].map((h, i) => (
-                    <th key={h} scope="col" style={{ textAlign: i >= 2 ? "right" : "left" }}>{h}</th>
+                    <th key={h} scope="col" className={i >= 2 ? "text-right" : "text-left"}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -484,31 +460,31 @@ function ReceiptCard({ r, onDelete, delay = 0 }) {
                 {(r.items || []).map((item, i) => (
                   <tr key={i}>
                     <td>
-                      <div style={{ fontWeight: 600, fontSize: 14 }}>{item.name}</div>
+                      <div className="td-name fs-14">{item.name}</div>
                       {item.discount_label && (
-                        <div style={{ color: $.red, fontSize: 11, marginTop: 2, fontWeight: 500 }}>
+                        <div className="discount-label">
                           🏷 {item.discount_label}
                         </div>
                       )}
                     </td>
                     <td><CatChip cat={item.category} /></td>
-                    <td style={{ textAlign: "right", color: $.ink2 }} className="mono">
+                    <td className="mono text-right color-ink2">
                       {item.quantity || 1}{item.unit ? ` ${item.unit}` : ""}
                     </td>
-                    <td style={{ textAlign: "right" }}><Zl v={item.unit_price} /></td>
-                    <td style={{ textAlign: "right" }}>
+                    <td className="text-right"><Zl v={item.unit_price} /></td>
+                    <td className="text-right">
                       {item.discount
-                        ? <span className="mono" style={{ color: $.red, fontWeight: 600 }}>−{item.discount.toFixed(2)}</span>
-                        : <span style={{ color: $.ink3 }}>—</span>
+                        ? <span className="mono discount-text">−{item.discount.toFixed(2)}</span>
+                        : <span className="color-ink3">—</span>
                       }
                     </td>
-                    <td style={{ textAlign: "right" }}><Zl v={item.total_price} /></td>
+                    <td className="text-right"><Zl v={item.total_price} /></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div style={{ padding: "14px 20px", display: "flex", justifyContent: "flex-end", borderTop: `1px solid rgba(255,255,255,0.45)`, background: "rgba(255,255,255,0.45)" }}>
+          <div className="receipt-footer">
             <button className="btn-danger" onClick={onDelete} aria-label={`Usuń paragon ${r.store || "Paragon"}`}>
               Usuń paragon
             </button>
@@ -532,10 +508,10 @@ function ReceiptsView({ receipts, setReceipts, processing, errors, setErrors, on
       </div>
 
       <div className="container">
-        <div className="section" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div className="section flex-col gap-16">
           <div className="au1"><DropZone onFiles={onFiles} /></div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="flex-col gap-8">
             {processing.map(p => (
               <div key={p.id} className="toast-ok" role="status" aria-live="polite">
                 <Spinner />
@@ -545,11 +521,7 @@ function ReceiptsView({ receipts, setReceipts, processing, errors, setErrors, on
             {errors.map((err, i) => (
               <div key={i} className="toast-err" role="alert">
                 <span>{err}</span>
-                <button
-                  onClick={() => setErrors(e => e.filter((_, j) => j !== i))}
-                  aria-label="Zamknij"
-                  style={{ background: "none", border: "none", cursor: "pointer", color: $.red, fontSize: 20, lineHeight: 1, flexShrink: 0 }}
-                >×</button>
+                <button onClick={() => setErrors(e => e.filter((_, j) => j !== i))} aria-label="Zamknij" className="btn-err-close">×</button>
               </div>
             ))}
           </div>
@@ -557,7 +529,7 @@ function ReceiptsView({ receipts, setReceipts, processing, errors, setErrors, on
           {receipts.length > 0 && (
             <div>
               <div className="section-label">Zeskanowane · {receipts.length}</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="flex-col gap-10">
                 {receipts.map((r, i) => (
                   <ReceiptCard
                     key={r.id} r={r} delay={i * 0.05}
@@ -569,7 +541,7 @@ function ReceiptsView({ receipts, setReceipts, processing, errors, setErrors, on
           )}
 
           {!receipts.length && !processing.length && (
-            <p className="au2" style={{ textAlign: "center", color: $.ink3, fontSize: 14, paddingTop: 4 }}>
+            <p className="au2 empty-hint">
               Brak paragonów — dodaj pierwszy powyżej
             </p>
           )}
@@ -608,10 +580,10 @@ function ProductsView({ receipts }) {
       </div>
 
       <div className="container">
-        <div className="section" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <div className="section flex-col gap-20">
 
           {/* Stats */}
-          <div className="stat-grid au" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+          <div className="stat-grid au stat-grid-3">
             {[
               { l: "Produktów", v: all.length, unit: "", color: $.ink0 },
               { l: "Wydano łącznie", v: spent.toFixed(2), unit: "zł", color: $.green },
@@ -620,15 +592,15 @@ function ProductsView({ receipts }) {
               <div className="stat-card" key={s.l}>
                 <div className="stat-label">{s.l}</div>
                 <div className="stat-val" style={{ color: s.color }}>
-                  {s.v}<span style={{ fontSize: 16, color: $.ink3, marginLeft: 4 }}>{s.unit}</span>
+                  {s.v}<span className="stat-val-unit">{s.unit}</span>
                 </div>
               </div>
             ))}
           </div>
 
           {/* Search + filters */}
-          <div className="au1" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <label htmlFor="psearch" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0,0,0,0)" }}>Szukaj produktu</label>
+          <div className="au1 flex-col gap-12">
+            <label htmlFor="psearch" className="sr-only">Szukaj produktu</label>
             <input
               id="psearch"
               className="field"
@@ -636,16 +608,16 @@ function ProductsView({ receipts }) {
               onChange={e => setQ(e.target.value)}
               placeholder="Szukaj produktu…"
             />
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="flex-col gap-8">
               <div className="pills-row" role="group" aria-label="Filtruj kategorię">
                 <button className={`pill${cat === "All" ? " on" : ""}`} onClick={() => setCat("All")} aria-pressed={cat === "All"}>Wszystko</button>
                 {Object.entries(CAT_GROUPS).map(([group, groupCats]) => {
                   const available = groupCats.filter(gc => cats.includes(gc));
                   if (!available.length) return null;
                   return (
-                    <span key={group} style={{ display: "contents" }}>
-                      <span style={{ width: 1, height: 28, background: "rgba(0,0,0,0.08)", borderRadius: 1, flexShrink: 0, margin: "0 4px", alignSelf: "center" }} aria-hidden="true" />
-                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: $.ink3, alignSelf: "center", whiteSpace: "nowrap", paddingRight: 2 }}>{group}</span>
+                    <span key={group} className="d-contents">
+                      <span className="pills-separator" aria-hidden="true" />
+                      <span className="pills-group-label">{group}</span>
                       {available.map(gc => (
                         <button key={gc} className={`pill${cat === gc ? " on" : ""}`} onClick={() => setCat(gc)} aria-pressed={cat === gc}>{gc}</button>
                       ))}
@@ -662,28 +634,28 @@ function ProductsView({ receipts }) {
               <thead>
                 <tr>
                   {["Produkt", "Kategoria", "Sklep", "Data", "Ilość", "Cena jedn.", "Opust", "Razem"].map((h, i) => (
-                    <th key={h} scope="col" style={{ textAlign: i >= 4 ? "right" : "left" }}>{h}</th>
+                    <th key={h} scope="col" className={i >= 4 ? "text-right" : "text-left"}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {list.length === 0 ? (
-                  <tr><td colSpan={8} style={{ textAlign: "center", color: $.ink3, padding: "36px 0" }}>Brak wyników dla &ldquo;{q}&rdquo;</td></tr>
+                  <tr><td colSpan={8} className="td-no-results">Brak wyników dla &ldquo;{q}&rdquo;</td></tr>
                 ) : list.map((item, i) => (
                   <tr key={i}>
-                    <td style={{ fontWeight: 600 }}>{item.name}</td>
+                    <td className="td-name">{item.name}</td>
                     <td><CatChip cat={item.category} /></td>
-                    <td style={{ color: $.ink2 }}>{item.store || "—"}</td>
-                    <td className="mono" style={{ color: $.ink3, fontSize: 12 }}>{item.date || "—"}</td>
-                    <td className="mono" style={{ textAlign: "right", color: $.ink2, fontSize: 12 }}>{item.quantity || 1}{item.unit ? ` ${item.unit}` : ""}</td>
-                    <td style={{ textAlign: "right" }}><Zl v={item.unit_price} /></td>
-                    <td style={{ textAlign: "right" }}>
+                    <td className="color-ink2">{item.store || "—"}</td>
+                    <td className="mono color-ink3 fs-12">{item.date || "—"}</td>
+                    <td className="mono text-right color-ink2 fs-12">{item.quantity || 1}{item.unit ? ` ${item.unit}` : ""}</td>
+                    <td className="text-right"><Zl v={item.unit_price} /></td>
+                    <td className="text-right">
                       {item.discount
-                        ? <span className="mono" style={{ color: $.red, fontWeight: 600, fontSize: 13 }}>−{item.discount.toFixed(2)}</span>
-                        : <span style={{ color: $.ink3 }}>—</span>
+                        ? <span className="mono td-discount-13">−{item.discount.toFixed(2)}</span>
+                        : <span className="zl-dash">—</span>
                       }
                     </td>
-                    <td style={{ textAlign: "right" }}><Zl v={item.total_price} /></td>
+                    <td className="text-right"><Zl v={item.total_price} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -724,13 +696,13 @@ function ShoppingView({ receipts }) {
       </div>
 
       <div className="container">
-        <div className="section" style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 680 }}>
+        <div className="section flex-col gap-16" style={{ maxWidth: 680 }}>
 
           {/* Add form */}
-          <div className="card au" style={{ padding: "22px 24px" }}>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
-              <div style={{ flex: 1, minWidth: 180 }}>
-                <label htmlFor="si" style={{ fontSize: 12, fontWeight: 600, color: $.ink2, marginBottom: 6, display: "block", letterSpacing: ".04em", textTransform: "uppercase" }}>Produkt</label>
+          <div className="card au card--p22">
+            <div className="flex-row flex-wrap gap-10 flex-end">
+              <div className="form-group min-w-180">
+                <label htmlFor="si" className="field-label-sm">Produkt</label>
                 <input
                   id="si"
                   ref={inputRef}
@@ -744,19 +716,18 @@ function ShoppingView({ receipts }) {
                 />
                 <datalist id="kp">{known.map(p => <option key={p} value={p} />)}</datalist>
               </div>
-              <div style={{ width: 80 }}>
-                <label htmlFor="sq" style={{ fontSize: 12, fontWeight: 600, color: $.ink2, marginBottom: 6, display: "block", letterSpacing: ".04em", textTransform: "uppercase" }}>Ilość</label>
+              <div className="min-w-80" style={{ width: 80 }}>
+                <label htmlFor="sq" className="field-label-sm">Ilość</label>
                 <input
                   id="sq"
-                  className="field"
+                  className="field text-center"
                   type="number"
                   min={1}
                   value={qty}
                   onChange={e => setQty(Math.max(1, +e.target.value))}
-                  style={{ textAlign: "center" }}
                 />
               </div>
-              <button className="btn-primary" onClick={add} style={{ marginTop: 2 }}>
+              <button className="btn-primary" onClick={add}>
                 <svg width="14" height="14" fill="none" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" /></svg>
                 Dodaj
               </button>
@@ -765,10 +736,10 @@ function ShoppingView({ receipts }) {
 
           {/* Progress bar */}
           {items.length > 0 && (
-            <div className="au1" style={{ display: "flex", alignItems: "center", gap: 12 }}
+            <div className="au1 flex-row gap-12"
               role="progressbar" aria-valuenow={done} aria-valuemin={0} aria-valuemax={items.length} aria-label={`${done} z ${items.length} zakupiono`}>
               <div className="prog"><div className="prog-fill" style={{ width: `${pct}%` }} /></div>
-              <span className="mono" style={{ fontSize: 12, color: $.ink3, whiteSpace: "nowrap" }}>{done}/{items.length}</span>
+              <span className="mono text-muted nowrap">{done}/{items.length}</span>
             </div>
           )}
 
@@ -776,7 +747,7 @@ function ShoppingView({ receipts }) {
           {items.length === 0 ? (
             <Empty icon="📋" title="Lista jest pusta" sub="Dodaj produkty powyżej. Podpowiedzi z paragonów pojawią się automatycznie." />
           ) : (
-            <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }} aria-label="Lista zakupów">
+            <ul className="shop-list" aria-label="Lista zakupów">
               {items.map((item, i) => (
                 <li key={item.id} style={{ animation: `fadeUp .4s cubic-bezier(.16,1,.3,1) ${i * .04}s both` }}>
                   <div className={`shop-item${item.done ? " done" : ""}`}>
@@ -794,11 +765,11 @@ function ShoppingView({ receipts }) {
                       )}
                     </button>
 
-                    <span style={{ flex: 1, fontSize: 15, fontWeight: 500, textDecoration: item.done ? "line-through" : "none", color: item.done ? $.ink3 : $.ink0, transition: "color .2s" }}>
+                    <span className={`shop-item-text${item.done ? " done" : ""}`}>
                       {item.name}
                     </span>
 
-                    <span className="mono" style={{ fontSize: 12, color: $.ink3, background: "rgba(255,255,255,0.45)", padding: "4px 12px", borderRadius: 99, border: "1px solid rgba(255,255,255,0.55)", flexShrink: 0 }}>
+                    <span className="mono shop-item-qty">
                       ×{item.qty}
                     </span>
 
@@ -806,7 +777,6 @@ function ShoppingView({ receipts }) {
                       className="btn-icon"
                       onClick={() => remove(item.id)}
                       aria-label={`Usuń ${item.name}`}
-                      style={{ marginLeft: 4 }}
                     >×</button>
                   </div>
                 </li>
@@ -940,13 +910,13 @@ Wygeneruj listę zakupów. Odpowiedz TYLKO jako JSON array stringów, np. ["Mlek
         </div>
       </div>
       <div className="container">
-        <div className="section" style={{ display:"flex", flexDirection:"column", gap:20 }}>
+        <div className="section flex-col gap-20">
 
           {/* Controls */}
-          <div className="card au" style={{ padding:"20px 22px" }}>
-            <div style={{ display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
-              <div style={{ flex:1, minWidth:200 }}>
-                <label htmlFor="pantry" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>
+          <div className="card au card--p20">
+            <div className="flex-row flex-wrap gap-10 flex-end">
+              <div className="form-group min-w-200">
+                <label htmlFor="pantry" className="field-label">
                   Dodatkowe składniki (opcjonalnie)
                 </label>
                 <input id="pantry" className="field" value={pantry} onChange={e=>setPantry(e.target.value)}
@@ -963,15 +933,15 @@ Wygeneruj listę zakupów. Odpowiedz TYLKO jako JSON array stringów, np. ["Mlek
                     {genShop ? <><Spinner />Listuję…</> : "🛒 Lista zakupów"}
                   </button>
                   <button onClick={clearPlan}
-                    style={{ background:"none", border:"1.5px solid rgba(255,255,255,0.65)", borderRadius:10, padding:"0 16px", minHeight:48, cursor:"pointer", color:$.ink2, fontSize:13, fontWeight:600, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
+                    className="btn-ghost">
                     Wyczyść
                   </button>
                 </>
               )}
             </div>
             {knownItems.length > 0 && (
-              <div style={{ marginTop:14, fontSize:12, color:$.ink2 }}>
-                <span style={{ fontWeight:700, color:$.ink3 }}>Z Twoich paragonów: </span>
+              <div className="known-items-hint">
+                <span className="known-items-label">Z Twoich paragonów: </span>
                 {knownItems.slice(0,12).join(" · ")}
                 {knownItems.length > 12 && ` +${knownItems.length-12} więcej`}
               </div>
@@ -980,50 +950,43 @@ Wygeneruj listę zakupów. Odpowiedz TYLKO jako JSON array stringów, np. ["Mlek
 
           {/* Grid */}
           <div className="mgrid-outer au1">
-            <div style={{ overflowX:"auto" }}>
-              <table style={{ borderCollapse:"collapse", width:"100%", minWidth:560 }}>
+            <div className="meal-scroll">
+              <table className="meal-table">
                 <thead>
                   <tr>
-                    <th style={{ width:80, background:"rgba(255,255,255,0.40)", padding:"10px 8px", fontSize:9, fontWeight:700, letterSpacing:".06em", textTransform:"uppercase", color:$.ink3 }}></th>
+                    <th className="meal-th--row"></th>
                     {DAYS.map(d => (
-                      <th key={d} style={{ background:"rgba(255,255,255,0.40)", padding:"10px 4px", fontSize:9, fontWeight:700, letterSpacing:".08em", textTransform:"uppercase", color:$.ink2, textAlign:"center" }}>{d}</th>
+                      <th key={d} className="meal-th">{d}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {MEALS.map((meal, mi) => (
                     <tr key={meal}>
-                      <td style={{ background:"rgba(255,255,255,0.40)", padding:"8px", fontSize:9, fontWeight:700, letterSpacing:".06em", textTransform:"uppercase", color:$.ink3, textAlign:"center", writingMode:"vertical-rl", verticalAlign:"middle" }}>{meal}</td>
+                      <td className="meal-td-label">{meal}</td>
                       {DAYS.map(day => {
                         const key   = `${day}-${meal}`;
                         const text  = plan[key];
                         const busy  = loading === key;
                         const [name, desc] = text ? text.split("—").map(s=>s.trim()) : ["",""];
                         return (
-                          <td key={key} style={{ background:"rgba(255,255,255,0.55)", border:"1px solid rgba(255,255,255,0.30)", padding:0, verticalAlign:"top", minWidth:100 }}>
+                          <td key={key} className="meal-td">
                             <button
                               onClick={() => !busy && generateCell(day, meal)}
                               aria-label={`${meal} ${day}${text ? ": "+text : " — kliknij aby wygenerować"}`}
-                              style={{
-                                width:"100%", minHeight:72, padding:"8px 6px",
-                                background:"transparent", border:"none", cursor: busy?"wait":"pointer",
-                                textAlign:"left", transition:"background .15s",
-                                display:"flex", flexDirection:"column", justifyContent:"center", alignItems:"flex-start", gap:2,
-                              }}
-                              onMouseOver={e => { if(!busy) e.currentTarget.style.background="rgba(6,193,103,0.06)"; }}
-                              onMouseOut={e => { e.currentTarget.style.background="transparent"; }}
+                              className={`meal-cell-btn${busy ? " busy" : ""}`}
                             >
                               {busy ? (
-                                <div style={{ display:"flex", justifyContent:"center", width:"100%", padding:"4px 0" }}>
+                                <div className="meal-spinner-wrap">
                                   <Spinner />
                                 </div>
                               ) : text ? (
                                 <>
-                                  <span style={{ fontSize:11, fontWeight:700, color:$.ink0, lineHeight:1.3, letterSpacing:"-.01em" }}>{name}</span>
-                                  {desc && <span style={{ fontSize:10, color:$.ink3, lineHeight:1.3 }}>{desc}</span>}
+                                  <span className="meal-cell-name">{name}</span>
+                                  {desc && <span className="meal-cell-desc">{desc}</span>}
                                 </>
                               ) : (
-                                <span style={{ fontSize:18, color:"rgba(0,0,0,0.12)", margin:"0 auto" }}>+</span>
+                                <span className="meal-cell-plus">+</span>
                               )}
                             </button>
                           </td>
@@ -1038,17 +1001,13 @@ Wygeneruj listę zakupów. Odpowiedz TYLKO jako JSON array stringów, np. ["Mlek
 
           {/* Generated shopping list */}
           {shopList.length > 0 && (
-            <div className="card au2" style={{ padding:"22px 24px" }}>
-              <div style={{ fontSize:11, fontWeight:700, letterSpacing:".08em", textTransform:"uppercase", color:$.ink3, marginBottom:14 }}>
+            <div className="card au2 card--p22">
+              <div className="section-heading mb-14">
                 Lista zakupów z planu — {shopList.length} pozycji
               </div>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+              <div className="flex-row flex-wrap gap-8">
                 {shopList.map((item, i) => (
-                  <span key={i} style={{
-                    padding:"6px 14px", borderRadius:99,
-                    background:$.greenBg, border:`1px solid ${$.greenRim}`,
-                    fontSize:13, fontWeight:500, color:$.ink0,
-                  }}>{item}</span>
+                  <span key={i} className="meal-shop-pill">{item}</span>
                 ))}
               </div>
             </div>
@@ -1139,23 +1098,11 @@ function BarChart({ months, maxVal }) {
 
 function InsightCard({ icon, title, sub, accent }) {
   return (
-    <div style={{
-      background: accent ? "rgba(6,193,103,0.07)" : $.glass,
-      backdropFilter: "blur(20px) saturate(160%)",
-      WebkitBackdropFilter: "blur(20px) saturate(160%)",
-      border: `1px solid ${accent ? "rgba(6,193,103,0.25)" : "rgba(255,255,255,0.70)"}`,
-      borderRadius: 16, padding: "16px 20px",
-      display: "flex", alignItems: "flex-start", gap: 14,
-    }}>
-      <div style={{
-        width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-        background: accent ? "rgba(6,193,103,0.15)" : "rgba(255,255,255,0.6)",
-        border: `1px solid ${accent ? "rgba(6,193,103,0.30)" : "rgba(255,255,255,0.7)"}`,
-        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17,
-      }}>{icon}</div>
+    <div className={`insight-card${accent ? " accent" : ""}`}>
+      <div className="insight-icon">{icon}</div>
       <div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: $.ink0, letterSpacing: "-.01em" }}>{title}</div>
-        <div style={{ fontSize: 12, color: $.ink2, marginTop: 3, lineHeight: 1.5, whiteSpace: "pre-line" }}>{sub}</div>
+        <div className="insight-title">{title}</div>
+        <div className="insight-sub">{sub}</div>
       </div>
     </div>
   );
@@ -1333,49 +1280,27 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
       </div>
 
       <div className="container">
-        <div className="section" style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        <div className="section flex-col gap-24">
 
           {/* ── Filter bar ── */}
-          <div className="card au" style={{ padding: "16px 20px", display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: $.ink3, marginRight: 4 }}>
+          <div className="card au filter-bar">
+            <div className="section-heading" style={{ marginRight: 4, marginBottom: 0 }}>
               Filtry
             </div>
             {Object.keys(CAT_GROUPS).map(group => (
               <button
                 key={group}
                 onClick={() => toggleGroup(group)}
-                style={{
-                  padding: "6px 14px",
-                  borderRadius: 20,
-                  border: "1.5px solid",
-                  borderColor: activeGroups[group] ? $.accent : "rgba(0,0,0,0.12)",
-                  background: activeGroups[group] ? $.accent : "transparent",
-                  color: activeGroups[group] ? "#fff" : $.ink2,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  transition: "all .2s",
-                }}
+                className={`stats-filter-btn${activeGroups[group] ? " active" : ""}`}
               >
                 {group}
               </button>
             ))}
-            <div style={{ width: 1, height: 24, background: "rgba(0,0,0,0.08)", margin: "0 4px" }} />
+            <div className="h-divider" />
             <select
               value={selectedStore}
               onChange={e => setSelectedStore(e.target.value)}
-              style={{
-                padding: "6px 12px",
-                borderRadius: 20,
-                border: "1.5px solid",
-                borderColor: selectedStore ? $.accent : "rgba(0,0,0,0.12)",
-                background: selectedStore ? $.accent : "transparent",
-                color: selectedStore ? "#fff" : $.ink2,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-                appearance: "auto",
-              }}
+              className={`stats-filter-select${selectedStore ? " active" : ""}`}
             >
               <option value="">Wszystkie sklepy</option>
               {storeList.map(s => <option key={s} value={s}>{s}</option>)}
@@ -1383,16 +1308,7 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
             {hasActiveFilter && (
               <button
                 onClick={() => { setActiveGroups({ "Spożywcze": true, "Rachunki": true, "Jednorazowe": true }); setSelectedStore(""); }}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: 20,
-                  border: "none",
-                  background: "rgba(0,0,0,0.06)",
-                  color: $.ink2,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
+                className="stats-clear-btn"
               >
                 Wyczyść filtry
               </button>
@@ -1400,7 +1316,7 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
           </div>
 
           {/* ── Top stats row ── */}
-          <div className="stat-grid au" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+          <div className="stat-grid au stat-grid-3">
             {[
               { l: "Łącznie wydano",    v: totalSpent.toFixed(2),  u: "zł", col: $.ink0 },
               { l: "Śr. paragon",       v: avgReceipt.toFixed(2),  u: "zł", col: $.ink0 },
@@ -1409,42 +1325,42 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
               <div className="stat-card" key={s.l}>
                 <div className="stat-label">{s.l}</div>
                 <div className="stat-val" style={{ color: s.col }}>
-                  {s.v}<span style={{ fontSize: 16, color: $.ink3, marginLeft: 4 }}>{s.u}</span>
+                  {s.v}<span className="stat-val-unit">{s.u}</span>
                 </div>
               </div>
             ))}
           </div>
 
           {/* ── Donut + legend row ── */}
-          <div className="card au1" style={{ padding: "28px 24px" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: $.ink3, marginBottom: 20 }}>
+          <div className="card au1 card--p24">
+            <div className="section-heading mb-20">
               Podział wg kategorii
             </div>
-            <div style={{ display: "flex", gap: 32, alignItems: "center", flexWrap: "wrap" }}>
+            <div className="flex-row flex-wrap" style={{ gap: 32 }}>
               {/* Donut */}
-              <div style={{ flexShrink: 0 }}>
+              <div className="flex-shrink-0">
                 <DonutChart data={catTotals.map(d => ({ value: d.value, color: d.color }))} size={180} />
               </div>
               {/* Legend */}
-              <div style={{ flex: 1, minWidth: 160, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="legend-list">
                 {catTotals.slice(0, 7).map(d => {
                   const pct = totalSpent ? (d.value / totalSpent * 100).toFixed(1) : 0;
                   return (
-                    <div key={d.cat} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ width: 10, height: 10, borderRadius: 3, background: d.color, flexShrink: 0 }} />
-                      <div style={{ flex: 1, fontSize: 13, fontWeight: 500, color: $.ink0 }}>{d.cat}</div>
-                      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                        <div style={{ width: 64, height: 4, borderRadius: 2, background: "rgba(0,0,0,0.06)", overflow: "hidden" }}>
-                          <div style={{ width: `${pct}%`, height: "100%", background: d.color, borderRadius: 2, transition: "width .8s cubic-bezier(.16,1,.3,1)" }} />
+                    <div key={d.cat} className="legend-row">
+                      <div className="legend-dot" style={{ background: d.color }} />
+                      <div className="legend-name">{d.cat}</div>
+                      <div className="legend-bar-wrap">
+                        <div className="legend-bar">
+                          <div className="legend-bar-fill" style={{ width: `${pct}%`, background: d.color }} />
                         </div>
-                        <span className="mono" style={{ fontSize: 12, color: $.ink2, width: 36, textAlign: "right" }}>{pct}%</span>
-                        <span className="mono" style={{ fontSize: 12, color: $.ink3, width: 52, textAlign: "right" }}>{d.value.toFixed(0)} zł</span>
+                        <span className="mono legend-pct">{pct}%</span>
+                        <span className="mono legend-amt">{d.value.toFixed(0)} zł</span>
                       </div>
                     </div>
                   );
                 })}
                 {catTotals.length > 7 && (
-                  <div style={{ fontSize: 12, color: $.ink3, marginTop: 2 }}>+ {catTotals.length - 7} innych kategorii</div>
+                  <div className="legend-more">+ {catTotals.length - 7} innych kategorii</div>
                 )}
               </div>
             </div>
@@ -1452,8 +1368,8 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
 
           {/* ── Monthly bar chart ── */}
           {monthData.length > 0 && (
-            <div className="card au2" style={{ padding: "28px 24px" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: $.ink3, marginBottom: 20 }}>
+            <div className="card au2 card--p24">
+              <div className="section-heading mb-20">
                 Wydatki miesięczne
               </div>
               <BarChart months={monthData} maxVal={maxMonth} />
@@ -1461,8 +1377,8 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
           )}
 
           {/* ── Insight cards ── */}
-          <div className="au3" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: $.ink3, marginBottom: 4 }}>
+          <div className="au3 flex-col gap-10">
+            <div className="section-heading-sm">
               Spostrzeżenia
             </div>
 
@@ -1647,13 +1563,13 @@ function StoresView({ receipts }) {
   return (
     <>
       <div className="page-hero">
-        <div className="page-hero-inner" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+        <div className="page-hero-inner page-hero-flex">
           <div>
             {activeStore ? (
               <>
                 <button
                   onClick={() => { setActiveStore(null); setDrillQ(""); setDrillCat("All"); }}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: $.green, fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 700, fontSize: 13, letterSpacing: "-.01em", padding: 0, marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}
+                  className="btn-link-back"
                   aria-label="Wróć do listy sklepów"
                 >
                   ← Sklepy
@@ -1672,7 +1588,7 @@ function StoresView({ receipts }) {
           </div>
           {/* Time range pills */}
           {!activeStore && (
-            <div className="pills-row" role="group" aria-label="Zakres czasowy" style={{ flexShrink: 0 }}>
+            <div className="pills-row flex-shrink-0" role="group" aria-label="Zakres czasowy">
               {TIME_RANGES.map(tr => (
                 <button key={tr.id} className={`pill${range === tr.id ? " on" : ""}`}
                   onClick={() => setRange(tr.id)} aria-pressed={range === tr.id}>
@@ -1685,20 +1601,20 @@ function StoresView({ receipts }) {
       </div>
 
       <div className="container">
-        <div className="section" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <div className="section flex-col gap-20">
 
           {/* ── LIST MODE ── */}
           {!activeStore && (<>
             {/* Search */}
             <div className="au">
-              <label htmlFor="sq" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0,0,0,0)" }}>Szukaj sklepu</label>
+              <label htmlFor="sq" className="sr-only">Szukaj sklepu</label>
               <input id="sq" className="field" value={storeQ} onChange={e => setStoreQ(e.target.value)} placeholder="Szukaj sklepu…" />
             </div>
 
             {/* Store cards */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="flex-col gap-10">
               {stores.length === 0 && (
-                <div style={{ textAlign: "center", color: $.ink3, fontSize: 14, padding: "40px 0" }}>Brak wyników</div>
+                <div className="td-empty">Brak wyników</div>
               )}
               {stores.map((st, i) => {
                 const pct = totalAll ? (st.total / totalAll * 100) : 0;
@@ -1739,35 +1655,35 @@ function StoresView({ receipts }) {
                     </div>
 
                     {/* Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontWeight: 700, fontSize: 16, letterSpacing: "-.02em", color: $.ink0, marginBottom: 4 }}>
+                    <div className="flex-1">
+                      <div className="store-name">
                         {st.name}
                       </div>
                       {/* Progress bar */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div style={{ flex: 1, height: 3, background: "rgba(0,0,0,0.07)", borderRadius: 2, overflow: "hidden" }}>
-                          <div style={{ width: `${pct}%`, height: "100%", background: col, borderRadius: 2, transition: "width .8s cubic-bezier(.16,1,.3,1)" }} />
+                      <div className="flex-row gap-8">
+                        <div className="store-progress">
+                          <div className="store-progress-fill" style={{ width: `${pct}%`, background: col }} />
                         </div>
-                        <span style={{ fontSize: 11, color: $.ink3, whiteSpace: "nowrap", fontFamily: "'JetBrains Mono',monospace" }}>{pct.toFixed(0)}%</span>
+                        <span className="store-pct">{pct.toFixed(0)}%</span>
                       </div>
-                      <div style={{ fontSize: 12, color: $.ink2, marginTop: 5, display: "flex", gap: 14, flexWrap: "wrap" }}>
+                      <div className="store-meta">
                         <span>{st.visits} wizyt</span>
                         {Object.keys(st.locations).length > 0 && <span>📍 {Object.keys(st.locations).length} lokalizacj{Object.keys(st.locations).length === 1 ? "a" : "e"}</span>}
                         <span>śr. {avg.toFixed(0)} zł/wizyta</span>
                         {st.saved > 0 && <span style={{ color: $.red }}>−{st.saved.toFixed(2)} zł saved</span>}
-                        <span style={{ color: $.ink3 }}>ost. {fmtDate(st.lastDate)}</span>
+                        <span className="detail-label">ost. {fmtDate(st.lastDate)}</span>
                       </div>
                     </div>
 
                     {/* Total */}
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div className="receipt-total-wrap">
                       <div className="mono" style={{ fontSize: 20, fontWeight: 500, color: col, lineHeight: 1 }}>
                         {st.total.toFixed(2)}
                       </div>
-                      <div style={{ fontSize: 11, color: $.ink3, marginTop: 2 }}>zł łącznie</div>
+                      <div className="item-sub-sm">zł łącznie</div>
                     </div>
 
-                    <div style={{ color: $.ink3, fontSize: 12, marginLeft: 4, flexShrink: 0 }}>›</div>
+                    <div className="store-chevron">›</div>
                   </button>
                 );
               })}
@@ -1777,7 +1693,7 @@ function StoresView({ receipts }) {
           {/* ── DRILLDOWN MODE ── */}
           {activeStore && drillStore && (<>
             {/* Drilldown stats */}
-            <div className="stat-grid au" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+            <div className="stat-grid au stat-grid-3">
               {[
                 { l: "Łącznie",    v: drillStore.total.toFixed(2), u: "zł", col: storeColor(activeStore) },
                 { l: "Wizyt",      v: drillStore.visits,           u: "",   col: $.ink0 },
@@ -1786,7 +1702,7 @@ function StoresView({ receipts }) {
                 <div className="stat-card" key={s.l}>
                   <div className="stat-label">{s.l}</div>
                   <div className="stat-val" style={{ color: s.col }}>
-                    {s.v}<span style={{ fontSize: 15, color: $.ink3, marginLeft: 3 }}>{s.u}</span>
+                    {s.v}<span className="stat-val-unit--sm">{s.u}</span>
                   </div>
                 </div>
               ))}
@@ -1794,8 +1710,8 @@ function StoresView({ receipts }) {
 
             {/* Locations */}
             {drillStore && Object.keys(drillStore.locations).length > 0 && (
-              <div className="au1" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: $.ink3, marginBottom: 4 }}>
+              <div className="au1 flex-col gap-8">
+                <div className="section-heading-sm">
                   Lokalizacje · {Object.keys(drillStore.locations).length}
                 </div>
                 {Object.values(drillStore.locations).map((loc, i) => (
@@ -1805,11 +1721,11 @@ function StoresView({ receipts }) {
                     border: "1px solid rgba(255,255,255,0.72)", borderRadius: 12, padding: "10px 16px",
                   }}>
                     <span style={{ fontSize: 16 }}>📍</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="flex-1">
                       <div style={{ fontWeight: 600, fontSize: 13, color: $.ink0 }}>
                         {[loc.address, loc.zip_code].filter(Boolean).join(", ")}
                       </div>
-                      <div style={{ fontSize: 12, color: $.ink3 }}>{loc.visits} wizyt · {loc.total.toFixed(2)} zł</div>
+                      <div className="item-sub">{loc.visits} wizyt · {loc.total.toFixed(2)} zł</div>
                     </div>
                   </div>
                 ))}
@@ -1817,7 +1733,7 @@ function StoresView({ receipts }) {
             )}
 
             {/* Drill filters */}
-            <div className="au1" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="au1 flex-col gap-10">
               <input className="field" value={drillQ} onChange={e => setDrillQ(e.target.value)} placeholder={`Szukaj w ${activeStore}…`} />
               <div className="pills-row" role="group" aria-label="Filtruj kategorię">
                 {drillCats.map(dc => (
@@ -1835,26 +1751,26 @@ function StoresView({ receipts }) {
                 <thead>
                   <tr>
                     {["Produkt", "Kategoria", "Data", "Ilość", "Cena jedn.", "Opust", "Razem"].map((h, i) => (
-                      <th key={h} scope="col" style={{ textAlign: i >= 3 ? "right" : "left" }}>{h}</th>
+                      <th key={h} scope="col" className={i >= 3 ? "text-right" : "text-left"}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {drillItems.length === 0 ? (
-                    <tr><td colSpan={7} style={{ textAlign: "center", color: $.ink3, padding: "36px 0" }}>Brak wyników</td></tr>
+                    <tr><td colSpan={7} className="td-no-results">Brak wyników</td></tr>
                   ) : drillItems.map((item, i) => (
                     <tr key={i}>
-                      <td style={{ fontWeight: 600 }}>{item.name}</td>
+                      <td className="td-name">{item.name}</td>
                       <td><CatChip cat={item.category} /></td>
-                      <td className="mono" style={{ color: $.ink3, fontSize: 12 }}>{item.date || "—"}</td>
-                      <td className="mono" style={{ textAlign: "right", color: $.ink2, fontSize: 12 }}>{item.quantity || 1}{item.unit ? ` ${item.unit}` : ""}</td>
-                      <td style={{ textAlign: "right" }}><Zl v={item.unit_price} /></td>
-                      <td style={{ textAlign: "right" }}>
+                      <td className="mono color-ink3 fs-12">{item.date || "—"}</td>
+                      <td className="mono text-right color-ink2 fs-12">{item.quantity || 1}{item.unit ? ` ${item.unit}` : ""}</td>
+                      <td className="text-right"><Zl v={item.unit_price} /></td>
+                      <td className="text-right">
                         {item.discount
-                          ? <span className="mono" style={{ color: $.red, fontWeight: 600, fontSize: 13 }}>−{item.discount.toFixed(2)}</span>
-                          : <span style={{ color: $.ink3 }}>—</span>}
+                          ? <span className="mono td-discount-13">−{item.discount.toFixed(2)}</span>
+                          : <span className="zl-dash">—</span>}
                       </td>
-                      <td style={{ textAlign: "right" }}><Zl v={item.total_price} /></td>
+                      <td className="text-right"><Zl v={item.total_price} /></td>
                     </tr>
                   ))}
                 </tbody>
@@ -1950,18 +1866,18 @@ function ExportView({ receipts }) {
       </div>
 
       <div className="container">
-        <div className="section" style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 780 }}>
+        <div className="section flex-col gap-20" style={{ maxWidth: 780 }}>
 
           {/* ── Config card ── */}
-          <div className="card au" style={{ padding: "28px 28px" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <div className="card au card--p28">
+            <div className="flex-col gap-24">
 
               {/* Format */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: $.ink3, marginBottom: 12 }}>
+                <div className="section-heading">
                   Co eksportować
                 </div>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <div className="flex-row flex-wrap gap-10">
                   {[
                     { id: "items",    label: "Pozycje",   sub: "Każdy produkt osobno",   icon: "📦" },
                     { id: "receipts", label: "Paragony",  sub: "Podsumowanie per wizyta", icon: "🧾" },
@@ -1982,13 +1898,13 @@ function ExportView({ receipts }) {
                         display: "flex", alignItems: "center", gap: 12,
                       }}
                     >
-                      <span style={{ fontSize: 22 }}>{f.icon}</span>
+                      <span className="export-format-icon">{f.icon}</span>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: format === f.id ? $.green : $.ink0, letterSpacing: "-.01em" }}>{f.label}</div>
-                        <div style={{ fontSize: 12, color: $.ink3, marginTop: 2 }}>{f.sub}</div>
+                        <div className="export-format-label" style={{ color: format === f.id ? $.green : $.ink0 }}>{f.label}</div>
+                        <div className="item-sub">{f.sub}</div>
                       </div>
                       {format === f.id && (
-                        <div style={{ marginLeft: "auto", width: 18, height: 18, borderRadius: "50%", background: $.green, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <div className="export-check">
                           <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 3.5L3.5 6L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                         </div>
                       )}
@@ -1999,7 +1915,7 @@ function ExportView({ receipts }) {
 
               {/* Range */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: $.ink3, marginBottom: 12 }}>
+                <div className="section-heading">
                   Zakres czasowy
                 </div>
                 <div className="pills-row" role="group" aria-label="Zakres czasowy">
@@ -2013,7 +1929,7 @@ function ExportView({ receipts }) {
               </div>
 
               {/* Summary row */}
-              <div style={{ display: "flex", gap: 20, flexWrap: "wrap", padding: "16px 20px", background: "rgba(255,255,255,0.45)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.6)" }}>
+              <div className="summary-row">
                 {[
                   { l: "Wierszy CSV",    v: (format === "items" ? allItems.length : filtered.length).toLocaleString("pl-PL") },
                   { l: "Kolumn",         v: format === "items" ? "9" : "5" },
@@ -2021,8 +1937,8 @@ function ExportView({ receipts }) {
                   { l: "Zaoszczędzono",  v: `${totalSaved.toFixed(2)} zł` },
                 ].map(s => (
                   <div key={s.l}>
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".07em", textTransform: "uppercase", color: $.ink3 }}>{s.l}</div>
-                    <div className="mono" style={{ fontSize: 18, fontWeight: 500, color: $.ink0, marginTop: 4 }}>{s.v}</div>
+                    <div className="export-stat-label">{s.l}</div>
+                    <div className="mono export-stat-val">{s.v}</div>
                   </div>
                 ))}
               </div>
@@ -2053,7 +1969,7 @@ function ExportView({ receipts }) {
           {/* ── Preview table ── */}
           {previewRows.length > 0 && (
             <div className="au1">
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: $.ink3, marginBottom: 12 }}>
+              <div className="section-heading">
                 Podgląd · pierwsze {previewRows.length} wierszy
               </div>
               <div className="card tbl-wrap">
@@ -2062,10 +1978,10 @@ function ExportView({ receipts }) {
                     <tr>
                       {format === "items"
                         ? ["Produkt","Kategoria","Sklep","Data","Razem"].map((h,i) => (
-                            <th key={h} scope="col" style={{ textAlign: i >= 4 ? "right" : "left" }}>{h}</th>
+                            <th key={h} scope="col" className={i >= 4 ? "text-right" : "text-left"}>{h}</th>
                           ))
                         : ["Sklep","Data","Pozycji","Łącznie","Zaoszcz."].map((h,i) => (
-                            <th key={h} scope="col" style={{ textAlign: i >= 2 ? "right" : "left" }}>{h}</th>
+                            <th key={h} scope="col" className={i >= 2 ? "text-right" : "text-left"}>{h}</th>
                           ))
                       }
                     </tr>
@@ -2074,23 +1990,23 @@ function ExportView({ receipts }) {
                     {format === "items"
                       ? (previewRows).map((it, i) => (
                           <tr key={i}>
-                            <td style={{ fontWeight: 600 }}>{it.name}</td>
+                            <td className="td-name">{it.name}</td>
                             <td><CatChip cat={it.category} /></td>
-                            <td style={{ color: $.ink2 }}>{it.store || "—"}</td>
-                            <td className="mono" style={{ color: $.ink3, fontSize: 12 }}>{it.date || "—"}</td>
-                            <td style={{ textAlign: "right" }}><Zl v={it.total_price} /></td>
+                            <td className="color-ink2">{it.store || "—"}</td>
+                            <td className="mono color-ink3 fs-12">{it.date || "—"}</td>
+                            <td className="text-right"><Zl v={it.total_price} /></td>
                           </tr>
                         ))
                       : (previewRows).map((r, i) => (
                           <tr key={i}>
-                            <td style={{ fontWeight: 600 }}>{r.store || "—"}</td>
-                            <td className="mono" style={{ color: $.ink3, fontSize: 12 }}>{r.date || "—"}</td>
+                            <td className="td-name">{r.store || "—"}</td>
+                            <td className="mono color-ink3 fs-12">{r.date || "—"}</td>
                             <td className="mono" style={{ textAlign: "right", color: $.ink2 }}>{(r.items || []).length}</td>
-                            <td style={{ textAlign: "right" }}><Zl v={r.total} /></td>
-                            <td style={{ textAlign: "right" }}>
+                            <td className="text-right"><Zl v={r.total} /></td>
+                            <td className="text-right">
                               {parseFloat(r.total_discounts || 0) > 0
-                                ? <span className="mono" style={{ color: $.red, fontWeight: 600, fontSize: 13 }}>−{parseFloat(r.total_discounts).toFixed(2)}</span>
-                                : <span style={{ color: $.ink3 }}>—</span>}
+                                ? <span className="mono td-discount-13">−{parseFloat(r.total_discounts).toFixed(2)}</span>
+                                : <span className="zl-dash">—</span>}
                             </td>
                           </tr>
                         ))
@@ -2098,7 +2014,7 @@ function ExportView({ receipts }) {
                   </tbody>
                 </table>
                 {(format === "items" ? allItems.length : filtered.length) > 6 && (
-                  <div style={{ padding: "11px 20px", fontSize: 12, color: $.ink3, borderTop: "1px solid rgba(255,255,255,0.40)", background: "rgba(255,255,255,0.30)" }}>
+                  <div className="tbl-footer">
                     + {(format === "items" ? allItems.length : filtered.length) - 6} więcej wierszy w pliku CSV
                   </div>
                 )}
@@ -2175,11 +2091,11 @@ function BudgetsView({ receipts, expenses = [], allItems = [], budgets, setBudge
         </div>
       </div>
       <div className="container">
-        <div className="section" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <div className="section flex-col gap-20">
 
           {/* Summary */}
           {totalBudget > 0 && (
-            <div className="stat-grid au" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+            <div className="stat-grid au stat-grid-3">
               {[
                 { l: "Budżet łączny",  v: convertAmt(totalBudget, currency), u: sym, col: $.ink0 },
                 { l: "Wydano (mies.)", v: convertAmt(totalSpent,  currency), u: sym, col: $.green },
@@ -2189,7 +2105,7 @@ function BudgetsView({ receipts, expenses = [], allItems = [], budgets, setBudge
                 <div className="stat-card" key={s.l}>
                   <div className="stat-label">{s.l}</div>
                   <div className="stat-val" style={{ color: s.col }}>
-                    {s.v}<span style={{ fontSize: 15, color: $.ink3, marginLeft: 3 }}>{s.u}</span>
+                    {s.v}<span className="stat-val-unit--sm">{s.u}</span>
                   </div>
                 </div>
               ))}
@@ -2197,8 +2113,8 @@ function BudgetsView({ receipts, expenses = [], allItems = [], budgets, setBudge
           )}
 
           {/* Category budget rows */}
-          <div className="card au1" style={{ overflow: "hidden" }}>
-            <div style={{ padding: "16px 22px 8px", fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: $.ink3 }}>
+          <div className="card au1 overflow-hidden">
+            <div className="section-heading card-head">
               Kategorie — kliknij aby ustawić limit
             </div>
             {allCats.map((cat, i) => {
@@ -2224,10 +2140,10 @@ function BudgetsView({ receipts, expenses = [], allItems = [], budgets, setBudge
                   <div style={{ width: 110, fontWeight: 600, fontSize: 14, color: $.ink0, flexShrink: 0 }}>{cat}</div>
 
                   {/* Bar + amounts */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="flex-1">
                     {budget > 0 ? (
                       <>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                        <div className="flex-between" style={{ marginBottom: 5 }}>
                           <span className="mono" style={{ fontSize: 12, color: over ? $.red : $.ink2, fontWeight: over ? 700 : 400 }}>
                             {convertAmt(spent, currency)} {sym}
                           </span>
@@ -2242,13 +2158,13 @@ function BudgetsView({ receipts, expenses = [], allItems = [], budgets, setBudge
                           }} />
                         </div>
                         {over && (
-                          <div style={{ fontSize: 11, color: $.red, fontWeight: 600, marginTop: 4 }}>
+                          <div className="budget-over-text">
                             Przekroczono o {convertAmt(spent - budget, currency)} {sym}
                           </div>
                         )}
                       </>
                     ) : (
-                      <div style={{ fontSize: 13, color: $.ink3 }}>
+                      <div className="budget-no-data">
                         {spent > 0 ? `${convertAmt(spent, currency)} ${sym} wydano` : "Brak wydatków"}
                       </div>
                     )}
@@ -2256,7 +2172,7 @@ function BudgetsView({ receipts, expenses = [], allItems = [], budgets, setBudge
 
                   {/* Edit */}
                   {isEditing ? (
-                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+                    <div className="flex-row gap-6 flex-shrink-0">
                       <input
                         autoFocus
                         className="field"
@@ -2274,7 +2190,7 @@ function BudgetsView({ receipts, expenses = [], allItems = [], budgets, setBudge
                   ) : (
                     <button
                       onClick={() => { setEditing(cat); setEditVal(budget ? String(budget) : ""); }}
-                      style={{ flexShrink: 0, background: "none", border: `1.5px solid rgba(255,255,255,0.65)`, borderRadius: 8, padding: "5px 12px", fontSize: 12, color: $.ink2, cursor: "pointer", fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 600, transition: "all .15s", minHeight: 32 }}
+                      className="btn-ghost-sm"
                       onMouseOver={e => { e.currentTarget.style.borderColor = catCol; e.currentTarget.style.color = catCol; }}
                       onMouseOut={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.65)"; e.currentTarget.style.color = $.ink2; }}
                       aria-label={`Edytuj budżet ${cat}`}
@@ -2287,7 +2203,7 @@ function BudgetsView({ receipts, expenses = [], allItems = [], budgets, setBudge
             })}
           </div>
 
-          <p className="au2" style={{ fontSize: 12, color: $.ink3, textAlign: "center" }}>
+          <p className="au2 text-muted">
             Budżety są zapisane lokalnie w tej sesji · limity dotyczą bieżącego miesiąca
           </p>
         </div>
@@ -2332,7 +2248,7 @@ function RecurringView({ recurring, setRecurring, currency }) {
   return (
     <>
       <div className="page-hero">
-        <div className="page-hero-inner" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 16 }}>
+        <div className="page-hero-inner page-hero-flex">
           <div>
             <h1 className="page-title au">Cykliczne <span>wydatki</span></h1>
             <p className="page-subtitle au1">
@@ -2345,34 +2261,34 @@ function RecurringView({ recurring, setRecurring, currency }) {
         </div>
       </div>
       <div className="container">
-        <div className="section" style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 720 }}>
+        <div className="section flex-col gap-14" style={{ maxWidth: 720 }}>
 
           {/* Add form */}
           {adding && (
-            <div className="card au" style={{ padding: "22px 24px" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: $.ink3, marginBottom: 14 }}>Nowy cykliczny wydatek</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <div style={{ flex: 2, minWidth: 160 }}>
-                    <label htmlFor="rname" style={{ fontSize: 12, fontWeight: 600, color: $.ink2, marginBottom: 5, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Nazwa</label>
+            <div className="card au card--p22">
+              <div className="section-heading mb-14">Nowy cykliczny wydatek</div>
+              <div className="flex-col gap-12">
+                <div className="flex-row flex-wrap gap-10">
+                  <div className="form-group-lg min-w-160">
+                    <label htmlFor="rname" className="field-label-sm">Nazwa</label>
                     <input id="rname" className="field" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="np. Spotify, Siłownia…" onKeyDown={e => e.key === "Enter" && add()} />
                   </div>
-                  <div style={{ flex: 1, minWidth: 100 }}>
-                    <label htmlFor="ramt" style={{ fontSize: 12, fontWeight: 600, color: $.ink2, marginBottom: 5, display: "block", textTransform: "uppercase", letterSpacing: ".04em" }}>Kwota (PLN)</label>
+                  <div className="form-group min-w-100">
+                    <label htmlFor="ramt" className="field-label-sm">Kwota (PLN)</label>
                     <input id="ramt" className="field" type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm(f => ({...f, amount: e.target.value}))} placeholder="29.99" />
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <div style={{ flex: 1, minWidth: 140 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: $.ink2, marginBottom: 8, textTransform: "uppercase", letterSpacing: ".04em" }}>Cykl</div>
+                <div className="flex-row flex-wrap gap-10">
+                  <div className="form-group min-w-140">
+                    <div className="field-label-sm mb-8">Cykl</div>
                     <div className="pills-row" role="group" aria-label="Cykl płatności">
                       {REC_CYCLES.map(c => (
                         <button key={c} className={`pill${form.cycle === c ? " on" : ""}`} onClick={() => setForm(f => ({...f, cycle: c}))} aria-pressed={form.cycle === c}>{c}</button>
                       ))}
                     </div>
                   </div>
-                  <div style={{ flex: 1, minWidth: 140 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: $.ink2, marginBottom: 8, textTransform: "uppercase", letterSpacing: ".04em" }}>Kategoria</div>
+                  <div className="form-group min-w-140">
+                    <div className="field-label-sm mb-8">Kategoria</div>
                     <div className="pills-row" role="group" aria-label="Kategoria">
                       {["Subskrypcje","Zdrowie","Dom","Rozrywka","Transport","Inne"].map(c => (
                         <button key={c} className={`pill${form.category === c ? " on" : ""}`} onClick={() => setForm(f => ({...f, category: c}))} aria-pressed={form.category === c}>{c}</button>
@@ -2380,14 +2296,14 @@ function RecurringView({ recurring, setRecurring, currency }) {
                     </div>
                   </div>
                 </div>
-                <button className="btn-primary" onClick={add} style={{ alignSelf: "flex-start" }}>Zapisz wydatek</button>
+                <button className="btn-primary" onClick={add}>Zapisz wydatek</button>
               </div>
             </div>
           )}
 
           {/* Monthly summary */}
           {recurring.length > 0 && (
-            <div className="stat-grid au" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+            <div className="stat-grid au stat-grid-3">
               {[
                 { l: "Miesięcznie",  v: totalMonthly.toFixed(2),                              u: sym, col: $.ink0 },
                 { l: "Rocznie",      v: (totalMonthly * 12).toFixed(2),                        u: sym, col: $.red  },
@@ -2396,7 +2312,7 @@ function RecurringView({ recurring, setRecurring, currency }) {
                 <div className="stat-card" key={s.l}>
                   <div className="stat-label">{s.l}</div>
                   <div className="stat-val" style={{ color: s.col }}>
-                    {s.v}<span style={{ fontSize: 15, color: $.ink3, marginLeft: 3 }}>{s.u}</span>
+                    {s.v}<span className="stat-val-unit--sm">{s.u}</span>
                   </div>
                 </div>
               ))}
@@ -2407,7 +2323,7 @@ function RecurringView({ recurring, setRecurring, currency }) {
           {recurring.length === 0 && !adding ? (
             <div style={{ height: 20 }}><Empty icon="🔄" title="Brak cyklicznych wydatków" sub="Dodaj subskrypcje, abonament siłowni, czynsz — wszystko co płacisz regularnie" /></div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="flex-col gap-8">
               {recurring.map((item, i) => {
                 const monthly = toMonthly(item) * (FX[currency] || 1);
                 const catCol = CATS[item.category] || "#9CA3AF";
@@ -2431,44 +2347,43 @@ function RecurringView({ recurring, setRecurring, currency }) {
                       {item.category === "Subskrypcje" ? "📱" : item.category === "Zdrowie" ? "💪" : item.category === "Dom" ? "🏠" : item.category === "Transport" ? "🚗" : item.category === "Rozrywka" ? "🎬" : "🔄"}
                     </div>
 
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 15, color: $.ink0, letterSpacing: "-.01em" }}>{item.name}</div>
-                      <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap", alignItems: "center" }}>
+                    <div className="flex-1">
+                      <div className="item-title-lg">{item.name}</div>
+                      <div className="flex-row flex-wrap gap-8" style={{ marginTop: 4 }}>
                         <CatChip cat={item.category} />
                         <span className="rec-badge" style={{ background: catCol + "15", color: catCol, border: `1px solid ${catCol}25` }}>
                           🔄 {item.cycle}
                         </span>
                         {item.cycle !== "Miesięcznie" && (
-                          <span style={{ fontSize: 11, color: $.ink3 }}>≈ {monthly.toFixed(2)} {sym}/mies.</span>
+                          <span className="item-sub-sm">≈ {monthly.toFixed(2)} {sym}/mies.</span>
                         )}
                         {paused && (
-                          <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99,
-                            background: "rgba(245,158,11,0.12)", color: "#D97706", border: "1px solid rgba(245,158,11,0.25)" }}>
+                          <span className="paused-badge">
                             ⏸ Wstrzymany{item.pauseUntil ? ` do ${item.pauseUntil}` : ""}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div className="text-right flex-shrink-0">
                       <div className="mono" style={{ fontSize: 18, fontWeight: 500, color: catCol, lineHeight: 1 }}>
                         {dispAmt}
                       </div>
-                      <div style={{ fontSize: 11, color: $.ink3, marginTop: 2 }}>{sym} / {item.cycle.toLowerCase()}</div>
+                      <div className="item-sub-sm">{sym} / {item.cycle.toLowerCase()}</div>
                     </div>
 
                     {/* Pause button */}
-                    <div style={{ position: "relative", flexShrink: 0 }}>
+                    <div className="pos-relative flex-shrink-0">
                       <button onClick={() => setPauseMenu(pauseMenu === item.id ? null : item.id)}
-                        style={{ background: "none", border: "1.5px solid rgba(255,255,255,0.65)", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: paused ? "#D97706" : $.ink3, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s", flexShrink: 0 }}
+                        className="btn-icon-sm" style={{ color: paused ? "#D97706" : $.ink3 }}
                         aria-label={paused ? `Wznów ${item.name}` : `Wstrzymaj ${item.name}`}>
                         {paused ? "▶" : "⏸"}
                       </button>
                       {pauseMenu === item.id && (
-                        <div style={{ position: "absolute", right: 0, top: 38, zIndex: 10, background: "white", border: "1px solid #e5e7eb", borderRadius: 12, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", minWidth: 200, overflow: "hidden" }}>
+                        <div className="dropdown-menu">
                           {paused ? (
                             <div onClick={() => togglePause(item.id)}
-                              style={{ padding: "10px 14px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#16A34A" }}
+                              className="dropdown-item dropdown-item-green"
                               onMouseOver={e => e.currentTarget.style.background = "#f0fdf4"}
                               onMouseOut={e => e.currentTarget.style.background = "transparent"}>
                               ▶ Wznów
@@ -2480,7 +2395,7 @@ function RecurringView({ recurring, setRecurring, currency }) {
                                 const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
                                 togglePause(item.id, end.toISOString().slice(0, 10));
                               }}
-                                style={{ padding: "10px 14px", cursor: "pointer", fontSize: 13, borderBottom: "1px solid #f3f4f6" }}
+                                className="dropdown-item"
                                 onMouseOver={e => e.currentTarget.style.background = "#f9fafb"}
                                 onMouseOut={e => e.currentTarget.style.background = "transparent"}>
                                 ⏸ Wstrzymaj do końca miesiąca
@@ -2490,18 +2405,18 @@ function RecurringView({ recurring, setRecurring, currency }) {
                                 d.setMonth(d.getMonth() + 2);
                                 togglePause(item.id, d.toISOString().slice(0, 10));
                               }}
-                                style={{ padding: "10px 14px", cursor: "pointer", fontSize: 13, borderBottom: "1px solid #f3f4f6" }}
+                                className="dropdown-item"
                                 onMouseOver={e => e.currentTarget.style.background = "#f9fafb"}
                                 onMouseOut={e => e.currentTarget.style.background = "transparent"}>
                                 ⏸ Wstrzymaj na 2 miesiące
                               </div>
-                              <div style={{ padding: "10px 14px", fontSize: 13, borderBottom: "1px solid #f3f4f6" }}>
-                                <label style={{ fontSize: 11, fontWeight: 600, color: $.ink3, display: "block", marginBottom: 4 }}>Wznów od:</label>
+                              <div className="dropdown-item">
+                                <label className="dropdown-date-label">Wznów od:</label>
                                 <input type="date" className="field" style={{ width: "100%", fontSize: 12 }}
                                   onChange={e => { if (e.target.value) togglePause(item.id, e.target.value); }} />
                               </div>
                               <div onClick={() => togglePause(item.id)}
-                                style={{ padding: "10px 14px", cursor: "pointer", fontSize: 13, color: "#D97706" }}
+                                className="dropdown-item dropdown-item-amber"
                                 onMouseOver={e => e.currentTarget.style.background = "#fffbeb"}
                                 onMouseOut={e => e.currentTarget.style.background = "transparent"}>
                                 ⏸ Wstrzymaj bezterminowo
@@ -2513,7 +2428,7 @@ function RecurringView({ recurring, setRecurring, currency }) {
                     </div>
 
                     <button onClick={() => setRecurring(r => r.filter(x => x.id !== item.id))}
-                      style={{ background: "none", border: "1.5px solid rgba(255,255,255,0.65)", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: $.ink3, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s", flexShrink: 0 }}
+                      className="btn-icon-sm danger"
                       onMouseOver={e => { e.currentTarget.style.borderColor = $.red; e.currentTarget.style.color = $.red; e.currentTarget.style.background = $.redBg; }}
                       onMouseOut={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.65)"; e.currentTarget.style.color = $.ink3; e.currentTarget.style.background = "none"; }}
                       aria-label={`Usuń ${item.name}`}>×</button>
@@ -2624,7 +2539,7 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
       </div>
 
       <div className="container">
-        <div className="section" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <div className="section flex-col gap-20">
 
           {/* ── Main widgets ── */}
           <div className="widget-grid au">
@@ -2633,12 +2548,12 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
               <div className="widget-label">Razem / miesiąc</div>
               <div className="widget-big" style={{ color: $.green }}>
                 {convertAmt(monthSpent + recurringMonthly, currency)}
-                <span style={{ fontSize: 18, color: $.ink3, marginLeft: 6 }}>{sym}</span>
+                <span className="widget-unit">{sym}</span>
               </div>
-              <div style={{ fontSize: 12, color: $.ink2, marginTop: 8 }}>
+              <div className="widget-desc">
                 paragony + subskrypcje · {monthName}
               </div>
-              <button onClick={() => go("stats")} style={{ marginTop: 12, background: "none", border: "none", color: $.green, fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+              <button onClick={() => go("stats")} className="btn-link" style={{ marginTop: 12 }}>
                 Zobacz statystyki →
               </button>
             </div>
@@ -2648,12 +2563,12 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
               <div className="widget-label">Paragony</div>
               <div className="widget-big" style={{ color: $.ink0 }}>
                 {convertAmt(monthReceiptSpent + monthExpenseSpent, currency)}
-                <span style={{ fontSize: 18, color: $.ink3, marginLeft: 6 }}>{sym}</span>
+                <span className="widget-unit">{sym}</span>
               </div>
-              <div style={{ fontSize: 12, color: $.ink2, marginTop: 8 }}>
+              <div className="widget-desc">
                 {thisMonth.length} paragonów{thisMonthExpenses.length > 0 ? ` · ${thisMonthExpenses.length} wydatków` : ""} · {monthName}
               </div>
-              <button onClick={() => go("receipts")} style={{ marginTop: 12, background: "none", border: "none", color: $.green, fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+              <button onClick={() => go("receipts")} className="btn-link" style={{ marginTop: 12 }}>
                 Wszystkie paragony →
               </button>
             </div>
@@ -2663,12 +2578,12 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
               <div className="widget-label">Subskrypcje</div>
               <div className="widget-big" style={{ color: $.ink0 }}>
                 {convertAmt(recurringMonthly, currency)}
-                <span style={{ fontSize: 18, color: $.ink3, marginLeft: 6 }}>{sym}</span>
+                <span className="widget-unit">{sym}</span>
               </div>
-              <div style={{ fontSize: 12, color: $.ink2, marginTop: 8 }}>
+              <div className="widget-desc">
                 {recurring.length} aktywnych subskrypcji
               </div>
-              <button onClick={() => go("recurring")} style={{ marginTop: 12, background: "none", border: "none", color: $.green, fontSize: 12, fontWeight: 700, cursor: "pointer", padding: 0, fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+              <button onClick={() => go("recurring")} className="btn-link" style={{ marginTop: 12 }}>
                 Zarządzaj →
               </button>
             </div>
@@ -2678,9 +2593,9 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
               <div className="widget-label">Zaoszczędzono</div>
               <div className="widget-big" style={{ color: $.red }}>
                 {convertAmt(totalSaved, currency)}
-                <span style={{ fontSize: 18, color: $.ink3, marginLeft: 6 }}>{sym}</span>
+                <span className="widget-unit">{sym}</span>
               </div>
-              <div style={{ fontSize: 12, color: $.ink2, marginTop: 8 }}>
+              <div className="widget-desc">
                 dzięki rabatom i promocjom
               </div>
             </div>
@@ -2689,8 +2604,8 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
           {/* ── Budget alerts ── */}
           {alerts.length > 0 && (
             <div className="au1">
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: $.ink3, marginBottom: 12 }}>Alerty budżetowe</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className="section-heading">Alerty budżetowe</div>
+              <div className="flex-col gap-8">
                 {alerts.map(a => (
                   <div key={a.cat} style={{
                     display: "flex", alignItems: "center", gap: 14,
@@ -2698,17 +2613,17 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
                     background: a.over ? $.redBg : $.amberBg,
                     border: `1px solid ${a.over ? $.redRim : "rgba(217,119,6,0.22)"}`,
                   }}>
-                    <span style={{ fontSize: 20 }}>{a.over ? "🔴" : "🟡"}</span>
-                    <div style={{ flex: 1 }}>
+                    <span className="alert-icon">{a.over ? "🔴" : "🟡"}</span>
+                    <div className="flex-1">
                       <div style={{ fontWeight: 700, fontSize: 14, color: a.over ? $.red : $.amber }}>
                         {a.cat} — {a.over ? "Przekroczono limit!" : "Zbliżasz się do limitu"}
                       </div>
-                      <div style={{ fontSize: 12, color: $.ink2, marginTop: 2 }}>
+                      <div className="item-sub">
                         {convertAmt(a.spent, currency)} {sym} z {convertAmt(a.budget, currency)} {sym}
                         {" "}({(a.spent / a.budget * 100).toFixed(0)}%)
                       </div>
                     </div>
-                    <button onClick={() => go("budgets")} style={{ background: "none", border: `1.5px solid rgba(255,255,255,0.65)`, borderRadius: 8, padding: "5px 12px", fontSize: 12, cursor: "pointer", color: $.ink2, fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 600 }}>
+                    <button onClick={() => go("budgets")} className="btn-ghost-sm">
                       Budżety
                     </button>
                   </div>
@@ -2720,26 +2635,26 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
           {/* ── Smart savings (duplicates) ── */}
           {duplicates.length > 0 && (
             <div className="au2">
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: $.ink3, marginBottom: 12 }}>Gdzie kupisz taniej</div>
-              <div className="card" style={{ overflow: "hidden" }}>
+              <div className="section-heading">Gdzie kupisz taniej</div>
+              <div className="card overflow-hidden">
                 {duplicates.map((d, i) => (
                   <div key={d.name} style={{
                     padding: "13px 20px",
                     borderBottom: i < duplicates.length - 1 ? "1px solid rgba(255,255,255,0.40)" : "none",
                     display: "flex", alignItems: "center", gap: 14,
                   }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: $.greenBg, border: `1px solid ${$.greenRim}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>💡</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: $.ink0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>
-                      <div style={{ fontSize: 12, color: $.ink2, marginTop: 2 }}>
+                    <div className="icon-box icon-box-36" style={{ background: $.greenBg, border: `1px solid ${$.greenRim}` }}>💡</div>
+                    <div className="flex-1">
+                      <div className="item-title">{d.name}</div>
+                      <div className="item-sub">
                         Cena od <span className="mono">{convertAmt(d.minP, currency)} {sym}</span> do <span className="mono">{convertAmt(d.maxP, currency)} {sym}</span>
                       </div>
                     </div>
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div className="text-right flex-shrink-0">
                       <div className="mono" style={{ fontSize: 15, fontWeight: 700, color: $.green }}>
                         -{convertAmt(d.savings, currency)} {sym}
                       </div>
-                      <div style={{ fontSize: 11, color: $.ink3 }}>możliwa oszczędność</div>
+                      <div className="item-possible-saving">możliwa oszczędność</div>
                     </div>
                   </div>
                 ))}
@@ -2750,8 +2665,8 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
           {/* ── Top 3 najdroższe zakupy ── */}
           {top3Items.length > 0 && (
             <div className="au2">
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: $.ink3, marginBottom: 12 }}>Top 3 najdroższe zakupy</div>
-              <div className="card" style={{ overflow: "hidden" }}>
+              <div className="section-heading">Top 3 najdroższe zakupy</div>
+              <div className="card overflow-hidden">
                 {top3Items.map((it, i) => (
                   <div key={i} style={{
                     padding: "13px 20px",
@@ -2761,9 +2676,9 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
                     <div style={{ width: 36, height: 36, borderRadius: 10, background: i === 0 ? "rgba(234,179,8,0.12)" : $.greenBg, border: `1px solid ${i === 0 ? "rgba(234,179,8,0.25)" : $.greenRim}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
                       {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: $.ink0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.name}</div>
-                      <div style={{ fontSize: 12, color: $.ink3, marginTop: 2 }}>
+                    <div className="flex-1">
+                      <div className="item-title">{it.name}</div>
+                      <div className="item-sub">
                         {it.store || "—"}{it.date ? ` · ${it.date}` : ""}
                       </div>
                     </div>
@@ -2779,21 +2694,21 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
           {/* ── Recent receipts ── */}
           {recent.length > 0 && (
             <div className="au3">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: $.ink3 }}>Ostatnie paragony</div>
-                <button onClick={() => go("receipts")} style={{ background: "none", border: "none", color: $.green, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>Wszystkie →</button>
+              <div className="flex-between mb-12">
+                <div className="section-heading" style={{ marginBottom: 0 }}>Ostatnie paragony</div>
+                <button onClick={() => go("receipts")} className="btn-link">Wszystkie →</button>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className="flex-col gap-8">
                 {recent.map(r => (
                   <div key={r.id} style={{
                     display: "flex", alignItems: "center", gap: 14,
                     background: $.glass, backdropFilter: "blur(20px) saturate(160%)", WebkitBackdropFilter: "blur(20px) saturate(160%)",
                     border: "1px solid rgba(255,255,255,0.72)", borderRadius: 14, padding: "13px 18px",
                   }}>
-                    <div style={{ width: 38, height: 38, borderRadius: 10, background: $.greenBg, border: `1px solid ${$.greenRim}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>🧾</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: $.ink0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.store || "Paragon"}</div>
-                      <div style={{ fontSize: 12, color: $.ink3 }}>{r.date || "—"} · {(r.items || []).length} pozycji{(r.address || r.zip_code) ? ` · ${[r.zip_code, r.address].filter(Boolean).join(" ")}` : ""}</div>
+                    <div className="icon-box icon-box-38" style={{ background: $.greenBg, border: `1px solid ${$.greenRim}` }}>🧾</div>
+                    <div className="flex-1">
+                      <div className="item-title">{r.store || "Paragon"}</div>
+                      <div className="item-sub">{r.date || "—"} · {(r.items || []).length} pozycji{(r.address || r.zip_code) ? ` · ${[r.zip_code, r.address].filter(Boolean).join(" ")}` : ""}</div>
                     </div>
                     <div className="mono" style={{ fontSize: 16, fontWeight: 500, color: $.green, flexShrink: 0 }}>
                       {convertAmt(r.total || 0, currency)} {sym}
@@ -2806,10 +2721,10 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
 
           {/* Empty CTA */}
           {receipts.length === 0 && (
-            <div style={{ textAlign: "center", padding: "40px 24px" }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>🌱</div>
-              <div style={{ fontFamily: "'Bricolage Grotesque',sans-serif", fontSize: 22, fontWeight: 700, letterSpacing: "-.03em", color: $.ink0, marginBottom: 8 }}>Zacznij od paragonu</div>
-              <div style={{ color: $.ink2, fontSize: 14, marginBottom: 20, lineHeight: 1.65 }}>Dodaj swój pierwszy paragon — Claude automatycznie odczyta produkty, ceny i kategorie.</div>
+            <div className="dash-empty-cta">
+              <div className="dash-empty-icon">🌱</div>
+              <div className="dash-empty-title">Zacznij od paragonu</div>
+              <div className="dash-empty-desc">Dodaj swój pierwszy paragon — Claude automatycznie odczyta produkty, ceny i kategorie.</div>
               <button className="btn-primary" onClick={() => go("receipts")}>
                 📸 Skanuj paragon
               </button>
@@ -2885,15 +2800,15 @@ function InflationView({ receipts, currency }) {
         </div>
       </div>
       <div className="container">
-        <div className="section" style={{ display:"flex", flexDirection:"column", gap:16 }}>
+        <div className="section flex-col gap-16">
 
           {/* Filters */}
-          <div className="au" style={{ display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
-            <div style={{ flex:1, minWidth:180 }}>
+          <div className="au flex-row flex-wrap gap-10 flex-end">
+            <div className="form-group min-w-180">
               <input className="field" value={q} onChange={e => setQ(e.target.value)} placeholder="Szukaj produktu…" />
             </div>
-            <div style={{ display:"flex", gap:6, alignItems:"center" }}>
-              <span style={{ fontSize:12, color:$.ink2, fontWeight:600, whiteSpace:"nowrap" }}>Min. zakupów:</span>
+            <div className="flex-row gap-6">
+              <span className="date-label">Min. zakupów:</span>
               {[2,3,5].map(n => (
                 <button key={n} className={`pill${minOccurrences === n ? " on" : ""}`}
                   onClick={() => setMin(n)} style={{ padding:"6px 12px" }}>{n}+</button>
@@ -2905,17 +2820,17 @@ function InflationView({ receipts, currency }) {
             <Empty icon="📈" title="Za mało danych"
               sub={`Potrzebujesz co najmniej ${minOccurrences} zakupów tego samego produktu w różnych datach`} />
           ) : (
-            <div className="card au1" style={{ overflow:"hidden" }}>
+            <div className="card au1 overflow-hidden">
               <div className="tbl-wrap">
                 <table className="tbl" aria-label="Zmiany cen produktów">
                   <thead>
                     <tr>
                       <th scope="col" style={{ textAlign:"left" }}>Produkt</th>
-                      <th scope="col" style={{ textAlign:"right" }}>Pierwsza cena</th>
-                      <th scope="col" style={{ textAlign:"right" }}>Ostatnia cena</th>
-                      <th scope="col" style={{ textAlign:"right" }}>Zmiana</th>
+                      <th scope="col" className="field--text-right">Pierwsza cena</th>
+                      <th scope="col" className="field--text-right">Ostatnia cena</th>
+                      <th scope="col" className="field--text-right">Zmiana</th>
                       <th scope="col" style={{ textAlign:"center" }}>Trend</th>
-                      <th scope="col" style={{ textAlign:"right" }}>Zakupów</th>
+                      <th scope="col" className="field--text-right">Zakupów</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2927,13 +2842,13 @@ function InflationView({ receipts, currency }) {
                       return (
                         <tr key={i}>
                           <td style={{ fontWeight:600 }}>{p.name}</td>
-                          <td style={{ textAlign:"right" }}>
+                          <td className="field--text-right">
                             <Zl v={p.first} />
                           </td>
-                          <td style={{ textAlign:"right" }}>
+                          <td className="field--text-right">
                             <span className="mono" style={{ fontWeight: up||down ? 700:400, color }}>{(p.last*(FX[currency]||1)).toFixed(2)} {sym}</span>
                           </td>
-                          <td style={{ textAlign:"right" }}>
+                          <td className="field--text-right">
                             <span className="mono" style={{ fontSize:13, fontWeight:700, color }}>
                               {arrow} {Math.abs(p.change).toFixed(1)}%
                             </span>
@@ -2941,7 +2856,7 @@ function InflationView({ receipts, currency }) {
                           <td style={{ textAlign:"center", padding:"8px 12px" }}>
                             <SparkLine points={p.prices} color={color} width={100} height={28} />
                           </td>
-                          <td style={{ textAlign:"right" }} className="mono">
+                          <td className="field--text-right mono">
                             <span style={{ color:$.ink3, fontSize:12 }}>{p.entries.length}×</span>
                           </td>
                         </tr>
@@ -2953,7 +2868,7 @@ function InflationView({ receipts, currency }) {
             </div>
           )}
 
-          <p className="au2" style={{ fontSize:12, color:$.ink3, textAlign:"center" }}>
+          <p className="au2 text-muted">
             Porównanie ceny jednostkowej pierwszego i ostatniego zakupu tego samego produktu
           </p>
         </div>
@@ -3053,34 +2968,34 @@ function PredictionView({ receipts, currency }) {
         </div>
       </div>
       <div className="container">
-        <div className="section" style={{ display:"flex", flexDirection:"column", gap:20 }}>
+        <div className="section flex-col gap-20">
 
           {/* Hero prediction card */}
           {prediction && (
-            <div className="card au" style={{ padding:"32px 28px", position:"relative", overflow:"hidden" }}>
-              <div style={{ position:"absolute", top:-40, right:-40, width:180, height:180, borderRadius:"50%", background:"rgba(6,193,103,0.06)", pointerEvents:"none" }} />
-              <div style={{ fontSize:11, fontWeight:700, letterSpacing:".08em", textTransform:"uppercase", color:$.ink3, marginBottom:12 }}>
+            <div className="card au card--p32" style={{ position:"relative", overflow:"hidden" }}>
+              <div className="prediction-circle" />
+              <div className="section-heading">
                 Prognozowane wydatki — {nextMonth}
               </div>
-              <div style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:"clamp(40px,6vw,64px)", fontWeight:800, letterSpacing:"-.05em", color:$.ink0, lineHeight:1, marginBottom:12 }}>
+              <div className="prediction-amount">
                 {convertAmt(prediction.predicted, currency)}
-                <span style={{ fontSize:24, color:$.ink3, marginLeft:8 }}>{sym}</span>
+                <span className="prediction-amount-unit">{sym}</span>
               </div>
-              <div style={{ display:"flex", gap:24, flexWrap:"wrap" }}>
+              <div className="flex-row flex-wrap gap-24">
                 <div>
-                  <div style={{ fontSize:11, color:$.ink3, fontWeight:600, letterSpacing:".06em", textTransform:"uppercase" }}>Trend</div>
+                  <div className="prediction-stat-label">Trend</div>
                   <div style={{ fontSize:16, fontWeight:700, color:prediction.trendColor, marginTop:4 }}>
                     {prediction.trend === "rosnący" ? "↑" : prediction.trend === "malejący" ? "↓" : "→"} {prediction.trend}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize:11, color:$.ink3, fontWeight:600, letterSpacing:".06em", textTransform:"uppercase" }}>Średnia miesięczna</div>
+                  <div className="prediction-stat-label">Średnia miesięczna</div>
                   <div className="mono" style={{ fontSize:16, fontWeight:700, color:$.ink0, marginTop:4 }}>
                     {convertAmt(prediction.avg, currency)} {sym}
                   </div>
                 </div>
                 <div>
-                  <div style={{ fontSize:11, color:$.ink3, fontWeight:600, letterSpacing:".06em", textTransform:"uppercase" }}>Zmiana vs śr.</div>
+                  <div className="prediction-stat-label">Zmiana vs śr.</div>
                   <div className="mono" style={{ fontSize:16, fontWeight:700, color: prediction.predicted > prediction.avg ? $.red : $.green, marginTop:4 }}>
                     {prediction.predicted > prediction.avg ? "+" : ""}{convertAmt(prediction.predicted - prediction.avg, currency)} {sym}
                   </div>
@@ -3090,25 +3005,25 @@ function PredictionView({ receipts, currency }) {
           )}
 
           {/* Bar chart - history + prediction */}
-          <div className="card au1" style={{ padding:"24px" }}>
-            <div style={{ fontSize:11, fontWeight:700, letterSpacing:".08em", textTransform:"uppercase", color:$.ink3, marginBottom:20 }}>
+          <div className="card au1" style={{ padding: "24px" }}>
+            <div className="section-heading mb-20">
               Historia + prognoza
             </div>
-            <div style={{ display:"flex", alignItems:"flex-end", gap:10, height:120 }}>
+            <div className="flex-row" style={{ alignItems:"flex-end", gap:10, height:120 }}>
               {monthlyData.slice(-6).map((m, i) => {
                 const h = Math.max(8, (m.total / maxBar) * 100);
                 return (
-                  <div key={m.key} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:6 }}>
-                    <span className="mono" style={{ fontSize:10, color:$.ink3 }}>{convertAmt(m.total, currency)}</span>
+                  <div key={m.key} className="pred-bar-col">
+                    <span className="mono pred-bar-amt">{convertAmt(m.total, currency)}</span>
                     <div style={{ width:"100%", height:h, background:"rgba(6,193,103,0.25)", borderRadius:"6px 6px 0 0",
                       transition:`height .7s cubic-bezier(.16,1,.3,1) ${i*.05}s` }} />
-                    <span style={{ fontSize:10, color:$.ink3, fontWeight:600 }}>{m.label}</span>
+                    <span className="pred-bar-label">{m.label}</span>
                   </div>
                 );
               })}
               {/* Prediction bar */}
               {prediction && (
-                <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:6 }}>
+                <div className="pred-bar-col">
                   <span className="mono" style={{ fontSize:10, color:$.green, fontWeight:700 }}>{convertAmt(prediction.predicted, currency)}</span>
                   <div style={{ width:"100%", height: Math.max(8,(prediction.predicted/maxBar)*100),
                     background:$.green, borderRadius:"6px 6px 0 0", opacity:0.7,
@@ -3122,17 +3037,17 @@ function PredictionView({ receipts, currency }) {
 
           {/* Category breakdown */}
           {catPrediction.length > 0 && (
-            <div className="card au2" style={{ padding:"24px 24px" }}>
-              <div style={{ fontSize:11, fontWeight:700, letterSpacing:".08em", textTransform:"uppercase", color:$.ink3, marginBottom:16 }}>
+            <div className="card au2 card--p24">
+              <div className="section-heading mb-16">
                 Prognoza per kategoria (śr. ostatnie 2 mies.)
               </div>
-              <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              <div className="flex-col gap-10">
                 {catPrediction.map(cp => (
-                  <div key={cp.cat} style={{ display:"flex", alignItems:"center", gap:12 }}>
-                    <div style={{ width:10, height:10, borderRadius:3, background:cp.color, flexShrink:0 }} />
-                    <div style={{ width:100, fontSize:13, fontWeight:500, color:$.ink0 }}>{cp.cat}</div>
-                    <div style={{ flex:1, height:4, borderRadius:2, background:"rgba(0,0,0,0.06)", overflow:"hidden" }}>
-                      <div style={{ width:`${cp.pct}%`, height:"100%", background:cp.color, borderRadius:2, transition:"width .8s cubic-bezier(.16,1,.3,1)" }} />
+                  <div key={cp.cat} className="pred-cat-row">
+                    <div className="legend-dot" style={{ background:cp.color }} />
+                    <div className="pred-cat-name">{cp.cat}</div>
+                    <div className="pred-cat-bar">
+                      <div className="pred-cat-fill" style={{ width:`${cp.pct}%`, background:cp.color }} />
                     </div>
                     <span className="mono" style={{ fontSize:12, color:$.ink2, width:80, textAlign:"right", flexShrink:0 }}>
                       {convertAmt(cp.v, currency)} {sym}
@@ -3143,7 +3058,7 @@ function PredictionView({ receipts, currency }) {
             </div>
           )}
 
-          <p style={{ fontSize:12, color:$.ink3, textAlign:"center" }}>
+          <p className="text-muted">
             Prognoza oparta na regresji liniowej z ostatnich {Math.min(6, monthlyData.length)} miesięcy
           </p>
         </div>
@@ -3170,58 +3085,50 @@ function OnboardingOverlay({ onDone, darkMode }) {
     <div className="onboard-overlay" role="dialog" aria-modal="true" aria-label="Witaj w MaszkaApp">
       <div className="onboard-card">
         {/* Logo */}
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:32 }}>
-          <div style={{ width:10, height:10, borderRadius:"50%", background:"#06C167" }} />
-          <span style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:16, fontWeight:700, letterSpacing:"-.02em", color:"#1D1D1F" }}>MaszkaApp</span>
-          <span style={{ marginLeft:"auto", fontSize:11, color:"#AEAEB2", fontWeight:600 }}>{step+1} / {ONBOARD_STEPS.length}</span>
+        <div className="onboard-logo-row">
+          <div className="onboard-logo-dot" />
+          <span className="onboard-logo-text">MaszkaApp</span>
+          <span className="onboard-step-counter">{step+1} / {ONBOARD_STEPS.length}</span>
         </div>
 
         {/* Step icon */}
-        <div style={{ fontSize:56, marginBottom:20, display:"flex", justifyContent:"center",
-          animation:"fadeUp .4s cubic-bezier(.16,1,.3,1) both" }} key={step}>
+        <div className="onboard-step-icon" key={step}>
           {current.icon}
         </div>
 
         {/* Title */}
-        <div style={{ fontFamily:"'Bricolage Grotesque',sans-serif", fontSize:28, fontWeight:800,
-          letterSpacing:"-.04em", color:"#1D1D1F", textAlign:"center", marginBottom:12,
-          animation:"fadeUp .4s cubic-bezier(.16,1,.3,1) .05s both" }} key={step+"t"}>
+        <div className="onboard-step-title" key={step+"t"}>
           {current.title}
         </div>
 
         {/* Desc */}
-        <div style={{ fontSize:15, color:"#6E6E73", textAlign:"center", lineHeight:1.65, marginBottom:32,
-          animation:"fadeUp .4s cubic-bezier(.16,1,.3,1) .10s both" }} key={step+"d"}>
+        <div className="onboard-step-desc" key={step+"d"}>
           {current.desc}
         </div>
 
         {/* Dots */}
-        <div style={{ display:"flex", justifyContent:"center", gap:6, marginBottom:28 }}>
+        <div className="onboard-dots">
           {ONBOARD_STEPS.map((_,i) => (
             <button key={i} onClick={() => setStep(i)} aria-label={`Krok ${i+1}`}
-              style={{ width: i===step ? 22:8, height:8, borderRadius:99,
-                background: i===step ? "#06C167":"rgba(0,0,0,0.12)",
-                border:"none", cursor:"pointer", transition:"all .3s cubic-bezier(.16,1,.3,1)", padding:0 }} />
+              className={`onboard-dot ${i===step ? "onboard-dot--active" : "onboard-dot--inactive"}`} />
           ))}
         </div>
 
         {/* Buttons */}
-        <div style={{ display:"flex", gap:10 }}>
+        <div className="onboard-btns">
           {!isLast ? (
             <>
               <button onClick={onDone}
-                style={{ flex:1, background:"none", border:"1.5px solid rgba(0,0,0,0.12)", borderRadius:12,
-                  padding:"12px", cursor:"pointer", fontSize:14, color:"#6E6E73", fontFamily:"'Plus Jakarta Sans',sans-serif",
-                  fontWeight:600, transition:"all .15s" }}>
+                className="onboard-skip">
                 Pomiń
               </button>
               <button onClick={() => setStep(s => s+1)}
-                className="btn-primary" style={{ flex:2, justifyContent:"center" }}>
+                className="btn-primary onboard-next">
                 Dalej →
               </button>
             </>
           ) : (
-            <button onClick={onDone} className="btn-primary" style={{ flex:1, justifyContent:"center", fontSize:16 }}>
+            <button onClick={onDone} className="btn-primary onboard-start">
               ✦ Zaczynamy!
             </button>
           )}
@@ -3306,29 +3213,24 @@ function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, cus
         <div className="qa-handle" aria-hidden="true" />
         <div className="qa-head">
           <div className="qa-title">{textMode ? "Wpisz listę" : "Dodaj wydatek"}</div>
-          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+          <div className="flex-row gap-6">
             <button onClick={() => setTextMode(m => !m)}
-              style={{ background:textMode ? $.greenBg : "rgba(0,0,0,0.04)", border:`1px solid ${textMode ? $.greenRim : "rgba(0,0,0,0.08)"}`,
-                borderRadius:8, padding:"5px 12px", fontSize:12, fontWeight:700, cursor:"pointer",
-                color:textMode ? "#05964E" : $.ink2, fontFamily:"'Plus Jakarta Sans',sans-serif",
-                minHeight:32, display:"inline-flex", alignItems:"center", gap:4, transition:"all .15s" }}>
+              className={`toggle-btn${textMode ? " active" : ""}`}>
               {textMode ? "Formularz" : "Wpisz listę"}
             </button>
             <button onClick={onClose} aria-label="Zamknij"
-              style={{ background:"none", border:"none", cursor:"pointer", fontSize:22, color:$.ink3, padding:"4px 8px", borderRadius:8 }}>✕</button>
+              className="close-btn-sm">✕</button>
           </div>
         </div>
         <div className="qa-body">
 
           {textMode ? (
             <>
-              <div style={{ fontSize:13, color:$.ink2, marginBottom:12, lineHeight:1.6 }}>
+              <div className="text-receipt-hint">
                 Wpisz produkty — każdy w nowej linii. AI odczyta nazwy, ilości i ceny.
               </div>
-              <textarea ref={textRef} className="field" value={textVal} onChange={e => setTextVal(e.target.value)}
-                placeholder={"mleko 2zł\n2kg ziemniaków 6zł\n3 jogurty greckie activia\nchleb razowy 5.50\nmasło extra 200g 8.99zł"}
-                style={{ width:"100%", minHeight:200, resize:"vertical", fontFamily:"'Plus Jakarta Sans',sans-serif",
-                  fontSize:14, lineHeight:1.7, padding:"12px 14px", boxSizing:"border-box" }} />
+              <textarea ref={textRef} className="field text-receipt-area" value={textVal} onChange={e => setTextVal(e.target.value)}
+                placeholder={"mleko 2zł\n2kg ziemniaków 6zł\n3 jogurty greckie activia\nchleb razowy 5.50\nmasło extra 200g 8.99zł"} />
               <button className="btn-primary" onClick={() => {
                   if (!textVal.trim()) return;
                   if (!apiKey) { onNeedKey(); return; }
@@ -3345,76 +3247,76 @@ function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, cus
           ) : (
             <>
               {/* Type */}
-              <div style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:10 }}>Rodzaj</div>
+              <div className="field-label mb-10">Rodzaj</div>
               <div className="type-row">
                 {EXPENSE_TYPES.map(t => (
                   <button key={t.id} className={`type-btn${type === t.id ? " on" : ""}`}
                     onClick={() => setType(t.id)} aria-pressed={type === t.id}>
                     <div className="tb-icon">{t.icon}</div>
                     <div>
-                      <div style={{ fontWeight:700, fontSize:14, color:type===t.id ? $.green : $.ink0, letterSpacing:"-.01em" }}>{t.label}</div>
-                      <div style={{ fontSize:11, color:$.ink3, marginTop:1 }}>{t.sub}</div>
+                      <div className="fw-700" style={{ fontSize: 14, color: type===t.id ? $.green : $.ink0, letterSpacing: "-.01em" }}>{t.label}</div>
+                      <div style={{ fontSize: 11, color: $.ink3, marginTop: 1 }}>{t.sub}</div>
                     </div>
                   </button>
                 ))}
               </div>
 
               {/* Name */}
-              <div style={{ marginBottom:14 }}>
-                <label htmlFor="qa-name" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Nazwa</label>
+              <div className="mb-14">
+                <label htmlFor="qa-name" className="field-label">Nazwa</label>
                 <input id="qa-name" ref={nameRef} className="field" value={name}
                   onChange={e => setName(e.target.value)} onKeyDown={e => e.key==="Enter" && submit()}
                   placeholder="np. Młotek, Spotify, Pralka…" />
               </div>
 
               {/* Quantity + Unit + Unit Price row */}
-              <div style={{ display:"flex", gap:10, marginBottom:14 }}>
-                <div style={{ flex:1, minWidth:70 }}>
-                  <label htmlFor="qa-qty" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Ilość</label>
+              <div className="form-row">
+                <div className="form-group min-w-70">
+                  <label htmlFor="qa-qty" className="field-label">Ilość</label>
                   <input id="qa-qty" className="field" type="number" min="0" step="0.01"
                     value={quantity} onChange={e => setQuantity(e.target.value)}
-                    placeholder="1" style={{ textAlign:"right" }} />
+                    placeholder="1" style={{ textAlign: "right" }} />
                 </div>
-                <div style={{ flex:1, minWidth:60 }}>
-                  <label htmlFor="qa-unit" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Jedn.</label>
+                <div className="form-group min-w-60">
+                  <label htmlFor="qa-unit" className="field-label">Jedn.</label>
                   <input id="qa-unit" className="field" value={unit}
                     onChange={e => setUnit(e.target.value)}
                     placeholder="szt, kg, l…" />
                 </div>
-                <div style={{ flex:1, minWidth:90 }}>
-                  <label htmlFor="qa-uprice" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Cena jedn.</label>
+                <div className="form-group min-w-90">
+                  <label htmlFor="qa-uprice" className="field-label">Cena jedn.</label>
                   <input id="qa-uprice" className="field" type="number" min="0" step="0.01"
                     value={unitPrice} onChange={e => setUnitPrice(e.target.value)}
-                    placeholder="0.00" style={{ textAlign:"right" }} />
+                    placeholder="0.00" style={{ textAlign: "right" }} />
                 </div>
               </div>
 
               {/* Discount + Total row */}
-              <div style={{ display:"flex", gap:10, marginBottom:14 }}>
-                <div style={{ flex:1, minWidth:80 }}>
-                  <label htmlFor="qa-disc" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Zniżka (zł)</label>
+              <div className="form-row">
+                <div className="form-group min-w-80">
+                  <label htmlFor="qa-disc" className="field-label">Zniżka (zł)</label>
                   <input id="qa-disc" className="field" type="number" min="0" step="0.01"
                     value={discount} onChange={e => setDiscount(e.target.value)}
-                    placeholder="0.00" style={{ textAlign:"right" }} />
+                    placeholder="0.00" style={{ textAlign: "right" }} />
                 </div>
-                <div style={{ flex:1, minWidth:80 }}>
-                  <label htmlFor="qa-disclbl" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Opis zniżki</label>
+                <div className="form-group min-w-80">
+                  <label htmlFor="qa-disclbl" className="field-label">Opis zniżki</label>
                   <input id="qa-disclbl" className="field" value={discountLabel}
                     onChange={e => setDiscountLabel(e.target.value)}
                     placeholder="np. Karta Moja" />
                 </div>
-                <div style={{ flex:1, minWidth:90 }}>
-                  <label htmlFor="qa-amt" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Razem (PLN)</label>
+                <div className="form-group min-w-90">
+                  <label htmlFor="qa-amt" className="field-label">Razem (PLN)</label>
                   <input id="qa-amt" className="field" type="number" min="0" step="0.01"
                     value={amount} onChange={e => setAmount(e.target.value)}
-                    onKeyDown={e => e.key==="Enter" && submit()} placeholder="0.00" style={{ textAlign:"right" }} />
+                    onKeyDown={e => e.key==="Enter" && submit()} placeholder="0.00" style={{ textAlign: "right" }} />
                 </div>
               </div>
 
               {/* Cycle (only for recurring) */}
               {type === "recurring" && (
-                <div style={{ marginBottom:14 }}>
-                  <div style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:8 }}>Cykl płatności</div>
+                <div className="mb-14">
+                  <div className="field-label mb-8">Cykl płatności</div>
                   <div className="pills-row" role="group" aria-label="Cykl">
                     {REC_CYCLES.map(c => (
                       <button key={c} className={`pill${cycle===c?" on":""}`} onClick={() => setCycle(c)} aria-pressed={cycle===c}>{c}</button>
@@ -3424,10 +3326,10 @@ function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, cus
               )}
 
               {/* Category */}
-              <div style={{ marginBottom:14 }}>
-                <div style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:8 }}>Kategoria</div>
+              <div className="mb-14">
+                <div className="field-label mb-8">Kategoria</div>
                 {/* Group tabs */}
-                <div className="pills-row" style={{ marginBottom:10 }} role="group" aria-label="Grupa kategorii">
+                <div className="pills-row" style={{ marginBottom: 10 }} role="group" aria-label="Grupa kategorii">
                   {allCatGroups.map(([grp]) => (
                     <button key={grp} className={`pill${catGroup===grp?" on":""}`} onClick={() => setCatGroup(grp)} aria-pressed={catGroup===grp}>{grp}</button>
                   ))}
@@ -3445,20 +3347,20 @@ function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, cus
               </div>
 
               {/* Date + store row */}
-              <div style={{ display:"flex", gap:10, marginBottom:14 }}>
-                <div style={{ flex:1 }}>
-                  <label htmlFor="qa-date" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Data</label>
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="qa-date" className="field-label">Data</label>
                   <input id="qa-date" className="field" type="date" value={date} onChange={e => setDate(e.target.value)} />
                 </div>
-                <div style={{ flex:1 }}>
-                  <label htmlFor="qa-store" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Sklep / źródło</label>
+                <div className="form-group">
+                  <label htmlFor="qa-store" className="field-label">Sklep / źródło</label>
                   <StorePickerInput id="qa-store" value={store} onChange={setStore} customStores={customStores} onAddCustomStore={onAddCustomStore} placeholder="np. Leroy Merlin, Amazon…" />
                 </div>
               </div>
 
               {/* Note */}
-              <div style={{ marginBottom:20 }}>
-                <label htmlFor="qa-note" style={{ fontSize:11, fontWeight:700, letterSpacing:".07em", textTransform:"uppercase", color:$.ink3, marginBottom:6, display:"block" }}>Notatka (opcjonalnie)</label>
+              <div className="mb-20">
+                <label htmlFor="qa-note" className="field-label">Notatka (opcjonalnie)</label>
                 <input id="qa-note" className="field" value={note} onChange={e => setNote(e.target.value)} placeholder="Do czego służy, gdzie kupiłeś…" />
               </div>
 
@@ -3536,10 +3438,10 @@ function ExpensesView({ expenses, receipts, recurring = [], onDelete, currency }
         </div>
       </div>
       <div className="container">
-        <div className="section" style={{ display:"flex", flexDirection:"column", gap:16 }}>
+        <div className="section flex-col gap-16">
 
           {/* Stats */}
-          <div className="stat-grid au" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:12 }}>
+          <div className="stat-grid au stat-grid-3">
             {[
               { l:"Łącznie",      v:convertAmt(totalAll,    currency), u:sym, col:$.ink0  },
               { l:"Ręcznie",      v:convertAmt(totalManual, currency), u:sym, col:$.green },
@@ -3555,8 +3457,8 @@ function ExpensesView({ expenses, receipts, recurring = [], onDelete, currency }
           </div>
 
           {/* Filters */}
-          <div className="au1" style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            <div style={{ display:"flex", gap:10 }}>
+          <div className="au1 flex-col gap-10">
+            <div className="onboard-btns">
               <input className="field" value={q} onChange={e=>setQ(e.target.value)}
                 placeholder="Szukaj wydatku…" style={{ flex:1 }} />
               <select className="field" value={sort} onChange={e=>setSort(e.target.value)}
@@ -3587,10 +3489,10 @@ function ExpensesView({ expenses, receipts, recurring = [], onDelete, currency }
             </div>
 
             {/* Date filter */}
-            <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
-              <label style={{ fontSize:12, fontWeight:600, color:$.ink2, whiteSpace:"nowrap" }}>Od:</label>
+            <div className="date-filter-row">
+              <label className="date-label">Od:</label>
               <input className="field" type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{ flex:1, minWidth:130 }} />
-              <label style={{ fontSize:12, fontWeight:600, color:$.ink2, whiteSpace:"nowrap" }}>Do:</label>
+              <label className="date-label">Do:</label>
               <input className="field" type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{ flex:1, minWidth:130 }} />
               {(dateFrom || dateTo) && (
                 <button className="pill" onClick={()=>{ setDateFrom(""); setDateTo(""); }} style={{ whiteSpace:"nowrap" }}>✕ Wyczyść</button>
@@ -3602,7 +3504,7 @@ function ExpensesView({ expenses, receipts, recurring = [], onDelete, currency }
           {list.length === 0 ? (
             <Empty icon="📋" title="Brak wyników" sub="Spróbuj zmienić filtry lub dodaj pierwszy wydatek przyciskiem +" />
           ) : (
-            <div className="au2" style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            <div className="au2 flex-col gap-8">
               {list.map((item, i) => {
                 const isOpen = expanded === i;
                 return (
@@ -3619,17 +3521,17 @@ function ExpensesView({ expenses, receipts, recurring = [], onDelete, currency }
                     }}>
 
                     {/* Collapsed row */}
-                    <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                      <span style={{ fontSize:18, flexShrink:0 }}>{CAT_ICONS[item.category]||"📦"}</span>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontWeight:600, fontSize:14, color:$.ink0, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{item.name}</div>
-                        <div style={{ fontSize:11, color:$.ink3, marginTop:2 }}>
+                    <div className="expense-row">
+                      <span className="expense-icon">{CAT_ICONS[item.category]||"📦"}</span>
+                      <div className="flex-1">
+                        <div className="expense-name">{item.name}</div>
+                        <div className="item-sub-sm">
                           {item.source==="recurring" ? "cykliczny" : (item.date||"—")}
                           {" · "}
                           {item.source==="recurring" ? "🔄" : item.source==="manual" ? "✏️" : "🧾"}
                         </div>
                       </div>
-                      <div style={{ textAlign:"right", flexShrink:0 }}>
+                      <div className="text-right flex-shrink-0">
                         <span className="mono" style={{ fontWeight:600, fontSize:15 }}>
                           {convertAmt(item.total_price||0, currency)} {sym}
                         </span>
@@ -3643,29 +3545,23 @@ function ExpensesView({ expenses, receipts, recurring = [], onDelete, currency }
                     {/* Expanded details */}
                     {isOpen && (
                       <div onClick={e => e.stopPropagation()}
-                        style={{ marginTop:14, paddingTop:14, borderTop:"1px solid rgba(0,0,0,0.06)",
-                          display:"grid", gridTemplateColumns:"1fr 1fr", gap:"8px 20px", fontSize:13 }}>
-                        <div><span style={{ color:$.ink3 }}>Kategoria:</span> <CatChip cat={item.category} /></div>
+                        className="expense-detail-grid">
+                        <div><span className="detail-label">Kategoria:</span> <CatChip cat={item.category} /></div>
                         <div>
-                          <span style={{ color:$.ink3 }}>Źródło: </span>
-                          <span style={{
-                            fontSize:10, fontWeight:700, padding:"3px 8px", borderRadius:99,
-                            background: item.source==="recurring" ? "rgba(124,58,237,0.10)" : item.source==="manual" ? "rgba(6,193,103,0.10)" : "rgba(59,130,246,0.10)",
-                            color: item.source==="recurring" ? "#7C3AED" : item.source==="manual" ? $.green : "#3B82F6",
-                            border: `1px solid ${item.source==="recurring" ? "rgba(124,58,237,0.25)" : item.source==="manual" ? "rgba(6,193,103,0.25)" : "rgba(59,130,246,0.25)"}`,
-                          }}>
+                          <span className="detail-label">Źródło: </span>
+                          <span className={`source-badge source-badge-${item.source}`}>
                             {item.source==="recurring" ? "🔄 Cykliczny" : item.source==="manual" ? "✏️ Ręczny" : "🧾 Paragon"}
                           </span>
                         </div>
-                        {item.store && <div><span style={{ color:$.ink3 }}>Sklep:</span> {item.store}</div>}
-                        {item.quantity && <div><span style={{ color:$.ink3 }}>Ilość:</span> {item.quantity}{item.unit ? ` ${item.unit}` : ""}</div>}
-                        {item.unit_price && <div><span style={{ color:$.ink3 }}>Cena jedn.:</span> {convertAmt(item.unit_price, currency)} {sym}</div>}
+                        {item.store && <div><span className="detail-label">Sklep:</span> {item.store}</div>}
+                        {item.quantity && <div><span className="detail-label">Ilość:</span> {item.quantity}{item.unit ? ` ${item.unit}` : ""}</div>}
+                        {item.unit_price && <div><span className="detail-label">Cena jedn.:</span> {convertAmt(item.unit_price, currency)} {sym}</div>}
                         {item.discount > 0 && <div style={{ color:$.red }}><span>Zniżka:</span> −{convertAmt(item.discount, currency)} {sym}</div>}
-                        {item.note && <div style={{ gridColumn:"1/-1", color:$.ink2 }}><span style={{ color:$.ink3 }}>Notatka:</span> {item.note}</div>}
+                        {item.note && <div className="detail-full" style={{ color:$.ink2 }}><span className="detail-label">Notatka:</span> {item.note}</div>}
                         {item.source==="manual" && (
-                          <div style={{ gridColumn:"1/-1", marginTop:4 }}>
+                          <div className="detail-full" style={{ marginTop: 4 }}>
                             <button onClick={() => { haptic(10); onDelete(item.id); }}
-                              style={{ background:"none", border:`1.5px solid ${$.red}`, borderRadius:8, padding:"5px 14px", fontSize:12, cursor:"pointer", color:$.red, fontWeight:600, fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
+                              className="btn-delete">
                               🗑️ Usuń
                             </button>
                           </div>
@@ -3948,13 +3844,10 @@ export default function App({ uid }) {
   const currentView = VIEWS.find(v => v.id === view);
 
   if (!dataLoaded) return (
-    <div style={{
-      minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-      background: "#000", color: "#fff", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    }}>
-      <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 32, marginBottom: 12 }}>🧾</div>
-        <div style={{ fontSize: 14, color: "#aaa" }}>Ładowanie danych...</div>
+    <div className="loading-screen">
+      <div>
+        <div className="loading-icon">🧾</div>
+        <div className="loading-text">Ładowanie danych...</div>
       </div>
     </div>
   );
@@ -4019,13 +3912,12 @@ export default function App({ uid }) {
 
       {/* API Key Modal */}
       {showKeyModal && (
-        <div style={{ position:"fixed", inset:0, zIndex:10000, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}
+        <div className="apikey-overlay"
           onClick={() => setShowKeyModal(false)}>
-          <div style={{ background:"var(--dark,0) == 1 ? #1a1a1a : #fff", backgroundColor: darkMode ? "#1a1a1a" : "#fff",
-            borderRadius:20, padding:"32px 28px", maxWidth:420, width:"100%", boxShadow:"0 20px 60px rgba(0,0,0,0.3)" }}
+          <div className={`apikey-box ${darkMode ? "apikey-box-dark" : "apikey-box-light"}`}
             onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize:18, fontWeight:800, color: darkMode ? "#fff" : $.ink0, marginBottom:4 }}>Klucz API Anthropic</div>
-            <div style={{ fontSize:13, color: darkMode ? "#aaa" : $.ink2, marginBottom:16 }}>
+            <div className="apikey-title" style={{ color: darkMode ? "#fff" : $.ink0 }}>Klucz API Anthropic</div>
+            <div className="apikey-desc" style={{ color: darkMode ? "#aaa" : $.ink2 }}>
               Wymagany do skanowania paragonów i planowania posiłków. Klucz jest przechowywany tylko lokalnie w przeglądarce.
             </div>
             <input
@@ -4033,29 +3925,24 @@ export default function App({ uid }) {
               value={apiKey}
               onChange={e => { setApiKey(e.target.value); lsSet(LS_KEYS.apiKey, e.target.value); }}
               placeholder="sk-ant-..."
-              style={{ width:"100%", padding:"10px 14px", fontSize:14, border:`2px solid ${darkMode ? "#333" : "#e0e0e0"}`,
-                borderRadius:12, background: darkMode ? "#222" : "#f9f9f9", color: darkMode ? "#fff" : $.ink0,
-                outline:"none", boxSizing:"border-box", fontFamily:"monospace" }}
+              className={`apikey-input ${darkMode ? "apikey-input-dark" : "apikey-input-light"}`}
               onFocus={e => e.target.style.borderColor = $.green}
               onBlur={e => e.target.style.borderColor = darkMode ? "#333" : "#e0e0e0"}
             />
-            <div style={{ display:"flex", gap:10, marginTop:16, justifyContent:"flex-end" }}>
+            <div className="apikey-actions">
               <button onClick={() => setShowKeyModal(false)}
-                style={{ padding:"8px 20px", borderRadius:10, border:"none", background:$.green, color:"#fff",
-                  fontSize:13, fontWeight:700, cursor:"pointer" }}>
+                className="apikey-save">
                 Zapisz
               </button>
             </div>
-            {apiKey && <div style={{ marginTop:12, fontSize:12, color:$.green, fontWeight:600 }}>Klucz ustawiony ({apiKey.slice(0,10)}...)</div>}
+            {apiKey && <div className="apikey-status">Klucz ustawiony ({apiKey.slice(0,10)}...)</div>}
           </div>
         </div>
       )}
 
       {/* Skip link */}
       <a href="#main"
-        style={{ position: "absolute", top: -60, left: 12, zIndex: 9999, background: $.green, color: $.white, padding: "8px 18px", borderRadius: "0 0 10px 10px", fontSize: 13, fontWeight: 700, textDecoration: "none", transition: "top .15s" }}
-        onFocus={e => e.target.style.top = "0"}
-        onBlur={e => e.target.style.top = "-60px"}
+        className="skip-link"
       >Przejdź do treści</a>
 
       {/* ── TOP NAV ── */}
@@ -4102,20 +3989,16 @@ export default function App({ uid }) {
           <button
             className="nav-add-btn"
             onClick={() => { setShowQA(true); haptic(12); }}
-            aria-label="Dodaj wydatek"
-            style={{ marginLeft:8, background:$.green, border:"none", borderRadius:99, padding:"6px 14px", cursor:"pointer",
-              color:"#fff", fontSize:13, fontWeight:700, fontFamily:"'Plus Jakarta Sans',sans-serif",
-              display:"flex", alignItems:"center", gap:5, minHeight:30, transition:"opacity .15s", flexShrink:0 }}>
+            aria-label="Dodaj wydatek">
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M6 1v10M1 6h10" stroke="white" strokeWidth="2.2" strokeLinecap="round"/></svg>
             Dodaj
           </button>
 
           {/* API Key */}
-          <button className="dark-btn" onClick={() => { setShowKeyModal(true); haptic(12); }}
-            aria-label="Klucz API" title="Klucz API"
-            style={{ position:"relative" }}>
+          <button className="dark-btn pos-relative" onClick={() => { setShowKeyModal(true); haptic(12); }}
+            aria-label="Klucz API" title="Klucz API">
             🔑
-            {!apiKey && <span style={{ position:"absolute", top:2, right:2, width:8, height:8, borderRadius:"50%", background:$.red }} />}
+            {!apiKey && <span className="key-dot" />}
           </button>
 
           {/* Dark mode */}
@@ -4169,7 +4052,7 @@ export default function App({ uid }) {
       <nav className="botnav" aria-label="Nawigacja mobilna">
         <div className="botnav-pill" role="list">
           {MOBILE_VIEWS.map((v, i) => (
-            <div key={v.id} role="listitem" style={{ display: "contents" }}>
+            <div key={v.id} role="listitem" className="d-contents">
               {i === 3 && <div className="botnav-divider" aria-hidden="true" />}
               <button
                 className={`botnav-btn${view === v.id ? " active" : ""}`}
