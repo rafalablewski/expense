@@ -1,5 +1,6 @@
 import { useAppData } from "../../contexts/AppDataContext";
 import { FX_SYMBOLS } from "../../config/defaults";
+import { convertAmt } from "../../utils/helpers";
 
 export default function DonutChart({ data, size = 200 }) {
   const { currency } = useAppData();
@@ -40,7 +41,7 @@ export default function DonutChart({ data, size = 200 }) {
       ))}
       {/* Centre label */}
       <text x={cx} y={cy - 8} textAnchor="middle" fontSize={size * 0.09} fontWeight="700"
-        fill="#1D1D1F" fontFamily="'JetBrains Mono', monospace">{(total).toFixed(0)}</text>
+        fill="#1D1D1F" fontFamily="'JetBrains Mono', monospace">{convertAmt(total, currency)}</text>
       <text x={cx} y={cy + 10} textAnchor="middle" fontSize={size * 0.054} fill="#AEAEB2"
         fontFamily="'Plus Jakarta Sans', sans-serif" fontWeight="500">łącznie {sym}</text>
     </svg>

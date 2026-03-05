@@ -40,7 +40,6 @@ export default function StatsView() {
   // ── Available months for month filter ──
   const monthList = useMemo(() => {
     const set = new Set();
-    const monthNames = ["Sty","Lut","Mar","Kwi","Maj","Cze","Lip","Sie","Wrz","Paź","Lis","Gru"];
     const addMonth = (dateStr) => {
       if (!dateStr) return;
       const m1 = dateStr.match(/^(\d{4})-(\d{2})/);
@@ -51,7 +50,7 @@ export default function StatsView() {
     receipts.forEach(r => addMonth(r.date));
     return [...set].sort().reverse().map(key => {
       const [y, m] = key.split("-");
-      return { key, label: `${monthNames[parseInt(m, 10) - 1]} ${y}` };
+      return { key, label: `${MONTH_NAMES[parseInt(m, 10) - 1]} ${y}` };
     });
   }, [receipts]);
 
