@@ -196,15 +196,22 @@ export function AppDataProvider({ uid, children }) {
   }, [darkMode]);
 
   // ── Computed ──
-  const allItems = useMemo(() => [
-    ...expenses.map(e => ({
-      id: e.id, name: e.name, total_price: e.amount, category: e.category,
-      date: e.date, store: e.store, note: e.note, source: "manual", type: e.type,
-    })),
-    ...receipts.flatMap(r =>
+  const allItems = useMemo(() => {
+    const receiptItems = receipts.flatMap(r =>
       (r.items || []).map(it => ({ ...it, store: r.store, address: r.address, zip_code: r.zip_code, date: r.date, source: r.source || "receipt" }))
-    ),
-  ], [expenses, receipts]);
+    );
+    // Build a key set from receipt items to deduplicate old manual expenses
+    const receiptKeys = new Set(receiptItems.map(it =>
+      `${(it.name || "").toLowerCase().trim()}|${it.date || ""}|${(it.store || "").toLowerCase().trim()}`
+    ));
+    const manualItems = expenses
+      .filter(e => !receiptKeys.has(`${(e.name || "").toLowerCase().trim()}|${e.date || ""}|${(e.store || "").toLowerCase().trim()}`))
+      .map(e => ({
+        id: e.id, name: e.name, total_price: e.amount, category: e.category,
+        date: e.date, store: e.store, note: e.note, source: "manual", type: e.type,
+      }));
+    return [...manualItems, ...receiptItems];
+  }, [expenses, receipts]);
 
   // ── Actions ──
   const addExpense = useCallback((exp) => {
