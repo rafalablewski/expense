@@ -107,8 +107,35 @@ export function AppDataProvider({ uid, children }) {
   }, [uid]);
 
   function applyData(d) {
-    setReceipts((d.receipts || []).map(ensureCity));
-    setExpenses(d.expenses || []);
+    // Migrate old flat expenses into receipt format (one-time, on load)
+    const oldExpenses = (d.expenses || []).filter(e => e.type !== "recurring");
+    const migratedReceipts = oldExpenses.map(e => ensureCity({
+      id: e.id,
+      store: e.store || "",
+      address: "",
+      zip_code: "",
+      city: e.city || "",
+      date: e.date || "",
+      total: parseFloat(e.amount) || 0,
+      total_discounts: parseFloat(e.discount) || 0,
+      source: "manual",
+      items: [{
+        name: e.name || "",
+        quantity: e.quantity || 1,
+        unit: e.unit || null,
+        unit_price: e.unit_price || null,
+        total_price: parseFloat(e.amount) || 0,
+        discount: e.discount ? parseFloat(e.discount) : null,
+        discount_label: e.discount_label || null,
+        category: e.category || "Inne",
+      }],
+    }));
+    const existingReceipts = (d.receipts || []).map(ensureCity);
+    // Deduplicate: skip migrated receipts whose id already exists in receipts
+    const existingIds = new Set(existingReceipts.map(r => r.id));
+    const newMigrated = migratedReceipts.filter(r => !existingIds.has(r.id));
+    setReceipts([...existingReceipts, ...newMigrated]);
+    setExpenses([]); // Clear old expenses — now migrated to receipts
     setBudgets(d.budgets || {});
     setRecurring(d.recurring || []);
     setCustomStores(d.customStores || []);
@@ -197,20 +224,11 @@ export function AppDataProvider({ uid, children }) {
 
   // ── Computed ──
   const allItems = useMemo(() => {
+    // Receipt items (scanned + manual) are the single source of truth
     const receiptItems = receipts.flatMap(r =>
       (r.items || []).map(it => ({ ...it, store: r.store, address: r.address, zip_code: r.zip_code, date: r.date, source: r.source || "receipt" }))
     );
-    // Build a key set from receipt items to deduplicate old manual expenses
-    const receiptKeys = new Set(receiptItems.map(it =>
-      `${(it.name || "").toLowerCase().trim()}|${it.date || ""}|${(it.store || "").toLowerCase().trim()}`
-    ));
-    const manualItems = expenses
-      .filter(e => !receiptKeys.has(`${(e.name || "").toLowerCase().trim()}|${e.date || ""}|${(e.store || "").toLowerCase().trim()}`))
-      .map(e => ({
-        id: e.id, name: e.name, total_price: e.amount, category: e.category,
-        date: e.date, store: e.store, note: e.note, source: "manual", type: e.type,
-      }));
-    // Include active recurring subscriptions as monthly items
+    // Active recurring subscriptions as monthly items
     const toMonthlyAmt = (r) => {
       const a = parseFloat(r.amount) || 0;
       return ({ "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 })[r.cycle] || a;
@@ -221,8 +239,8 @@ export function AppDataProvider({ uid, children }) {
         id: r.id, name: r.name, total_price: toMonthlyAmt(r), category: r.category || "Subskrypcje",
         date: null, store: null, source: "recurring", cycle: r.cycle,
       }));
-    return [...manualItems, ...receiptItems, ...recurringItems];
-  }, [expenses, receipts, recurring]);
+    return [...receiptItems, ...recurringItems];
+  }, [receipts, recurring]);
 
   // ── Actions ──
   const addExpense = useCallback((exp) => {

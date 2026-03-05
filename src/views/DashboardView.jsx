@@ -6,39 +6,26 @@ import Empty from "../components/primitives/Empty";
 import { useAppData } from "../contexts/AppDataContext";
 
 export default function DashboardView({ go }) {
-  const { receipts, expenses, budgets, recurring, currency, allItems } = useAppData();
+  const { receipts, budgets, recurring, currency, allItems } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
   const now = new Date();
   const [includeRecurring, setIncludeRecurring] = useState(true);
 
-  // allItems comes from App (merged receipts + manual)
-  // This month — receipts
+  // This month — receipts (includes both scanned and manual)
   const thisMonth = useMemo(() => receipts.filter(r => {
     const d = parseDate(r.date);
     return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }), [receipts]);
 
-  // This month — manual expenses
-  const thisMonthExpenses = useMemo(() => expenses.filter(e => {
-    const d = parseDate(e.date);
-    return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  }), [expenses]);
-
-  const monthReceiptSpent = thisMonth.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
-  const monthExpenseSpent = thisMonthExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-  const monthSpent = monthReceiptSpent + monthExpenseSpent;
-  const totalSpent = receipts.reduce((s, r) => s + (parseFloat(r.total) || 0), 0)
-    + expenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+  const monthSpent = thisMonth.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
+  const totalSpent = receipts.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
   const totalSaved = receipts.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
 
   // Budget alerts
-  const monthItems = useMemo(() => {
-    const fromReceipts = thisMonth.flatMap(r => r.items || []);
-    const fromExpenses = thisMonthExpenses.map(e => ({
-      name: e.name, total_price: e.amount, category: e.category,
-    }));
-    return [...fromReceipts, ...fromExpenses];
-  }, [thisMonth, thisMonthExpenses]);
+  const monthItems = useMemo(() =>
+    thisMonth.flatMap(r => r.items || []),
+    [thisMonth]
+  );
   const monthSpending = useMemo(() => {
     const map = {};
     monthItems.forEach(it => { const c = it.category || "Inne"; map[c] = (map[c] || 0) + (parseFloat(it.total_price) || 0); });
@@ -55,9 +42,11 @@ export default function DashboardView({ go }) {
   };
   const recurringMonthly = recurring.filter(r => !isRecurringPaused(r)).reduce((s, r) => s + toMonthly(r), 0);
 
-  // Filter allItems based on recurring toggle
+  // Filter allItems: exclude legacy expenses (duplicates of receipt data), optionally exclude recurring
   const filteredItems = useMemo(
-    () => includeRecurring ? allItems : allItems.filter(it => it.source !== "recurring"),
+    () => allItems.filter(it =>
+      includeRecurring || it.source !== "recurring"
+    ),
     [allItems, includeRecurring]
   );
 
@@ -131,11 +120,11 @@ export default function DashboardView({ go }) {
             <div className="widget">
               <div className="widget-label">Paragony</div>
               <div className="widget-big color-ink0">
-                {convertAmt(monthReceiptSpent + monthExpenseSpent, currency)}
+                {convertAmt(monthSpent, currency)}
                 <span className="widget-unit">{sym}</span>
               </div>
               <div className="widget-desc">
-                {thisMonth.length} paragonów{thisMonthExpenses.length > 0 ? ` · ${thisMonthExpenses.length} wydatków` : ""} · {monthName}
+                {thisMonth.length} paragonów · {monthName}
               </div>
               <button onClick={() => go("receipts")} className="btn-link mt-12">
                 Wszystkie paragony →
