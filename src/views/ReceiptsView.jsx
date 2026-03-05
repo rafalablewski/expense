@@ -6,7 +6,7 @@ import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import { useAppData } from "../contexts/AppDataContext";
 import { CATS, FX, FX_SYMBOLS } from "../config/defaults";
-import { isRecurringPaused } from "../utils/helpers";
+import { isRecurringPaused, toMonthly } from "../utils/helpers";
 
 const TABS = [
   { id: "receipts",      label: "Paragony",    icon: "\uD83E\uDDFE" },
@@ -34,13 +34,6 @@ export default function ReceiptsView({ onFiles }) {
     () => [...receipts].sort((a, b) => (b.date || "").localeCompare(a.date || "")),
     [receipts]
   );
-
-  // Subscriptions with monthly cost
-  const toMonthly = (item) => {
-    const a = parseFloat(item.amount) || 0;
-    const base = { "Miesi\u0119cznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 };
-    return base[item.cycle] || a;
-  };
 
   // Receipts that look like invoices
   const invoiceReceipts = useMemo(

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import $ from "../config/theme";
-import { parseDate } from "../utils/helpers";
+import { parseDate, sumReceiptItems } from "../utils/helpers";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import Zl from "../components/primitives/Zl";
@@ -44,10 +44,10 @@ export default function StoresView() {
       const key = raw.toLowerCase();
       if (!map[key]) map[key] = { name: raw, visits: 0, total: 0, saved: 0, items: [], receipts: [], lastDate: null, locations: {}, cities: {} };
       map[key].visits++;
-      map[key].total  += parseFloat(r.total) || 0;
+      map[key].total  += sumReceiptItems(r);
       map[key].saved  += parseFloat(r.total_discounts) || 0;
       (r.items || []).forEach(it => map[key].items.push({ ...it, date: r.date }));
-      map[key].receipts.push({ id: r.id, date: r.date, total: parseFloat(r.total) || 0, itemCount: (r.items || []).length, address: r.address, zip_code: r.zip_code, city: r.city });
+      map[key].receipts.push({ id: r.id, date: r.date, total: sumReceiptItems(r), itemCount: (r.items || []).length, address: r.address, zip_code: r.zip_code, city: r.city });
       if (r.city) map[key].cities[r.city] = (map[key].cities[r.city] || 0) + 1;
       const d = parseDate(r.date);
       if (d && (!map[key].lastDate || d > map[key].lastDate)) map[key].lastDate = d;
@@ -56,7 +56,7 @@ export default function StoresView() {
       if (locKey) {
         if (!map[key].locations[locKey]) map[key].locations[locKey] = { address: r.address || "", zip_code: r.zip_code || "", city: r.city || "", visits: 0, total: 0 };
         map[key].locations[locKey].visits++;
-        map[key].locations[locKey].total += parseFloat(r.total) || 0;
+        map[key].locations[locKey].total += sumReceiptItems(r);
       }
     });
     return map;

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import $ from "../config/theme";
 import { CATS, FX, FX_SYMBOLS } from "../config/defaults";
-import { isRecurringPaused } from "../utils/helpers";
+import { isRecurringPaused, toMonthly } from "../utils/helpers";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import { useAppData } from "../contexts/AppDataContext";
@@ -21,12 +21,6 @@ export default function RecurringView() {
     setAdding(false);
   };
 
-  // Monthly equivalent
-  const toMonthly = (item) => {
-    const a = parseFloat(item.amount) || 0;
-    const base = { "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 };
-    return base[item.cycle] || a;
-  };
   const [pauseMenu, setPauseMenu] = useState(null);
   const totalMonthly = recurring.filter(r => !isRecurringPaused(r)).reduce((s, r) => s + toMonthly(r) * (FX[currency] || 1), 0);
 

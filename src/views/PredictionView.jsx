@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import $ from "../config/theme";
 import { CATS, FX_SYMBOLS } from "../config/defaults";
-import { convertAmt, parseDate } from "../utils/helpers";
+import { convertAmt, parseDate, sumReceiptItems } from "../utils/helpers";
 import Empty from "../components/primitives/Empty";
 import { useAppData } from "../contexts/AppDataContext";
 
@@ -16,7 +16,7 @@ export default function PredictionView() {
       const d = parseDate(r.date);
       if (!d) return;
       const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
-      map[key] = (map[key]||0) + (parseFloat(r.total)||0);
+      map[key] = (map[key]||0) + sumReceiptItems(r);
     });
     const sorted = Object.entries(map).sort(([a],[b]) => a.localeCompare(b));
     const MONTH_NAMES = ["Sty","Lut","Mar","Kwi","Maj","Cze","Lip","Sie","Wrz","Paź","Lis","Gru"];

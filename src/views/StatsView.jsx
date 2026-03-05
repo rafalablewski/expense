@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import $ from "../config/theme";
 import { CATS, CAT_GROUPS, FX_SYMBOLS } from "../config/defaults";
-import { parseDate, convertAmt, isRecurringPaused } from "../utils/helpers";
+import { parseDate, convertAmt, isRecurringPaused, toMonthly } from "../utils/helpers";
 import BarChart from "../components/charts/BarChart";
 import DonutChart from "../components/charts/DonutChart";
 import InsightCard from "../components/charts/InsightCard";
@@ -92,10 +92,6 @@ export default function StatsView() {
   );
 
   // ── Recurring subscriptions (monthly equivalent) ──
-  const toMonthly = item => {
-    const a = parseFloat(item.amount) || 0;
-    return { "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 }[item.cycle] || a;
-  };
   const activeRecurring = useMemo(() => recurring.filter(r => !isRecurringPaused(r)), [recurring]);
   const recurringMonthly = activeRecurring.reduce((s, r) => s + toMonthly(r), 0);
 

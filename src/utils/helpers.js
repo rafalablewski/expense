@@ -20,6 +20,16 @@ export function haptic(ms = 10) {
   try { navigator.vibrate && navigator.vibrate(ms); } catch(e) {}
 }
 
+export function sumReceiptItems(receipt) {
+  if (!receipt?.items?.length) return parseFloat(receipt?.total) || 0;
+  return receipt.items.reduce((s, it) => s + (parseFloat(it.total_price) || 0), 0);
+}
+
+export function toMonthly(item) {
+  const a = parseFloat(item.amount) || 0;
+  return ({ "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 })[item.cycle] || a;
+}
+
 export const isRecurringPaused = (item) => {
   if (!item.paused) return false;
   if (item.pauseUntil) {

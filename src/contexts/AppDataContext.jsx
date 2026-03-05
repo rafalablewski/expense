@@ -4,7 +4,7 @@ import { DEFAULT_STORES } from "../config/defaults";
 import { LS_KEYS, lsGet, lsSet } from "../services/localStorage";
 import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, getCorrectionsHint } from "../services/claude";
 import { initCorrections, getCorrections, learnFromCorrections, applyLearnedCorrections } from "../hooks/useCorrections";
-import { haptic } from "../utils/helpers";
+import { haptic, sumReceiptItems, toMonthly } from "../utils/helpers";
 
 const AppDataContext = createContext(null);
 
@@ -229,14 +229,10 @@ export function AppDataProvider({ uid, children }) {
       (r.items || []).map(it => ({ ...it, store: r.store, address: r.address, zip_code: r.zip_code, date: r.date, source: r.source || "receipt" }))
     );
     // Active recurring subscriptions as monthly items
-    const toMonthlyAmt = (r) => {
-      const a = parseFloat(r.amount) || 0;
-      return ({ "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 })[r.cycle] || a;
-    };
     const recurringItems = recurring
       .filter(r => !r.paused || (r.pauseUntil && new Date().toISOString().slice(0, 10) >= r.pauseUntil))
       .map(r => ({
-        id: r.id, name: r.name, total_price: toMonthlyAmt(r), category: r.category || "Subskrypcje",
+        id: r.id, name: r.name, total_price: toMonthly(r), category: r.category || "Subskrypcje",
         date: null, store: null, source: "recurring", cycle: r.cycle,
       }));
     return [...receiptItems, ...recurringItems];
@@ -322,6 +318,7 @@ export function AppDataProvider({ uid, children }) {
       const saved = ensureCity({ ...reviewed, id: rest.id });
       // Preserve source from queue item (e.g. "manual" for hand-entered receipts)
       if (current.source) saved.source = current.source;
+      saved.total = sumReceiptItems(saved);
       setReceipts(p => [saved, ...p]);
     }
     setReviewQueue(q => q.slice(1));
@@ -333,7 +330,8 @@ export function AppDataProvider({ uid, children }) {
   }, []);
 
   const updateReceipt = useCallback((updated) => {
-    setReceipts(p => p.map(r => r.id === updated.id ? ensureCity(updated) : r));
+    const synced = ensureCity({ ...updated, total: sumReceiptItems(updated) });
+    setReceipts(p => p.map(r => r.id === synced.id ? synced : r));
   }, []);
 
   const updateExpense = useCallback((updated) => {

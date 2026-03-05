@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import $ from "../config/theme";
-import { parseDate } from "../utils/helpers";
+import { parseDate, sumReceiptItems } from "../utils/helpers";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import Zl from "../components/primitives/Zl";
@@ -35,7 +35,7 @@ export default function ExportView() {
     ), [filtered]
   );
 
-  const totalSpent = filtered.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
+  const totalSpent = filtered.reduce((s, r) => s + sumReceiptItems(r), 0);
   const totalSaved = filtered.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
 
   const downloadCSV = () => {
@@ -60,7 +60,7 @@ export default function ExportView() {
         r.store || "",
         r.date || "",
         (r.items || []).length,
-        parseFloat(r.total || 0).toFixed(2),
+        sumReceiptItems(r).toFixed(2),
         parseFloat(r.total_discounts || 0).toFixed(2),
       ]);
     }

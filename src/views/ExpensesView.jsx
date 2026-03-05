@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import $ from "../config/theme";
 import { CAT_ICONS, FX_SYMBOLS } from "../config/defaults";
-import { convertAmt, haptic, isRecurringPaused } from "../utils/helpers";
+import { convertAmt, haptic, isRecurringPaused, sumReceiptItems, toMonthly } from "../utils/helpers";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import { useAppData } from "../contexts/AppDataContext";
@@ -44,11 +44,7 @@ export default function ExpensesView() {
     return out;
   }, [allItems, q, cat, src, sort, dateFrom, dateTo]);
 
-  const toMonthly = item => {
-    const a = parseFloat(item.amount) || 0;
-    return { "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 }[item.cycle] || a;
-  };
-  const totalReceipt   = receipts.reduce((s,r) => s + (parseFloat(r.total)||0), 0);
+  const totalReceipt   = receipts.reduce((s,r) => s + sumReceiptItems(r), 0);
   const totalRecurring = recurring.filter(r => !isRecurringPaused(r)).reduce((s,r) => s + toMonthly(r), 0);
   const totalAll       = totalReceipt + totalRecurring;
 

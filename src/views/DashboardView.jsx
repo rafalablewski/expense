@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import $ from "../config/theme";
 import { FX_SYMBOLS } from "../config/defaults";
-import { convertAmt, isRecurringPaused, parseDate } from "../utils/helpers";
+import { convertAmt, isRecurringPaused, parseDate, sumReceiptItems, toMonthly } from "../utils/helpers";
 import Empty from "../components/primitives/Empty";
 import { useAppData } from "../contexts/AppDataContext";
 
@@ -17,8 +17,8 @@ export default function DashboardView({ go }) {
     return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }), [receipts]);
 
-  const monthSpent = thisMonth.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
-  const totalSpent = receipts.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
+  const monthSpent = thisMonth.reduce((s, r) => s + sumReceiptItems(r), 0);
+  const totalSpent = receipts.reduce((s, r) => s + sumReceiptItems(r), 0);
   const totalSaved = receipts.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
 
   // Budget alerts
@@ -36,10 +36,6 @@ export default function DashboardView({ go }) {
     .map(([cat, bgt]) => ({ cat, spent: monthSpending[cat] || 0, budget: bgt, over: monthSpending[cat] > bgt }));
 
   // Monthly recurring total
-  const toMonthly = item => {
-    const a = parseFloat(item.amount) || 0;
-    return { "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 }[item.cycle] || a;
-  };
   const recurringMonthly = recurring.filter(r => !isRecurringPaused(r)).reduce((s, r) => s + toMonthly(r), 0);
 
   // Filter allItems: exclude legacy expenses (duplicates of receipt data), optionally exclude recurring

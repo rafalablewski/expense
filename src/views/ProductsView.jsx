@@ -4,6 +4,7 @@ import { CAT_GROUPS } from "../config/defaults";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import Zl from "../components/primitives/Zl";
+import { sumReceiptItems } from "../utils/helpers";
 import { useAppData } from "../contexts/AppDataContext";
 
 export default function ProductsView() {
@@ -16,7 +17,7 @@ export default function ProductsView() {
     (i.name || "").toLowerCase().includes(q.toLowerCase()) &&
     (cat === "All" || i.category === cat)
   );
-  const spent = receipts.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
+  const spent = receipts.reduce((s, r) => s + sumReceiptItems(r), 0);
   const saved = receipts.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
 
   if (!receipts.length) return (
