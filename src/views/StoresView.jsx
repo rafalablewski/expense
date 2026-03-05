@@ -225,34 +225,36 @@ export default function StoresView() {
                       </button>
                     </div>
 
-                    {/* Expanded receipt list grouped by city */}
+                    {/* Expanded receipt list: Store → City → Visit dates */}
                     {isExpanded && (
-                      <div className="store-receipts-list">
+                      <div className="store-hierarchy">
                         {(() => {
                           const byCity = {};
                           sortedReceipts.forEach(r => {
-                            const c = r.city || "Nieznane";
+                            const c = r.city || "Nieznane miasto";
                             if (!byCity[c]) byCity[c] = [];
                             byCity[c].push(r);
                           });
                           return Object.entries(byCity).map(([city, recs]) => (
-                            <div key={city}>
-                              <div className="store-city-heading" style={{ color: col }}>📍 {city}</div>
-                              {recs.map((r, j) => (
-                                <div key={r.id || j} className="store-receipt-row">
-                                  <span className="store-receipt-icon" style={{ color: col }}>🧾</span>
-                                  <div className="flex-1">
-                                    <div className="store-receipt-name">{r.date || "—"}</div>
-                                    <div className="store-receipt-meta">
-                                      {r.itemCount > 0 && `${r.itemCount} produktów`}
-                                      {r.itemCount > 0 && ` · `}{r.total.toFixed(2)} zł
-                                    </div>
+                            <div key={city} className="store-hierarchy-city">
+                              <div className="store-hierarchy-city-label" style={{ color: col }}>
+                                <span className="store-hierarchy-dash">–</span> {city}
+                                <span className="store-hierarchy-count">{recs.length} wizyt</span>
+                              </div>
+                              <div className="store-hierarchy-visits">
+                                {recs.map((r, j) => (
+                                  <div key={r.id || j} className="store-hierarchy-visit">
+                                    <span className="store-hierarchy-vdash">—</span>
+                                    <span className="store-hierarchy-date">{r.date || "—"}</span>
+                                    <span className="store-hierarchy-info">
+                                      {r.itemCount > 0 && `${r.itemCount} prod.`}
+                                    </span>
+                                    <span className="mono store-hierarchy-total" style={{ color: col }}>
+                                      {r.total.toFixed(2)} zł
+                                    </span>
                                   </div>
-                                  <span className="mono store-receipt-total" style={{ color: col }}>
-                                    {r.total.toFixed(2)} zł
-                                  </span>
-                                </div>
-                              ))}
+                                ))}
+                              </div>
                             </div>
                           ));
                         })()}

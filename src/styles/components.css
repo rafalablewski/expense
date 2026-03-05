@@ -1589,32 +1589,34 @@
 }
 .store-card .store-chevron:hover { background: rgba(0,0,0,0.08); }
 
-/* Expanded receipt list */
-.store-receipts-list {
+/* Store hierarchy: Store → City → Visit dates */
+.store-hierarchy {
   border-top: 1px solid rgba(0,0,0,0.06);
-  padding: 4px 22px 12px 62px;
+  padding: 8px 22px 12px 48px;
   animation: fadeIn .2s ease;
 }
-.store-receipt-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(0,0,0,0.04);
+.store-hierarchy-city { margin-bottom: 4px; }
+.store-hierarchy-city-label {
+  font-size: 13px; font-weight: 700;
+  padding: 8px 0 2px; display: flex; align-items: center; gap: 8px;
 }
-.store-receipt-row:last-child { border-bottom: none; }
-.store-city-heading {
-  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
-  padding: 10px 0 4px; margin-top: 4px;
-  border-top: 1px solid rgba(0,0,0,0.04);
+.store-hierarchy-dash { opacity: 0.5; font-weight: 400; }
+.store-hierarchy-count {
+  font-size: 11px; font-weight: 500; opacity: 0.55;
+  margin-left: auto;
 }
-.store-city-heading:first-child { border-top: none; margin-top: 0; }
-.store-receipt-icon { font-size: 16px; flex-shrink: 0; }
-.store-receipt-name {
-  font-size: 13px; font-weight: 600; color: var(--c-ink0);
+.store-hierarchy-visits { padding-left: 16px; }
+.store-hierarchy-visit {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.03);
+  font-size: 13px;
 }
-.store-receipt-meta {
-  font-size: 11px; color: var(--c-ink3); margin-top: 1px;
-}
-.store-receipt-total {
+.store-hierarchy-visit:last-child { border-bottom: none; }
+.store-hierarchy-vdash { opacity: 0.35; font-size: 12px; flex-shrink: 0; }
+.store-hierarchy-date { font-weight: 600; color: var(--c-ink0); min-width: 80px; }
+.store-hierarchy-info { font-size: 11px; color: var(--c-ink3); flex: 1; }
+.store-hierarchy-total {
   font-size: 13px; font-weight: 600; flex-shrink: 0; white-space: nowrap;
 }
 

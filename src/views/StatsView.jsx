@@ -103,6 +103,14 @@ export default function StatsView() {
     [receipts, selectedStore, selectedMonth]
   );
 
+  // ── Recurring subscriptions (monthly equivalent) ──
+  const toMonthly = item => {
+    const a = parseFloat(item.amount) || 0;
+    return { "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 }[item.cycle] || a;
+  };
+  const activeRecurring = useMemo(() => recurring.filter(r => !isRecurringPaused(r)), [recurring]);
+  const recurringMonthly = activeRecurring.reduce((s, r) => s + toMonthly(r), 0);
+
   // ── Category breakdown (from filtered items — single source of truth) ──
   const catTotals = useMemo(() => {
     const map = {};
@@ -110,10 +118,17 @@ export default function StatsView() {
       const cat = item.category || "Inne";
       map[cat] = (map[cat] || 0) + (parseFloat(item.total_price) || 0);
     });
+    // Include each active recurring subscription individually when toggled on
+    if (includeRecurring) {
+      activeRecurring.forEach(r => {
+        const cat = r.category || "Subskrypcje";
+        map[cat] = (map[cat] || 0) + toMonthly(r);
+      });
+    }
     return Object.entries(map)
       .map(([cat, value]) => ({ cat, value, color: CATS[cat] || "#9CA3AF" }))
       .sort((a, b) => b.value - a.value);
-  }, [all]);
+  }, [all, includeRecurring, activeRecurring]);
 
   // ── Monthly aggregation (from items — consistent with totals) ──
   const monthData = useMemo(() => {
@@ -138,14 +153,6 @@ export default function StatsView() {
         return { label: months[parseInt(mStr, 10) - 1] || mStr, total };
       });
   }, [all]);
-
-  // ── Recurring subscriptions (monthly equivalent) ──
-  const toMonthly = item => {
-    const a = parseFloat(item.amount) || 0;
-    return { "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 }[item.cycle] || a;
-  };
-  const activeRecurring = useMemo(() => recurring.filter(r => !isRecurringPaused(r)), [recurring]);
-  const recurringMonthly = activeRecurring.reduce((s, r) => s + toMonthly(r), 0);
 
   // ── Summary numbers ──
   // When all category groups are active, use receipt-level totals (matches Dashboard exactly).
