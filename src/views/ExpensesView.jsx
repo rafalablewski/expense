@@ -48,12 +48,9 @@ export default function ExpensesView() {
     const a = parseFloat(item.amount) || 0;
     return { "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 }[item.cycle] || a;
   };
-  const manualReceipts = useMemo(() => receipts.filter(r => r.source === "manual"), [receipts]);
-  const scannedReceipts = useMemo(() => receipts.filter(r => r.source !== "manual"), [receipts]);
-  const totalManual    = manualReceipts.reduce((s,r) => s + (parseFloat(r.total)||0), 0);
-  const totalReceipt   = scannedReceipts.reduce((s,r) => s + (parseFloat(r.total)||0), 0);
+  const totalReceipt   = receipts.reduce((s,r) => s + (parseFloat(r.total)||0), 0);
   const totalRecurring = recurring.filter(r => !isRecurringPaused(r)).reduce((s,r) => s + toMonthly(r), 0);
-  const totalAll       = totalManual + totalReceipt + totalRecurring;
+  const totalAll       = totalReceipt + totalRecurring;
 
   return (
     <>
@@ -67,10 +64,9 @@ export default function ExpensesView() {
         <div className="section flex-col gap-16">
 
           {/* Stats */}
-          <div className="stat-grid au stat-grid-4">
+          <div className="stat-grid au stat-grid-3">
             {[
               { l:"Łącznie",      v:convertAmt(totalAll,       currency), u:sym,      col:$.ink0 },
-              { l:"Ręcznie",      v:convertAmt(totalManual,    currency), u:sym,      col:$.green },
               { l:"Z paragonów",  v:convertAmt(totalReceipt,   currency), u:sym,      col:"#3B82F6" },
               { l:"Subskrypcje",  v:convertAmt(totalRecurring, currency), u:sym+"/m", col:"#8B5CF6" },
             ].map(s => (
