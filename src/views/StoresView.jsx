@@ -231,11 +231,10 @@ export default function StoresView() {
                           <div key={r.id || j} className="store-receipt-row">
                             <span className="store-receipt-icon" style={{ color: col }}>🧾</span>
                             <div className="flex-1">
-                              <div className="store-receipt-name">{st.name} #{j + 1}</div>
+                              <div className="store-receipt-name">{r.date || "—"}</div>
                               <div className="store-receipt-meta">
-                                {r.date || "—"}
-                                {r.itemCount > 0 && ` · ${r.itemCount} produktów`}
-                                {r.address && ` · ${r.address}`}
+                                {r.itemCount > 0 && `${r.itemCount} produktów`}
+                                {r.itemCount > 0 && ` · `}{r.total.toFixed(2)} zł
                               </div>
                             </div>
                             <span className="mono store-receipt-total" style={{ color: col }}>
