@@ -229,16 +229,16 @@ export default function StoresView() {
                     {isExpanded && (
                       <div className="store-hierarchy">
                         {(() => {
-                          const byCity = {};
+                          const byLoc = {};
                           sortedReceipts.forEach(r => {
-                            const c = r.city || "Nieznane miasto";
-                            if (!byCity[c]) byCity[c] = [];
-                            byCity[c].push(r);
+                            const loc = r.city || [r.address, r.zip_code].filter(Boolean).join(", ") || "Nieznana lokalizacja";
+                            if (!byLoc[loc]) byLoc[loc] = [];
+                            byLoc[loc].push(r);
                           });
-                          return Object.entries(byCity).map(([city, recs]) => (
-                            <div key={city} className="store-hierarchy-city">
+                          return Object.entries(byLoc).map(([loc, recs]) => (
+                            <div key={loc} className="store-hierarchy-city">
                               <div className="store-hierarchy-city-label" style={{ color: col }}>
-                                <span className="store-hierarchy-dash">–</span> {city}
+                                <span className="store-hierarchy-dash">–</span> {loc}
                                 <span className="store-hierarchy-count">{recs.length} wizyt</span>
                               </div>
                               <div className="store-hierarchy-visits">
