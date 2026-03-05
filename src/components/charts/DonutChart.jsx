@@ -1,4 +1,9 @@
+import { useAppData } from "../../contexts/AppDataContext";
+import { FX_SYMBOLS } from "../../config/defaults";
+
 export default function DonutChart({ data, size = 200 }) {
+  const { currency } = useAppData();
+  const sym = FX_SYMBOLS[currency] || "zł";
   const total = data.reduce((s, d) => s + d.value, 0);
   if (!total) return null;
   const cx = size / 2, cy = size / 2;
@@ -37,7 +42,7 @@ export default function DonutChart({ data, size = 200 }) {
       <text x={cx} y={cy - 8} textAnchor="middle" fontSize={size * 0.09} fontWeight="700"
         fill="#1D1D1F" fontFamily="'JetBrains Mono', monospace">{(total).toFixed(0)}</text>
       <text x={cx} y={cy + 10} textAnchor="middle" fontSize={size * 0.054} fill="#AEAEB2"
-        fontFamily="'Plus Jakarta Sans', sans-serif" fontWeight="500">łącznie zł</text>
+        fontFamily="'Plus Jakarta Sans', sans-serif" fontWeight="500">łącznie {sym}</text>
     </svg>
   );
 }

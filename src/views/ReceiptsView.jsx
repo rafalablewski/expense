@@ -5,7 +5,7 @@ import ReceiptCard from "../components/receipts/ReceiptCard";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import { useAppData } from "../contexts/AppDataContext";
-import { CATS, FX, FX_SYMBOLS } from "../config/defaults";
+import { CATS, FX, FX_SYMBOLS, REC_CYCLES } from "../config/defaults";
 import { isRecurringPaused, toMonthly } from "../utils/helpers";
 
 const TABS = [
@@ -14,7 +14,6 @@ const TABS = [
   { id: "invoices",      label: "Faktury",     icon: "\uD83D\uDCC4" },
 ];
 
-const REC_CYCLES = ["Miesi\u0119cznie","Tygodniowo","Rocznie","Kwartalnie"];
 const REC_CATS = ["Subskrypcje","Zdrowie","Dom","Rozrywka","Transport","Inne"];
 
 export default function ReceiptsView({ onFiles }) {

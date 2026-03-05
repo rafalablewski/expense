@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import $ from "../config/theme";
-import { CATS, CAT_GROUPS, FX_SYMBOLS } from "../config/defaults";
+import { CATS, CAT_GROUPS, FX_SYMBOLS, MONTH_NAMES } from "../config/defaults";
 import { parseDate, convertAmt, isRecurringPaused, toMonthly } from "../utils/helpers";
 import BarChart from "../components/charts/BarChart";
 import DonutChart from "../components/charts/DonutChart";
@@ -14,7 +14,9 @@ export default function StatsView() {
   // ── Filter state (default to current month) ──
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const [activeGroups, setActiveGroups] = useState({ "Spożywcze": true, "Rachunki": true, "Jednorazowe": true });
+  const [activeGroups, setActiveGroups] = useState(() =>
+    Object.keys(CAT_GROUPS).reduce((acc, g) => ({ ...acc, [g]: true }), {})
+  );
   const [selectedStore, setSelectedStore] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(currentMonthKey);
   const [includeRecurring, setIncludeRecurring] = useState(true);
@@ -128,7 +130,7 @@ export default function StatsView() {
       map[key] = (map[key] || 0) + (parseFloat(amount) || 0);
     };
     all.forEach(item => addToMap(item.date, item.total_price));
-    const months = ["Sty","Lut","Mar","Kwi","Maj","Cze","Lip","Sie","Wrz","Paź","Lis","Gru"];
+    const months = MONTH_NAMES;
     return Object.entries(map)
       .sort(([a], [b]) => a.localeCompare(b))
       .slice(-7)
@@ -181,7 +183,7 @@ export default function StatsView() {
   }, [filteredReceipts]);
 
   // ── Check if any filter is active ──
-  const anyGroupOff = !activeGroups["Spożywcze"] || !activeGroups["Rachunki"] || !activeGroups["Jednorazowe"];
+  const anyGroupOff = !Object.values(activeGroups).every(Boolean);
   const hasActiveFilter = anyGroupOff || selectedStore !== "" || selectedMonth !== "";
 
   if (!receipts.length) return (
@@ -243,7 +245,7 @@ export default function StatsView() {
             </select>
             {hasActiveFilter && (
               <button
-                onClick={() => { setActiveGroups({ "Spożywcze": true, "Rachunki": true, "Jednorazowe": true }); setSelectedStore(""); setSelectedMonth(""); }}
+                onClick={() => { setActiveGroups(Object.keys(CAT_GROUPS).reduce((a, g) => ({ ...a, [g]: true }), {})); setSelectedStore(""); setSelectedMonth(""); }}
                 className="stats-clear-btn"
               >
                 Wyczyść filtry

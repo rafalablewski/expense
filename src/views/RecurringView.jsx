@@ -1,12 +1,10 @@
 import { useState } from "react";
 import $ from "../config/theme";
-import { CATS, FX, FX_SYMBOLS } from "../config/defaults";
+import { CATS, FX, FX_SYMBOLS, REC_CYCLES } from "../config/defaults";
 import { isRecurringPaused, toMonthly } from "../utils/helpers";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import { useAppData } from "../contexts/AppDataContext";
-
-const REC_CYCLES = ["Miesięcznie","Tygodniowo","Rocznie","Kwartalnie"];
 
 export default function RecurringView() {
   const { recurring, setRecurring, currency } = useAppData();

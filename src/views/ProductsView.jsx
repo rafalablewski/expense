@@ -1,14 +1,15 @@
 import { useState } from "react";
 import $ from "../config/theme";
-import { CAT_GROUPS } from "../config/defaults";
+import { CAT_GROUPS, FX_SYMBOLS } from "../config/defaults";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import Zl from "../components/primitives/Zl";
-import { sumReceiptItems } from "../utils/helpers";
+import { convertAmt, sumReceiptItems } from "../utils/helpers";
 import { useAppData } from "../contexts/AppDataContext";
 
 export default function ProductsView() {
-  const { receipts } = useAppData();
+  const { receipts, currency } = useAppData();
+  const sym = FX_SYMBOLS[currency] || "zł";
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("All");
   const all = receipts.flatMap(r => (r.items || []).map(it => ({ ...it, store: r.store, date: r.date })));
@@ -43,8 +44,8 @@ export default function ProductsView() {
           <div className="stat-grid au stat-grid-3">
             {[
               { l: "Produktów", v: all.length, unit: "", color: $.ink0 },
-              { l: "Wydano łącznie", v: spent.toFixed(2), unit: "zł", color: $.green },
-              { l: "Zaoszczędzono", v: saved.toFixed(2), unit: "zł", color: $.red },
+              { l: "Wydano łącznie", v: convertAmt(spent, currency), unit: sym, color: $.green },
+              { l: "Zaoszczędzono", v: convertAmt(saved, currency), unit: sym, color: $.red },
             ].map(s => (
               <div className="stat-card" key={s.l}>
                 <div className="stat-label">{s.l}</div>

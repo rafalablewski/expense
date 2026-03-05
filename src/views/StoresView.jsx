@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import $ from "../config/theme";
-import { parseDate, sumReceiptItems } from "../utils/helpers";
+import { FX_SYMBOLS } from "../config/defaults";
+import { convertAmt, parseDate, sumReceiptItems } from "../utils/helpers";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import Zl from "../components/primitives/Zl";
@@ -14,7 +15,8 @@ const TIME_RANGES = [
 ];
 
 export default function StoresView() {
-  const { receipts } = useAppData();
+  const { receipts, currency } = useAppData();
+  const sym = FX_SYMBOLS[currency] || "zł";
   const [range,      setRange]      = useState("all");
   const [storeQ,     setStoreQ]     = useState("");
   const [activeStore,setActiveStore] = useState(null); // drilldown
@@ -204,8 +206,8 @@ export default function StoresView() {
                         <div className="store-meta">
                           {Object.keys(st.cities).length > 0 && <span>📍 {Object.keys(st.cities).join(", ")}</span>}
                           <span>{st.visits} wizyt</span>
-                          <span>śr. {avg.toFixed(0)} zł/wizyta</span>
-                          {st.saved > 0 && <span className="color-red">−{st.saved.toFixed(2)} zł saved</span>}
+                          <span>śr. {convertAmt(avg, currency)} {sym}/wizyta</span>
+                          {st.saved > 0 && <span className="color-red">−{convertAmt(st.saved, currency)} {sym} saved</span>}
                           <span className="detail-label">ost. {fmtDate(st.lastDate)}</span>
                         </div>
                       </div>
@@ -213,9 +215,9 @@ export default function StoresView() {
                       {/* Total */}
                       <div className="receipt-total-wrap">
                         <div className="mono store-total-val" style={{ color: col }}>
-                          {st.total.toFixed(2)}
+                          {convertAmt(st.total, currency)}
                         </div>
-                        <div className="item-sub-sm">zł łącznie</div>
+                        <div className="item-sub-sm">{sym} łącznie</div>
                       </div>
 
                       {/* Drilldown arrow */}
@@ -250,7 +252,7 @@ export default function StoresView() {
                                       {r.itemCount > 0 && `${r.itemCount} prod.`}
                                     </span>
                                     <span className="mono store-hierarchy-total" style={{ color: col }}>
-                                      {r.total.toFixed(2)} zł
+                                      {convertAmt(r.total, currency)} {sym}
                                     </span>
                                   </div>
                                 ))}
@@ -271,9 +273,9 @@ export default function StoresView() {
             {/* Drilldown stats */}
             <div className="stat-grid au stat-grid-3">
               {[
-                { l: "Łącznie",    v: drillStore.total.toFixed(2), u: "zł", col: storeColor(activeStore) },
-                { l: "Wizyt",      v: drillStore.visits,           u: "",   col: $.ink0 },
-                { l: "Zaoszcz.",   v: drillStore.saved.toFixed(2), u: "zł", col: $.red  },
+                { l: "Łącznie",    v: convertAmt(drillStore.total, currency), u: sym, col: storeColor(activeStore) },
+                { l: "Wizyt",      v: drillStore.visits,                    u: "",  col: $.ink0 },
+                { l: "Zaoszcz.",   v: convertAmt(drillStore.saved, currency), u: sym, col: $.red  },
               ].map(s => (
                 <div className="stat-card" key={s.l}>
                   <div className="stat-label">{s.l}</div>
@@ -297,7 +299,7 @@ export default function StoresView() {
                       <div className="location-name">
                         {[loc.address, loc.zip_code, loc.city].filter(Boolean).join(", ")}
                       </div>
-                      <div className="item-sub">{loc.visits} wizyt · {loc.total.toFixed(2)} zł</div>
+                      <div className="item-sub">{loc.visits} wizyt · {convertAmt(loc.total, currency)} {sym}</div>
                     </div>
                   </div>
                 ))}

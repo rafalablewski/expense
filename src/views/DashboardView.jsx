@@ -262,7 +262,7 @@ export default function DashboardView({ go }) {
                       <div className="item-sub">{r.date || "—"} · {(r.items || []).length} pozycji{(r.address || r.zip_code) ? ` · ${[r.zip_code, r.address].filter(Boolean).join(" ")}` : ""}</div>
                     </div>
                     <div className="mono receipt-total flex-shrink-0" style={{ fontSize: 16 }}>
-                      {convertAmt(r.total || 0, currency)} {sym}
+                      {convertAmt(sumReceiptItems(r), currency)} {sym}
                     </div>
                   </div>
                 ))}

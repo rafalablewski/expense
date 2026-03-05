@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import $ from "../config/theme";
-import { CATS, FX_SYMBOLS } from "../config/defaults";
+import { CATS, FX_SYMBOLS, MONTH_NAMES } from "../config/defaults";
 import { convertAmt, parseDate, sumReceiptItems } from "../utils/helpers";
 import Empty from "../components/primitives/Empty";
 import { useAppData } from "../contexts/AppDataContext";
@@ -19,7 +19,6 @@ export default function PredictionView() {
       map[key] = (map[key]||0) + sumReceiptItems(r);
     });
     const sorted = Object.entries(map).sort(([a],[b]) => a.localeCompare(b));
-    const MONTH_NAMES = ["Sty","Lut","Mar","Kwi","Maj","Cze","Lip","Sie","Wrz","Paź","Lis","Gru"];
     return sorted.map(([key, total]) => {
       const [y, m] = key.split("-");
       return { key, label: MONTH_NAMES[parseInt(m,10)-1] + " '" + y.slice(2), total };
@@ -72,7 +71,6 @@ export default function PredictionView() {
   }, [receipts, monthlyData]);
 
   const maxBar = monthlyData.length ? Math.max(...monthlyData.slice(-6).map(m=>m.total), prediction?.predicted||0, 1) : 1;
-  const MONTH_NAMES = ["Sty","Lut","Mar","Kwi","Maj","Cze","Lip","Sie","Wrz","Paź","Lis","Gru"];
   const nextMonth = MONTH_NAMES[(new Date().getMonth()+1) % 12];
 
   if (monthlyData.length < 2) return (
