@@ -20,6 +20,9 @@ export default function StoresView() {
   const [activeStore,setActiveStore] = useState(null); // drilldown
   const [drillQ,     setDrillQ]     = useState("");
   const [drillCat,   setDrillCat]   = useState("All");
+  const [expanded,   setExpanded]   = useState({});    // { storeKey: true }
+
+  const toggleExpand = (key) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
   // ── Filter receipts by time range ──
   const now = new Date();
@@ -39,11 +42,12 @@ export default function StoresView() {
     filtered.forEach(r => {
       const raw = (r.store || "Nieznany sklep").trim();
       const key = raw.toLowerCase();
-      if (!map[key]) map[key] = { name: raw, visits: 0, total: 0, saved: 0, items: [], lastDate: null, locations: {} };
+      if (!map[key]) map[key] = { name: raw, visits: 0, total: 0, saved: 0, items: [], receipts: [], lastDate: null, locations: {} };
       map[key].visits++;
       map[key].total  += parseFloat(r.total) || 0;
       map[key].saved  += parseFloat(r.total_discounts) || 0;
       (r.items || []).forEach(it => map[key].items.push({ ...it, date: r.date }));
+      map[key].receipts.push({ id: r.id, date: r.date, total: parseFloat(r.total) || 0, itemCount: (r.items || []).length, address: r.address, zip_code: r.zip_code });
       const d = parseDate(r.date);
       if (d && (!map[key].lastDate || d > map[key].lastDate)) map[key].lastDate = d;
       // Track locations by address/zip
@@ -161,49 +165,87 @@ export default function StoresView() {
                 const pct = totalAll ? (st.total / totalAll * 100) : 0;
                 const avg = st.visits ? st.total / st.visits : 0;
                 const col = storeColor(st.name);
+                const key = st.name.toLowerCase();
+                const isExpanded = expanded[key];
+                const sortedReceipts = [...st.receipts].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
                 return (
-                  <button
-                    key={st.name}
-                    onClick={() => setActiveStore(st.name)}
-                    aria-label={`Otwórz ${st.name}`}
-                    className="store-card" style={{ animation: `fadeUp .4s cubic-bezier(.16,1,.3,1) ${i * .05}s both` }}
-                  >
-                    {/* Avatar */}
-                    <div className="store-avatar" style={{ background: col + "18", border: `1px solid ${col}35`, color: col }}>
-                      {st.name.charAt(0).toUpperCase()}
-                    </div>
+                  <div key={st.name} className="store-card-wrap" style={{ animation: `fadeUp .4s cubic-bezier(.16,1,.3,1) ${i * .05}s both` }}>
+                    <div className="store-card store-card--expandable">
+                      {/* Expand toggle */}
+                      <button
+                        className={`budget-expand-btn${isExpanded ? " open" : ""}`}
+                        onClick={() => toggleExpand(key)}
+                        aria-label={isExpanded ? `Zwiń ${st.name}` : `Rozwiń ${st.name}`}
+                        aria-expanded={isExpanded}
+                      >
+                        ▸
+                      </button>
 
-                    {/* Info */}
-                    <div className="flex-1">
-                      <div className="store-name">
-                        {st.name}
+                      {/* Avatar */}
+                      <div className="store-avatar" style={{ background: col + "18", border: `1px solid ${col}35`, color: col }}
+                        onClick={() => toggleExpand(key)}>
+                        {st.name.charAt(0).toUpperCase()}
                       </div>
-                      {/* Progress bar */}
-                      <div className="flex-row gap-8">
-                        <div className="store-progress">
-                          <div className="store-progress-fill" style={{ width: `${pct}%`, background: col }} />
+
+                      {/* Info */}
+                      <div className="flex-1" onClick={() => toggleExpand(key)} style={{ cursor: "pointer" }}>
+                        <div className="store-name">
+                          {st.name}
+                          <span className="budget-item-count">{st.visits}</span>
                         </div>
-                        <span className="store-pct">{pct.toFixed(0)}%</span>
+                        {/* Progress bar */}
+                        <div className="flex-row gap-8">
+                          <div className="store-progress">
+                            <div className="store-progress-fill" style={{ width: `${pct}%`, background: col }} />
+                          </div>
+                          <span className="store-pct">{pct.toFixed(0)}%</span>
+                        </div>
+                        <div className="store-meta">
+                          <span>{st.visits} wizyt</span>
+                          {Object.keys(st.locations).length > 0 && <span>📍 {Object.keys(st.locations).length} lokalizacj{Object.keys(st.locations).length === 1 ? "a" : "e"}</span>}
+                          <span>śr. {avg.toFixed(0)} zł/wizyta</span>
+                          {st.saved > 0 && <span className="color-red">−{st.saved.toFixed(2)} zł saved</span>}
+                          <span className="detail-label">ost. {fmtDate(st.lastDate)}</span>
+                        </div>
                       </div>
-                      <div className="store-meta">
-                        <span>{st.visits} wizyt</span>
-                        {Object.keys(st.locations).length > 0 && <span>📍 {Object.keys(st.locations).length} lokalizacj{Object.keys(st.locations).length === 1 ? "a" : "e"}</span>}
-                        <span>śr. {avg.toFixed(0)} zł/wizyta</span>
-                        {st.saved > 0 && <span className="color-red">−{st.saved.toFixed(2)} zł saved</span>}
-                        <span className="detail-label">ost. {fmtDate(st.lastDate)}</span>
+
+                      {/* Total */}
+                      <div className="receipt-total-wrap">
+                        <div className="mono store-total-val" style={{ color: col }}>
+                          {st.total.toFixed(2)}
+                        </div>
+                        <div className="item-sub-sm">zł łącznie</div>
                       </div>
+
+                      {/* Drilldown arrow */}
+                      <button className="store-chevron" onClick={() => setActiveStore(st.name)}
+                        aria-label={`Szczegóły ${st.name}`} title="Szczegóły">
+                        ›
+                      </button>
                     </div>
 
-                    {/* Total */}
-                    <div className="receipt-total-wrap">
-                      <div className="mono store-total-val" style={{ color: col }}>
-                        {st.total.toFixed(2)}
+                    {/* Expanded receipt list */}
+                    {isExpanded && (
+                      <div className="store-receipts-list">
+                        {sortedReceipts.map((r, j) => (
+                          <div key={r.id || j} className="store-receipt-row">
+                            <span className="store-receipt-icon" style={{ color: col }}>🧾</span>
+                            <div className="flex-1">
+                              <div className="store-receipt-name">{st.name} #{j + 1}</div>
+                              <div className="store-receipt-meta">
+                                {r.date || "—"}
+                                {r.itemCount > 0 && ` · ${r.itemCount} produktów`}
+                                {r.address && ` · ${r.address}`}
+                              </div>
+                            </div>
+                            <span className="mono store-receipt-total" style={{ color: col }}>
+                              {r.total.toFixed(2)} zł
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                      <div className="item-sub-sm">zł łącznie</div>
-                    </div>
-
-                    <div className="store-chevron">›</div>
-                  </button>
+                    )}
+                  </div>
                 );
               })}
             </div>
