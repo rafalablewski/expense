@@ -11,11 +11,13 @@ export default function StatsView() {
   const { receipts, expenses, allItems, recurring, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
 
-  // ── Filter state ──
+  // ── Filter state (default to current month) ──
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const [activeGroups, setActiveGroups] = useState({ "Spożywcze": true, "Rachunki": true, "Jednorazowe": true });
   const [selectedStore, setSelectedStore] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState("");
-  const [includeRecurring, setIncludeRecurring] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthKey);
+  const [includeRecurring, setIncludeRecurring] = useState(true);
 
   // Build set of allowed categories from active groups
   const allowedCats = useMemo(() => {
