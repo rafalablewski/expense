@@ -54,7 +54,7 @@ export default function StoresView() {
       // Track locations by address/zip
       const locKey = [r.zip_code, r.address].filter(Boolean).join(" ").toLowerCase() || null;
       if (locKey) {
-        if (!map[key].locations[locKey]) map[key].locations[locKey] = { address: r.address || "", zip_code: r.zip_code || "", visits: 0, total: 0 };
+        if (!map[key].locations[locKey]) map[key].locations[locKey] = { address: r.address || "", zip_code: r.zip_code || "", city: r.city || "", visits: 0, total: 0 };
         map[key].locations[locKey].visits++;
         map[key].locations[locKey].total += parseFloat(r.total) || 0;
       }
@@ -72,7 +72,7 @@ export default function StoresView() {
   const totalAll = stores.reduce((s, st) => s + st.total, 0);
 
   // ── Drilldown data ──
-  const drillStore = activeStore ? storeMap[activeStore] : null;
+  const drillStore = activeStore ? storeMap[activeStore.toLowerCase()] : null;
   const drillItems = useMemo(() => {
     if (!drillStore) return [];
     return drillStore.items.filter(it =>
@@ -280,7 +280,7 @@ export default function StoresView() {
                     <span className="location-icon">📍</span>
                     <div className="flex-1">
                       <div className="location-name">
-                        {[loc.address, loc.zip_code].filter(Boolean).join(", ")}
+                        {[loc.address, loc.zip_code, loc.city].filter(Boolean).join(", ")}
                       </div>
                       <div className="item-sub">{loc.visits} wizyt · {loc.total.toFixed(2)} zł</div>
                     </div>
