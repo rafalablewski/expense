@@ -2785,17 +2785,18 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
   // ── Monthly aggregation ──
   const monthData = useMemo(() => {
     const map = {};
-    receipts.forEach(r => {
-      if (!r.date) return;
-      // try parse date — accept "YYYY-MM-DD", "DD.MM.YYYY", "DD/MM/YYYY"
+    const addToMap = (date, amount) => {
+      if (!date) return;
       let key = null;
-      const m1 = r.date.match(/^(\d{4})-(\d{2})/);
-      const m2 = r.date.match(/^(\d{2})[./](\d{2})[./](\d{4})/);
+      const m1 = date.match(/^(\d{4})-(\d{2})/);
+      const m2 = date.match(/^(\d{2})[./](\d{2})[./](\d{4})/);
       if (m1) key = `${m1[1]}-${m1[2]}`;
       else if (m2) key = `${m2[3]}-${m2[2]}`;
       if (!key) return;
-      map[key] = (map[key] || 0) + (parseFloat(r.total) || 0);
-    });
+      map[key] = (map[key] || 0) + (parseFloat(amount) || 0);
+    };
+    receipts.forEach(r => addToMap(r.date, r.total));
+    expenses.forEach(e => addToMap(e.date, e.amount));
     const months = ["Sty","Lut","Mar","Kwi","Maj","Cze","Lip","Sie","Wrz","Paź","Lis","Gru"];
     return Object.entries(map)
       .sort(([a], [b]) => a.localeCompare(b))
@@ -2804,12 +2805,14 @@ function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], curre
         const [, mStr] = key.split("-");
         return { label: months[parseInt(mStr, 10) - 1] || mStr, total };
       });
-  }, [receipts]);
+  }, [receipts, expenses]);
 
   // ── Summary numbers ──
-  const totalSpent  = receipts.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
+  const totalSpent  = receipts.reduce((s, r) => s + (parseFloat(r.total) || 0), 0)
+    + expenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
   const totalSaved  = receipts.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
-  const avgReceipt  = receipts.length ? totalSpent / receipts.length : 0;
+  const totalCount  = receipts.length + expenses.length;
+  const avgReceipt  = totalCount ? totalSpent / totalCount : 0;
   const maxMonth    = Math.max(...monthData.map(m => m.total), 1);
 
   // ── Insights ──
