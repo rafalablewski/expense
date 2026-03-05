@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import $ from "../config/theme";
-import { CATS, CAT_GROUPS, FX_SYMBOLS } from "../config/defaults";
-import { parseDate, convertAmt, isRecurringPaused } from "../utils/helpers";
+import { CATS, CAT_GROUPS, FX_SYMBOLS, MONTH_NAMES } from "../config/defaults";
+import { parseDate, convertAmt, isRecurringPaused, toMonthly } from "../utils/helpers";
 import BarChart from "../components/charts/BarChart";
 import DonutChart from "../components/charts/DonutChart";
 import InsightCard from "../components/charts/InsightCard";
@@ -14,7 +14,9 @@ export default function StatsView() {
   // ── Filter state (default to current month) ──
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const [activeGroups, setActiveGroups] = useState({ "Spożywcze": true, "Rachunki": true, "Jednorazowe": true });
+  const [activeGroups, setActiveGroups] = useState(() =>
+    Object.keys(CAT_GROUPS).reduce((acc, g) => ({ ...acc, [g]: true }), {})
+  );
   const [selectedStore, setSelectedStore] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(currentMonthKey);
   const [includeRecurring, setIncludeRecurring] = useState(true);
@@ -92,10 +94,6 @@ export default function StatsView() {
   );
 
   // ── Recurring subscriptions (monthly equivalent) ──
-  const toMonthly = item => {
-    const a = parseFloat(item.amount) || 0;
-    return { "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 }[item.cycle] || a;
-  };
   const activeRecurring = useMemo(() => recurring.filter(r => !isRecurringPaused(r)), [recurring]);
   const recurringMonthly = activeRecurring.reduce((s, r) => s + toMonthly(r), 0);
 
@@ -132,7 +130,7 @@ export default function StatsView() {
       map[key] = (map[key] || 0) + (parseFloat(amount) || 0);
     };
     all.forEach(item => addToMap(item.date, item.total_price));
-    const months = ["Sty","Lut","Mar","Kwi","Maj","Cze","Lip","Sie","Wrz","Paź","Lis","Gru"];
+    const months = MONTH_NAMES;
     return Object.entries(map)
       .sort(([a], [b]) => a.localeCompare(b))
       .slice(-7)
@@ -142,13 +140,8 @@ export default function StatsView() {
       });
   }, [all]);
 
-  // ── Summary numbers ──
-  // When all category groups are active, use receipt-level totals (matches Dashboard exactly).
-  // When categories are filtered, fall back to item-level sums (only way to filter by category).
-  const allGroupsOn = activeGroups["Spożywcze"] && activeGroups["Rachunki"] && activeGroups["Jednorazowe"];
-  const receiptLevelTotal = filteredReceipts.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
-  const itemLevelTotal = all.reduce((s, item) => s + (parseFloat(item.total_price) || 0), 0);
-  const itemsTotal = allGroupsOn ? receiptLevelTotal : itemLevelTotal;
+  // ── Summary numbers (item-level — single source of truth, consistent with category breakdown) ──
+  const itemsTotal = all.reduce((s, item) => s + (parseFloat(item.total_price) || 0), 0);
   const totalSpent  = itemsTotal + (includeRecurring ? recurringMonthly : 0);
   const totalSaved  = filteredReceipts.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
   const totalCount  = filteredReceipts.length;
@@ -190,7 +183,7 @@ export default function StatsView() {
   }, [filteredReceipts]);
 
   // ── Check if any filter is active ──
-  const anyGroupOff = !activeGroups["Spożywcze"] || !activeGroups["Rachunki"] || !activeGroups["Jednorazowe"];
+  const anyGroupOff = !Object.values(activeGroups).every(Boolean);
   const hasActiveFilter = anyGroupOff || selectedStore !== "" || selectedMonth !== "";
 
   if (!receipts.length) return (
@@ -252,7 +245,7 @@ export default function StatsView() {
             </select>
             {hasActiveFilter && (
               <button
-                onClick={() => { setActiveGroups({ "Spożywcze": true, "Rachunki": true, "Jednorazowe": true }); setSelectedStore(""); setSelectedMonth(""); }}
+                onClick={() => { setActiveGroups(Object.keys(CAT_GROUPS).reduce((a, g) => ({ ...a, [g]: true }), {})); setSelectedStore(""); setSelectedMonth(""); }}
                 className="stats-clear-btn"
               >
                 Wyczyść filtry

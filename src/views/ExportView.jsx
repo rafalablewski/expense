@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import $ from "../config/theme";
-import { parseDate } from "../utils/helpers";
+import { FX_SYMBOLS } from "../config/defaults";
+import { convertAmt, parseDate, sumReceiptItems } from "../utils/helpers";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import Zl from "../components/primitives/Zl";
@@ -14,7 +15,8 @@ const TIME_RANGES = [
 ];
 
 export default function ExportView() {
-  const { receipts } = useAppData();
+  const { receipts, currency } = useAppData();
+  const sym = FX_SYMBOLS[currency] || "zł";
   const [range,    setRange]    = useState("all");
   const [format,   setFormat]   = useState("items"); // "items" | "receipts"
   const [exported, setExported] = useState(false);
@@ -35,7 +37,7 @@ export default function ExportView() {
     ), [filtered]
   );
 
-  const totalSpent = filtered.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
+  const totalSpent = filtered.reduce((s, r) => s + sumReceiptItems(r), 0);
   const totalSaved = filtered.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
 
   const downloadCSV = () => {
@@ -60,7 +62,7 @@ export default function ExportView() {
         r.store || "",
         r.date || "",
         (r.items || []).length,
-        parseFloat(r.total || 0).toFixed(2),
+        sumReceiptItems(r).toFixed(2),
         parseFloat(r.total_discounts || 0).toFixed(2),
       ]);
     }
@@ -88,7 +90,7 @@ export default function ExportView() {
         <div className="page-hero-inner">
           <h1 className="page-title au">Eksport <span>danych</span></h1>
           <p className="page-subtitle au1">
-            {filtered.length} paragonów · {allItems.length} pozycji · {totalSpent.toFixed(2)} zł
+            {filtered.length} paragonów · {allItems.length} pozycji · {convertAmt(totalSpent, currency)} {sym}
           </p>
         </div>
       </div>
@@ -151,8 +153,8 @@ export default function ExportView() {
                 {[
                   { l: "Wierszy CSV",    v: (format === "items" ? allItems.length : filtered.length).toLocaleString("pl-PL") },
                   { l: "Kolumn",         v: format === "items" ? "9" : "5" },
-                  { l: "Łącznie",        v: `${totalSpent.toFixed(2)} zł` },
-                  { l: "Zaoszczędzono",  v: `${totalSaved.toFixed(2)} zł` },
+                  { l: "Łącznie",        v: `${convertAmt(totalSpent, currency)} ${sym}` },
+                  { l: "Zaoszczędzono",  v: `${convertAmt(totalSaved, currency)} ${sym}` },
                 ].map(s => (
                   <div key={s.l}>
                     <div className="export-stat-label">{s.l}</div>
@@ -220,7 +222,7 @@ export default function ExportView() {
                             <td className="td-name">{r.store || "—"}</td>
                             <td className="mono color-ink3 fs-12">{r.date || "—"}</td>
                             <td className="mono text-right color-ink2">{(r.items || []).length}</td>
-                            <td className="text-right"><Zl v={r.total} /></td>
+                            <td className="text-right"><Zl v={sumReceiptItems(r)} /></td>
                             <td className="text-right">
                               {parseFloat(r.total_discounts || 0) > 0
                                 ? <span className="mono td-discount-13">−{parseFloat(r.total_discounts).toFixed(2)}</span>

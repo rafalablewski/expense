@@ -2,8 +2,13 @@ import { useState } from 'react';
 import Zl from '../primitives/Zl';
 import CatChip from '../primitives/CatChip';
 import ReceiptReviewModal from '../modals/ReceiptReviewModal';
+import { useAppData } from '../../contexts/AppDataContext';
+import { FX_SYMBOLS } from '../../config/defaults';
+import { convertAmt, sumReceiptItems } from '../../utils/helpers';
 
 export default function ReceiptCard({ r, onDelete, onUpdate, delay = 0 }) {
+  const { currency } = useAppData();
+  const sym = FX_SYMBOLS[currency] || "zł";
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const saved = parseFloat(r.total_discounts) || 0;
@@ -35,12 +40,12 @@ export default function ReceiptCard({ r, onDelete, onUpdate, delay = 0 }) {
 
           <div className="text-right flex-shrink0">
             <div className="mono receipt-total">
-              {parseFloat(r.total || 0).toFixed(2)}
-              <span className="receipt-total-unit">zł</span>
+              {convertAmt(sumReceiptItems(r), currency)}
+              <span className="receipt-total-unit">{sym}</span>
             </div>
             {saved > 0 && (
               <div className="receipt-saved">
-                −{saved.toFixed(2)} zł saved
+                −{convertAmt(saved, currency)} {sym} saved
               </div>
             )}
           </div>

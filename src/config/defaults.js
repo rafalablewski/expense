@@ -53,5 +53,9 @@ export const CAT_ICONS = {
 
 export const DEFAULT_STORES = ["Biedronka","Auchan","Lidl","Netto","InterMarche","Kaufland","Leroy Merlin","Circle K","Shell","BP","Orlen","OBI"];
 
+export const REC_CYCLES = ["Miesięcznie", "Tygodniowo", "Rocznie", "Kwartalnie"];
+
+export const MONTH_NAMES = ["Sty","Lut","Mar","Kwi","Maj","Cze","Lip","Sie","Wrz","Paź","Lis","Gru"];
+
 export const FX = { PLN: 1, EUR: 0.234, USD: 0.252 };
 export const FX_SYMBOLS = { PLN: "zł", EUR: "€", USD: "$" };
