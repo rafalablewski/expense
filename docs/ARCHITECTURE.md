@@ -82,9 +82,8 @@ src/
 - Loaded once on app start with hardcoded fallbacks for offline resilience
 
 ### App.jsx
-- Thin routing shell (181 lines): view navigation, UI toggles (showQA, showKeyModal)
-- Consumes `useAppData()` and passes data to views via props
-- Views can also import `useAppData()` directly to avoid prop drilling
+- Pure routing shell (106 lines): view navigation, UI toggles (showQA, showKeyModal)
+- Zero prop drilling — all views, modals, and layout components consume `useAppData()` directly
 
 ## AI Integration
 

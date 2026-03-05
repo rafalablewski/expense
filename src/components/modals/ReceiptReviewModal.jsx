@@ -3,8 +3,10 @@ import StorePickerInput from '../primitives/StorePickerInput';
 import { ALL_CATS, CAT_ICONS } from '../../config/defaults';
 import { haptic } from '../../utils/helpers';
 import { getCorrectionStats } from '../../hooks/useCorrections';
+import { useAppData } from '../../contexts/AppDataContext';
 
-export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, customStores, onAddCustomStore }) {
+export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
+  const { customStores, addCustomStore: onAddCustomStore } = useAppData();
   const [data, setData] = useState(() => ({
     store: receipt.store || "",
     address: receipt.address || "",

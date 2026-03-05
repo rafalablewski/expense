@@ -3,8 +3,10 @@ import $ from "../config/theme";
 import { CATS, FX_SYMBOLS } from "../config/defaults";
 import { convertAmt, parseDate } from "../utils/helpers";
 import Empty from "../components/primitives/Empty";
+import { useAppData } from "../contexts/AppDataContext";
 
-export default function PredictionView({ receipts, currency }) {
+export default function PredictionView() {
+  const { receipts, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
 
   // Build last 6 months of data

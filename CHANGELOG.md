@@ -29,7 +29,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
   - ExportView, BudgetsView, RecurringView, DashboardView, InflationView, PredictionView, ExpensesView
 - **Phase 9**: Extracted layout components (TopNav, BottomNav, Fab) to src/components/layout/
 - **Phase 6**: Created AppDataContext — all data state, persistence, and actions extracted into React Context (`useAppData()` hook)
-- App.jsx reduced from 5,936 lines to 181 lines (96.9% reduction)
+  - All 13 views, 3 modals, and TopNav consume `useAppData()` directly — zero prop drilling
+  - Extracted ApiKeyModal to separate component
+- App.jsx reduced from 5,936 lines to 106 lines (98.2% reduction)
 
 ### Fixed
 - Stats page now includes manual expenses in totals, averages, and monthly chart

@@ -2,8 +2,10 @@ import { useMemo, useState } from "react";
 import $ from "../config/theme";
 import { CATS, FX_SYMBOLS } from "../config/defaults";
 import { convertAmt, parseDate } from "../utils/helpers";
+import { useAppData } from "../contexts/AppDataContext";
 
-export default function BudgetsView({ receipts, expenses = [], allItems = [], budgets, setBudgets, currency }) {
+export default function BudgetsView() {
+  const { receipts, expenses, allItems, budgets, setBudgets, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
   const [editing, setEditing] = useState(null); // cat being edited
   const [editVal, setEditVal] = useState("");

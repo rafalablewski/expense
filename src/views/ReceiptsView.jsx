@@ -1,8 +1,10 @@
 import Spinner from "../components/primitives/Spinner";
 import DropZone from "../components/receipts/DropZone";
 import ReceiptCard from "../components/receipts/ReceiptCard";
+import { useAppData } from "../contexts/AppDataContext";
 
-export default function ReceiptsView({ receipts, setReceipts, processing, errors, setErrors, onFiles }) {
+export default function ReceiptsView({ onFiles }) {
+  const { receipts, setReceipts, processing, errors, setErrors } = useAppData();
   return (
     <>
       <div className="page-hero">

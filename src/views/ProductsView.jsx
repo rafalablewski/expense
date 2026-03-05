@@ -4,8 +4,10 @@ import { CAT_GROUPS } from "../config/defaults";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import Zl from "../components/primitives/Zl";
+import { useAppData } from "../contexts/AppDataContext";
 
-export default function ProductsView({ receipts }) {
+export default function ProductsView() {
+  const { receipts } = useAppData();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("All");
   const all = receipts.flatMap(r => (r.items || []).map(it => ({ ...it, store: r.store, date: r.date })));

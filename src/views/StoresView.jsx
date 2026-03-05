@@ -4,6 +4,7 @@ import { parseDate } from "../utils/helpers";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import Zl from "../components/primitives/Zl";
+import { useAppData } from "../contexts/AppDataContext";
 
 const TIME_RANGES = [
   { id: "7",   label: "7 dni"   },
@@ -12,7 +13,8 @@ const TIME_RANGES = [
   { id: "all", label: "Wszystko" },
 ];
 
-export default function StoresView({ receipts }) {
+export default function StoresView() {
+  const { receipts } = useAppData();
   const [range,      setRange]      = useState("all");
   const [storeQ,     setStoreQ]     = useState("");
   const [activeStore,setActiveStore] = useState(null); // drilldown

@@ -3,8 +3,10 @@ import $ from "../config/theme";
 import { FX_SYMBOLS } from "../config/defaults";
 import { convertAmt, isRecurringPaused, parseDate } from "../utils/helpers";
 import Empty from "../components/primitives/Empty";
+import { useAppData } from "../contexts/AppDataContext";
 
-export default function DashboardView({ receipts, expenses = [], budgets, recurring, currency, go, allItems = [] }) {
+export default function DashboardView({ go }) {
+  const { receipts, expenses, budgets, recurring, currency, allItems } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
   const now = new Date();
 

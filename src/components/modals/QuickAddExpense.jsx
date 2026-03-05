@@ -4,10 +4,12 @@ import { CATS, CAT_GROUPS, CAT_ICONS } from '../../config/defaults';
 import { EXPENSE_TYPES } from '../../config/constants';
 import { haptic } from '../../utils/helpers';
 import $ from '../../config/theme';
+import { useAppData } from '../../contexts/AppDataContext';
 
 const REC_CYCLES = ["Miesięcznie","Tygodniowo","Rocznie","Kwartalnie"];
 
-export default function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, customStores, onAddCustomStore }) {
+export default function QuickAddExpense({ onAdd, onClose, onTextReceipt, onNeedKey }) {
+  const { apiKey, customStores, addCustomStore: onAddCustomStore } = useAppData();
   const [type,     setType]     = useState("one-time");
   const [name,     setName]     = useState("");
   const [amount,   setAmount]   = useState("");

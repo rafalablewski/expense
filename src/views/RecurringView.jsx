@@ -4,10 +4,12 @@ import { CATS, FX, FX_SYMBOLS } from "../config/defaults";
 import { isRecurringPaused } from "../utils/helpers";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
+import { useAppData } from "../contexts/AppDataContext";
 
 const REC_CYCLES = ["Miesięcznie","Tygodniowo","Rocznie","Kwartalnie"];
 
-export default function RecurringView({ recurring, setRecurring, currency }) {
+export default function RecurringView() {
+  const { recurring, setRecurring, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
   const [form, setForm]   = useState({ name: "", amount: "", cycle: "Miesięcznie", category: "Subskrypcje", currency: "PLN" });
   const [adding, setAdding] = useState(false);

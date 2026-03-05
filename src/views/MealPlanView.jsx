@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import { haptic } from "../utils/helpers";
 import Spinner from "../components/primitives/Spinner";
+import { useAppData } from "../contexts/AppDataContext";
 
-export default function MealPlanView({ receipts, apiKey }) {
+export default function MealPlanView() {
+  const { receipts, apiKey } = useAppData();
   const DAYS  = ["Pon","Wt","Śr","Czw","Pt","Sob","Ndz"];
   const MEALS = ["Śniadanie","Obiad","Kolacja"];
   const [plan,     setPlan]     = useState({}); // {`${day}-${meal}`: text}

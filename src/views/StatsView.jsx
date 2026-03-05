@@ -5,8 +5,10 @@ import { parseDate } from "../utils/helpers";
 import BarChart from "../components/charts/BarChart";
 import DonutChart from "../components/charts/DonutChart";
 import InsightCard from "../components/charts/InsightCard";
+import { useAppData } from "../contexts/AppDataContext";
 
-export default function StatsView({ receipts, expenses = [], allItems: allItemsProp = [], currency = "PLN" }) {
+export default function StatsView() {
+  const { receipts, expenses, allItems, currency } = useAppData();
   // ── Filter state ──
   const [activeGroups, setActiveGroups] = useState({ "Spożywcze": true, "Rachunki": true, "Jednorazowe": true });
   const [selectedStore, setSelectedStore] = useState("");
@@ -23,7 +25,7 @@ export default function StatsView({ receipts, expenses = [], allItems: allItemsP
   const toggleGroup = (group) => setActiveGroups(prev => ({ ...prev, [group]: !prev[group] }));
 
   // ── Merge all items: receipt items + manual expenses (treat manual as receipt) ──
-  const allRaw = allItemsProp.length > 0 ? allItemsProp :
+  const allRaw = allItems.length > 0 ? allItems :
     receipts.flatMap(r => (r.items || []).map(it => ({ ...it, store: r.store, date: r.date })));
 
   // ── Unique stores for the shop filter ──

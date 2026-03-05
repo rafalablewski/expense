@@ -1,8 +1,10 @@
 import { useRef, useState } from "react";
 import { haptic } from "../utils/helpers";
 import Empty from "../components/primitives/Empty";
+import { useAppData } from "../contexts/AppDataContext";
 
-export default function ShoppingView({ receipts }) {
+export default function ShoppingView() {
+  const { receipts } = useAppData();
   const [items, setItems] = useState([]);
   const [val, setVal] = useState("");
   const [qty, setQty] = useState(1);

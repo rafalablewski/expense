@@ -4,8 +4,10 @@ import { CAT_ICONS, FX_SYMBOLS } from "../config/defaults";
 import { convertAmt, haptic, isRecurringPaused } from "../utils/helpers";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
+import { useAppData } from "../contexts/AppDataContext";
 
-export default function ExpensesView({ expenses, receipts, recurring = [], onDelete, currency }) {
+export default function ExpensesView() {
+  const { expenses, receipts, recurring, deleteExpense, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
   const [q,   setQ]   = useState("");
   const [cat, setCat] = useState("All");
@@ -176,7 +178,7 @@ export default function ExpensesView({ expenses, receipts, recurring = [], onDel
                         {item.note && <div className="detail-full" style={{ color:$.ink2 }}><span className="detail-label">Notatka:</span> {item.note}</div>}
                         {item.source==="manual" && (
                           <div className="detail-full" style={{ marginTop: 4 }}>
-                            <button onClick={() => { haptic(10); onDelete(item.id); }}
+                            <button onClick={() => { haptic(10); deleteExpense(item.id); }}
                               className="btn-delete">
                               🗑️ Usuń
                             </button>

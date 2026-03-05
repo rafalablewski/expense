@@ -2,8 +2,12 @@ import { signOut } from "firebase/auth";
 import { auth } from "../../firebase";
 import { VIEWS } from "../../config/constants";
 import { haptic } from "../../utils/helpers";
+import { useAppData } from "../../contexts/AppDataContext";
 
-export default function TopNav({ view, go, receipts, totalItems, currency, setCurrency, onAddExpense, onApiKey, apiKey, darkMode, setDarkMode, currentView }) {
+export default function TopNav({ view, go, onAddExpense, onApiKey }) {
+  const { receipts, currency, setCurrency, apiKey, darkMode, setDarkMode, allItems } = useAppData();
+  const totalItems = allItems.length;
+  const currentView = VIEWS.find(v => v.id === view);
   return (
     <header>
       <nav className="topnav" aria-label="Nawigacja główna">

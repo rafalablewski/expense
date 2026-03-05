@@ -5,8 +5,10 @@ import { parseDate } from "../utils/helpers";
 import SparkLine from "../components/charts/SparkLine";
 import Empty from "../components/primitives/Empty";
 import Zl from "../components/primitives/Zl";
+import { useAppData } from "../contexts/AppDataContext";
 
-export default function InflationView({ receipts, currency }) {
+export default function InflationView() {
+  const { receipts, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
   const [minOccurrences, setMin] = useState(2);
   const [q, setQ] = useState("");

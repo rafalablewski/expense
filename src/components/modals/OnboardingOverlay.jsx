@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAppData } from '../../contexts/AppDataContext';
 
 const ONBOARD_STEPS = [
   { icon:"📸", title:"Skanuj paragon", desc:"Dodaj zdjęcie paragonu — Claude automatycznie odczyta produkty, ceny i rabaty." },
@@ -7,7 +8,8 @@ const ONBOARD_STEPS = [
   { icon:"🔮", title:"Przewiduj przyszłość", desc:"AI prognozuje Twoje wydatki i sugeruje tygodniowy plan posiłków." },
 ];
 
-export default function OnboardingOverlay({ onDone, darkMode }) {
+export default function OnboardingOverlay({ onDone }) {
+  const { darkMode } = useAppData();
   const [step, setStep] = useState(0);
   const current = ONBOARD_STEPS[step];
   const isLast  = step === ONBOARD_STEPS.length - 1;
