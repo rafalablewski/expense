@@ -1,10 +1,8 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
-import { signOut } from "firebase/auth";
-import { auth } from "./firebase";
 import { loadUserData, saveAllUserData, updateField, subscribeUserData } from "./firestore";
 import $ from "./config/theme";
 import { CATS, DEFAULT_STORES, FX, FX_SYMBOLS } from "./config/defaults";
-import { VIEWS, MOBILE_VIEWS } from "./config/constants";
+import { VIEWS } from "./config/constants";
 import { LS_KEYS, lsGet, lsSet } from "./services/localStorage";
 import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, getCorrectionsHint } from "./services/claude";
 import { initCorrections, getCorrections, saveCorrections, learnFromCorrections, applyLearnedCorrections } from "./hooks/useCorrections";
@@ -25,6 +23,9 @@ import DashboardView from "./views/DashboardView";
 import InflationView from "./views/InflationView";
 import PredictionView from "./views/PredictionView";
 import ExpensesView from "./views/ExpensesView";
+import TopNav from "./components/layout/TopNav";
+import BottomNav from "./components/layout/BottomNav";
+import Fab from "./components/layout/Fab";
 
 
 export default function App({ uid }) {
@@ -390,77 +391,12 @@ export default function App({ uid }) {
       >Przejdź do treści</a>
 
       {/* ── TOP NAV ── */}
-      <header>
-        <nav className="topnav" aria-label="Nawigacja główna">
-          {/* Logo */}
-          <a href="#" className="topnav-logo" onClick={e => { e.preventDefault(); go("receipts"); }} aria-label="MaszkaApp — strona główna">
-            <div className="topnav-logo-dot" aria-hidden="true" />
-            MaszkaApp
-          </a>
-
-          {/* Desktop links */}
-          <div className="topnav-items" role="list">
-            {VIEWS.map(v => {
-              const count = v.id === "receipts" ? receipts.length : v.id === "expenses" ? totalItems : 0;
-              return (
-                <div key={v.id} role="listitem">
-                  <button
-                    className={`topnav-btn${view === v.id ? " active" : ""}`}
-                    onClick={() => go(v.id)}
-                    aria-current={view === v.id ? "page" : undefined}
-                  >
-                    {v.label}
-                    {count > 0 && (
-                      <span className="topnav-badge" aria-label={`${count} elementów`}>
-                        {count > 9 ? "9+" : count}
-                      </span>
-                    )}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Currency toggle */}
-          <div className="cur-toggle" role="group" aria-label="Waluta">
-            {["PLN","EUR","USD"].map(c => (
-              <button key={c} className={`cur-btn${currency === c ? " active" : ""}`}
-                onClick={() => setCurrency(c)} aria-pressed={currency === c}>{c}</button>
-            ))}
-          </div>
-
-          {/* Add expense */}
-          <button
-            className="nav-add-btn"
-            onClick={() => { setShowQA(true); haptic(12); }}
-            aria-label="Dodaj wydatek">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M6 1v10M1 6h10" stroke="white" strokeWidth="2.2" strokeLinecap="round"/></svg>
-            Dodaj
-          </button>
-
-          {/* API Key */}
-          <button className="dark-btn pos-relative" onClick={() => { setShowKeyModal(true); haptic(12); }}
-            aria-label="Klucz API" title="Klucz API">
-            🔑
-            {!apiKey && <span className="key-dot" />}
-          </button>
-
-          {/* Dark mode */}
-          <button className="dark-btn" onClick={() => { setDarkMode(d => !d); haptic(12); }}
-            aria-label={darkMode ? "Tryb jasny" : "Tryb ciemny"} title={darkMode ? "Tryb jasny" : "Tryb ciemny"}>
-            {darkMode ? "☀️" : "🌙"}
-          </button>
-
-          {/* Logout */}
-          <button className="dark-btn" onClick={() => signOut(auth)}
-            aria-label="Wyloguj" title="Wyloguj">
-            🚪
-          </button>
-
-          {/* Mobile: centered title */}
-          <span className="topnav-mobile-title" aria-hidden="true">{currentView?.label}</span>
-        </nav>
-      </header>
+      <TopNav
+        view={view} go={go} receipts={receipts} totalItems={totalItems}
+        currency={currency} setCurrency={setCurrency}
+        onAddExpense={() => setShowQA(true)} onApiKey={() => setShowKeyModal(true)}
+        apiKey={apiKey} darkMode={darkMode} setDarkMode={setDarkMode} currentView={currentView}
+      />
 
       {/* ── PAGE ── */}
       <main id="main" className="page" ref={pageRef}>
@@ -488,29 +424,10 @@ export default function App({ uid }) {
       </main>
 
       {/* ── FAB ── */}
-      <button className="fab" onClick={() => { setShowQA(true); haptic(12); }} aria-label="Dodaj wydatek">
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><path d="M11 2v18M2 11h18" stroke="white" strokeWidth="2.5" strokeLinecap="round"/></svg>
-      </button>
+      <Fab onClick={() => setShowQA(true)} />
 
       {/* ── FLOATING PILL NAV (mobile) ── */}
-      <nav className="botnav" aria-label="Nawigacja mobilna">
-        <div className="botnav-pill" role="list">
-          {MOBILE_VIEWS.map((v, i) => (
-            <div key={v.id} role="listitem" className="d-contents">
-              {i === 3 && <div className="botnav-divider" aria-hidden="true" />}
-              <button
-                className={`botnav-btn${view === v.id ? " active" : ""}`}
-                onClick={() => go(v.id)}
-                aria-label={v.label}
-                aria-current={view === v.id ? "page" : undefined}
-              >
-                <div className="bn-bg" aria-hidden="true" />
-                <span className="bn-icon" aria-hidden="true">{v.icon}</span>
-              </button>
-            </div>
-          ))}
-        </div>
-      </nav>
+      <BottomNav view={view} go={go} />
     </>
   );
 }
