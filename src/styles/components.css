@@ -831,6 +831,11 @@
 }
 
 /* ── Stat grid ── */
+.stat-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
 .stat-grid-3 {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

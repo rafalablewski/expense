@@ -73,10 +73,11 @@ export default function ExpensesView() {
         <div className="section flex-col gap-16">
 
           {/* Stats */}
-          <div className="stat-grid au stat-grid-3">
+          <div className="stat-grid au stat-grid-4">
             {[
-              { l:"Ręcznie",      v:convertAmt(totalManual,    currency), u:sym, col:$.green },
-              { l:"Z paragonów",  v:convertAmt(totalReceipt,   currency), u:sym, col:"#3B82F6" },
+              { l:"Łącznie",      v:convertAmt(totalAll,       currency), u:sym,      col:$.ink0 },
+              { l:"Ręcznie",      v:convertAmt(totalManual,    currency), u:sym,      col:$.green },
+              { l:"Z paragonów",  v:convertAmt(totalReceipt,   currency), u:sym,      col:"#3B82F6" },
               { l:"Subskrypcje",  v:convertAmt(totalRecurring, currency), u:sym+"/m", col:"#8B5CF6" },
             ].map(s => (
               <div className="stat-card" key={s.l}>
