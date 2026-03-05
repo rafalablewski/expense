@@ -1,20 +1,21 @@
 import { useMemo, useState } from "react";
 import $ from "../config/theme";
 import { CATS, CAT_GROUPS, FX_SYMBOLS } from "../config/defaults";
-import { parseDate, convertAmt } from "../utils/helpers";
+import { parseDate, convertAmt, isRecurringPaused } from "../utils/helpers";
 import BarChart from "../components/charts/BarChart";
 import DonutChart from "../components/charts/DonutChart";
 import InsightCard from "../components/charts/InsightCard";
 import { useAppData } from "../contexts/AppDataContext";
 
 export default function StatsView() {
-  const { receipts, expenses, allItems, currency } = useAppData();
+  const { receipts, expenses, allItems, recurring, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
 
   // ── Filter state ──
   const [activeGroups, setActiveGroups] = useState({ "Spożywcze": true, "Rachunki": true, "Jednorazowe": true });
   const [selectedStore, setSelectedStore] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
+  const [includeRecurring, setIncludeRecurring] = useState(false);
 
   // Build set of allowed categories from active groups
   const allowedCats = useMemo(() => {
@@ -136,11 +137,20 @@ export default function StatsView() {
       });
   }, [all]);
 
+  // ── Recurring subscriptions (monthly equivalent) ──
+  const toMonthly = item => {
+    const a = parseFloat(item.amount) || 0;
+    return { "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 }[item.cycle] || a;
+  };
+  const activeRecurring = useMemo(() => recurring.filter(r => !isRecurringPaused(r)), [recurring]);
+  const recurringMonthly = activeRecurring.reduce((s, r) => s + toMonthly(r), 0);
+
   // ── Summary numbers (from items — single source of truth) ──
-  const totalSpent  = all.reduce((s, item) => s + (parseFloat(item.total_price) || 0), 0);
+  const itemsTotal  = all.reduce((s, item) => s + (parseFloat(item.total_price) || 0), 0);
+  const totalSpent  = itemsTotal + (includeRecurring ? recurringMonthly : 0);
   const totalSaved  = filteredReceipts.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
   const totalCount  = filteredReceipts.length + filteredExpenses.length;
-  const avgReceipt  = totalCount ? totalSpent / totalCount : 0;
+  const avgReceipt  = totalCount ? itemsTotal / totalCount : 0;
   const maxMonth    = Math.max(...monthData.map(m => m.total), 1);
 
   // ── Insights ──
@@ -268,6 +278,19 @@ export default function StatsView() {
               </div>
             ))}
           </div>
+
+          {/* ── Recurring toggle ── */}
+          {activeRecurring.length > 0 && (
+            <button
+              onClick={() => setIncludeRecurring(v => !v)}
+              className={`stats-recurring-btn${includeRecurring ? " active" : ""}`}
+            >
+              <span className="stats-recurring-icon">🔄</span>
+              {includeRecurring
+                ? `Subskrypcje wliczone: +${convertAmt(recurringMonthly, currency)} ${sym}/mies.`
+                : `+ Dodaj subskrypcje (${convertAmt(recurringMonthly, currency)} ${sym}/mies.)`}
+            </button>
+          )}
 
           {/* ── Donut + legend row ── */}
           <div className="card au1 card--p24">

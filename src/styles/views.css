@@ -458,6 +458,26 @@
   font-size: 12px; font-weight: 600; cursor: pointer;
 }
 
+/* Recurring toggle */
+.stats-recurring-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 18px; border-radius: 12px;
+  border: 1.5px dashed rgba(0,0,0,0.15);
+  background: transparent; color: var(--c-ink2);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .2s;
+  width: 100%;
+}
+.stats-recurring-btn:hover { border-color: var(--c-green); color: var(--c-ink0); }
+.stats-recurring-btn.active {
+  border-style: solid;
+  border-color: var(--c-green);
+  background: rgba(6,193,103,0.06);
+  color: var(--c-green);
+}
+.stats-recurring-icon { font-size: 16px; line-height: 1; }
+
 /* ── LEGEND (donut chart) ── */
 .legend-wrap { display: flex; gap: 32px; align-items: center; flex-wrap: wrap; }
 .legend-list { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 10px; }
