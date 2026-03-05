@@ -8,6 +8,20 @@ import { haptic } from "../utils/helpers";
 
 const AppDataContext = createContext(null);
 
+// Extract city from Polish address like "Radockiego 150, 40-645 Katowice"
+const extractCity = (addr) => {
+  if (!addr) return null;
+  const m = addr.match(/\d{2}-\d{3}\s+(.+)/);
+  return m ? m[1].trim() : null;
+};
+
+// Ensure receipt has city populated (from explicit field or parsed from address)
+const ensureCity = (receipt) => {
+  if (receipt.city) return receipt;
+  const city = extractCity(receipt.address);
+  return city ? { ...receipt, city } : receipt;
+};
+
 export function AppDataProvider({ uid, children }) {
   const [receipts,  setReceipts]  = useState([]);
   const [expenses,  setExpenses]  = useState([]);
@@ -93,7 +107,7 @@ export function AppDataProvider({ uid, children }) {
   }, [uid]);
 
   function applyData(d) {
-    setReceipts(d.receipts || []);
+    setReceipts((d.receipts || []).map(ensureCity));
     setExpenses(d.expenses || []);
     setBudgets(d.budgets || {});
     setRecurring(d.recurring || []);
@@ -269,7 +283,7 @@ export function AppDataProvider({ uid, children }) {
         learnFromCorrections(current._original, reviewed);
       }
       const { _original, ...rest } = current;
-      setReceipts(p => [{ ...reviewed, id: rest.id }, ...p]);
+      setReceipts(p => [ensureCity({ ...reviewed, id: rest.id }), ...p]);
     }
     setReviewQueue(q => q.slice(1));
     haptic(30);
@@ -280,7 +294,7 @@ export function AppDataProvider({ uid, children }) {
   }, []);
 
   const updateReceipt = useCallback((updated) => {
-    setReceipts(p => p.map(r => r.id === updated.id ? updated : r));
+    setReceipts(p => p.map(r => r.id === updated.id ? ensureCity(updated) : r));
   }, []);
 
   const deleteExpense = useCallback((id) => {
