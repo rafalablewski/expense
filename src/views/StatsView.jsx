@@ -198,7 +198,7 @@ export default function StatsView() {
   const anyGroupOff = !activeGroups["Spożywcze"] || !activeGroups["Rachunki"] || !activeGroups["Jednorazowe"];
   const hasActiveFilter = anyGroupOff || selectedStore !== "" || selectedMonth !== "";
 
-  if (!receipts.length && !expenses.length) return (
+  if (!receipts.length) return (
     <>
       <div className="page-hero"><div className="page-hero-inner">
         <h1 className="page-title au">Statystyki</h1>

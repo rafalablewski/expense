@@ -5,7 +5,7 @@ import { convertAmt, parseDate } from "../utils/helpers";
 import { useAppData } from "../contexts/AppDataContext";
 
 export default function BudgetsView() {
-  const { receipts, expenses, allItems, budgets, setBudgets, currency } = useAppData();
+  const { receipts, allItems, budgets, setBudgets, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
   const [editing, setEditing] = useState(null); // cat being edited
   const [editVal, setEditVal] = useState("");
