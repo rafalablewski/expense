@@ -41,10 +41,10 @@ export default function QuickAddExpense({ onClose, onManualEntry, onTextReceipt,
           {textMode ? (
             <>
               <div className="text-receipt-hint">
-                Wpisz produkty — każdy w nowej linii. AI odczyta nazwy, ilości i ceny.
+                Wklej tekst paragonu lub wpisz produkty — każdy w nowej linii. AI odczyta sklep, daty, nazwy, ilości i ceny.
               </div>
               <textarea ref={textRef} className="field text-receipt-area" value={textVal} onChange={e => setTextVal(e.target.value)}
-                placeholder={"mleko 2zł\n2kg ziemniaków 6zł\n3 jogurty greckie activia\nchleb razowy 5.50\nmasło extra 200g 8.99zł"} />
+                placeholder={"Wklej cały tekst paragonu lub wpisz listę:\n\nmleko 2zł\n2kg ziemniaków 6zł\nchleb razowy 5.50\n\nlub tekst z paragonu fiskalnego..."} />
               <button className="btn-primary" onClick={() => {
                   if (!textVal.trim()) return;
                   if (!apiKey) { onNeedKey(); return; }

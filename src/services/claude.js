@@ -80,14 +80,14 @@ export async function parseTextReceipt(text, apiKey, correctionsHint = "") {
       max_tokens: 2048,
       messages: [{
         role: "user",
-        content: `Parse the following Polish shopping list / receipt text into structured JSON. Each line is a product. Respond with ONLY raw JSON — no markdown, no backticks, no commentary.
+        content: `Parse the following Polish text into structured JSON. The text may be either a full receipt (paragon fiskalny) or a simple shopping list. Respond with ONLY raw JSON — no markdown, no backticks, no commentary.
 
 {
   "store": string | null,
   "address": string | null,
   "zip_code": string | null,
   "city": string | null,
-  "date": "${new Date().toISOString().slice(0, 10)}",
+  "date": "YYYY-MM-DD",
   "items": [
     {
       "name": string,
@@ -105,18 +105,33 @@ export async function parseTextReceipt(text, apiKey, correctionsHint = "") {
 }
 
 Rules:
-- Each line is a separate product. Extract name, quantity, unit, and price from the text.
-- If price is missing for a product, set total_price to 0.
-- If quantity is mentioned (e.g. "2kg", "3 szt", "3 jogurty"), extract it. Otherwise default to 1.
+- The text can be a FULL RECEIPT (paragon fiskalny) or a simple shopping list. Detect the format automatically.
+- For FULL RECEIPTS (containing store headers, NIP, product codes, tax summaries, payment info):
+  * Extract store name, address, zip_code, city from the receipt header.
+  * date MUST be in YYYY-MM-DD format. Extract from receipt header/footer (e.g. "2026-03-04 14:15" → "2026-03-04"). NEVER return null for date.
+  * Only extract product lines — IGNORE tax summaries (PTU, SPRZEDAZ OPODATKOWANA), payment lines (GOTOWKA, RESZTA), totals (SUMA PLN), NIP, separator lines (===, ---), transaction metadata, and other non-product lines.
+  * Product lines typically look like: "PRODUCT_NAME CODE    QTY xPRICE    TOTAL_PRICETAX_LETTER" — extract name, quantity, unit_price, and total_price from these.
+  * For weighed products (e.g. "1,838 x34,90    64,15C"), quantity is the weight in kg, unit is "kg".
+  * For counted products (e.g. "1 x19,99    19,99C"), quantity is the count, unit is "szt".
+  * The rightmost number before the tax letter (A/B/C) is total_price. The "QTY xPRICE" part gives quantity and unit_price.
+  * Use the "SUMA PLN" line for the "total" field if present.
+  * Product names: expand abbreviations into readable Polish names (e.g. "MIELONE WO" → "Mielone wołowe", "FILET Z KU" → "Filet z kurczaka", "WATROBA Z K" → "Wątroba z kurczaka", "SOL Z KOPA" → "Sól z kopalnią/Sól kopalniana", "CUKIER TRZC" → "Cukier trzcinowy", "FASOLA CZA" → "Fasola czarna", "PAPRYKA KO" → "Papryka konserwowa", "CIECIERZYC" → "Ciecierzyca", "KETCHUP LA" → "Ketchup łagodny", "CHRZAN TAR" → "Chrzan tarty", "SOS BBQ CH" → "Sos BBQ", "PLATKI JEC" → "Płatki jęczmienne", "SOCZEWICA" → "Soczewica", "SER TWARDY" → "Ser twardy", "SEREK WIE L" → "Serek wiejski lekki", "SER ZLOTY" → "Ser złoty", "PLATKI OWS" → "Płatki owsiane", "BULKA GRIL" → "Bułka grillowa", "MAKARON LA" → "Makaron lasagne", "SEREK Z CE" → "Serek z cebulą", "CHIPSY AUC" → "Chipsy Auchan"). Use context and common sense to expand truncated product names into natural Polish.
+- For SIMPLE SHOPPING LISTS (freeform text like "mleko 2zł"):
+  * Each line is a separate product. Extract name, quantity, unit, and price.
+  * If price is missing, set total_price to 0.
+  * If no date is found, use today: "${new Date().toISOString().slice(0, 10)}".
+  * "total" = sum of all total_price values.
 - Calculate unit_price = total_price / quantity when both are known.
-- "total" = sum of all total_price values.
-- address: Extract the store's street address if present. Return null if not found.
-- zip_code: Extract the postal/zip code if present. Return null if not found.
-- city: Extract the city name if present (e.g. "Katowice", "Mikołów"). For e-commerce stores return null. Return null if not found.
 - Categorize products into the correct Polish category.
-- Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.
+- Prices = plain numbers (4.99). Use dot as decimal separator. Discounts = positive numbers. Missing qty = 1.
 - Grains, cereals, pasta, flour, rice (ryż, kasza, kasza pęczak, kasza jęczmienna, kasza gryczana, makaron, mąka, płatki) → category "Zboża". These are grain/carb products, NOT vegetables or bread.
-- Bread, rolls, buns, bagels (chleb, bułka, rogal, bajgiel) → category "Pieczywo".${correctionsHint}
+- Bread, rolls, buns, bagels (chleb, bułka, rogal, bajgiel) → category "Pieczywo".
+- Meat products (mielone, filet, serce, wątroba, kurczak, wołowina, wieprzowina) → category "Mięso".
+- Dairy (ser, serek, mleko, jogurt, śmietana, masło) → category "Nabiał".
+- Sauces, ketchup, mustard, horseradish → category "Inne" (condiments).
+- Salt, sugar, spices → category "Inne".
+- Chips, snacks → category "Słodycze".
+- Canned/dried legumes (fasola, ciecierzyca, soczewica) → category "Warzywa".${correctionsHint}
 
 Text to parse:
 ${text}`
