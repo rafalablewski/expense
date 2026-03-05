@@ -147,8 +147,14 @@ export default function StatsView() {
   const activeRecurring = useMemo(() => recurring.filter(r => !isRecurringPaused(r)), [recurring]);
   const recurringMonthly = activeRecurring.reduce((s, r) => s + toMonthly(r), 0);
 
-  // ── Summary numbers (from items — single source of truth) ──
-  const itemsTotal  = all.reduce((s, item) => s + (parseFloat(item.total_price) || 0), 0);
+  // ── Summary numbers ──
+  // When all category groups are active, use receipt-level totals (matches Dashboard exactly).
+  // When categories are filtered, fall back to item-level sums (only way to filter by category).
+  const allGroupsOn = activeGroups["Spożywcze"] && activeGroups["Rachunki"] && activeGroups["Jednorazowe"];
+  const receiptLevelTotal = filteredReceipts.reduce((s, r) => s + (parseFloat(r.total) || 0), 0)
+    + filteredExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+  const itemLevelTotal = all.reduce((s, item) => s + (parseFloat(item.total_price) || 0), 0);
+  const itemsTotal = allGroupsOn ? receiptLevelTotal : itemLevelTotal;
   const totalSpent  = itemsTotal + (includeRecurring ? recurringMonthly : 0);
   const totalSaved  = filteredReceipts.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
   const totalCount  = filteredReceipts.length + filteredExpenses.length;
