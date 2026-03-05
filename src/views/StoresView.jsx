@@ -1,0 +1,357 @@
+import { useMemo, useState } from "react";
+import $ from "../config/theme";
+import { parseDate } from "../utils/helpers";
+import CatChip from "../components/primitives/CatChip";
+import Empty from "../components/primitives/Empty";
+import Zl from "../components/primitives/Zl";
+import { useAppData } from "../contexts/AppDataContext";
+
+const TIME_RANGES = [
+  { id: "7",   label: "7 dni"   },
+  { id: "30",  label: "30 dni"  },
+  { id: "90",  label: "3 mies." },
+  { id: "all", label: "Wszystko" },
+];
+
+export default function StoresView() {
+  const { receipts } = useAppData();
+  const [range,      setRange]      = useState("all");
+  const [storeQ,     setStoreQ]     = useState("");
+  const [activeStore,setActiveStore] = useState(null); // drilldown
+  const [drillQ,     setDrillQ]     = useState("");
+  const [drillCat,   setDrillCat]   = useState("All");
+  const [expanded,   setExpanded]   = useState({});    // { storeKey: true }
+
+  const toggleExpand = (key) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
+
+  // ── Filter receipts by time range ──
+  const now = new Date();
+  const filtered = useMemo(() => {
+    if (range === "all") return receipts;
+    const days = parseInt(range, 10);
+    const cutoff = new Date(now - days * 864e5);
+    return receipts.filter(r => {
+      const d = parseDate(r.date);
+      return d && d >= cutoff;
+    });
+  }, [receipts, range]);
+
+  // ── Build store summary map (grouped by normalized store name, with locations) ──
+  const storeMap = useMemo(() => {
+    const map = {};
+    filtered.forEach(r => {
+      const raw = (r.store || "Nieznany sklep").trim();
+      const key = raw.toLowerCase();
+      if (!map[key]) map[key] = { name: raw, visits: 0, total: 0, saved: 0, items: [], receipts: [], lastDate: null, locations: {}, cities: {} };
+      map[key].visits++;
+      map[key].total  += parseFloat(r.total) || 0;
+      map[key].saved  += parseFloat(r.total_discounts) || 0;
+      (r.items || []).forEach(it => map[key].items.push({ ...it, date: r.date }));
+      map[key].receipts.push({ id: r.id, date: r.date, total: parseFloat(r.total) || 0, itemCount: (r.items || []).length, address: r.address, zip_code: r.zip_code, city: r.city });
+      if (r.city) map[key].cities[r.city] = (map[key].cities[r.city] || 0) + 1;
+      const d = parseDate(r.date);
+      if (d && (!map[key].lastDate || d > map[key].lastDate)) map[key].lastDate = d;
+      // Track locations by address/zip
+      const locKey = [r.zip_code, r.address].filter(Boolean).join(" ").toLowerCase() || null;
+      if (locKey) {
+        if (!map[key].locations[locKey]) map[key].locations[locKey] = { address: r.address || "", zip_code: r.zip_code || "", city: r.city || "", visits: 0, total: 0 };
+        map[key].locations[locKey].visits++;
+        map[key].locations[locKey].total += parseFloat(r.total) || 0;
+      }
+    });
+    return map;
+  }, [filtered]);
+
+  const stores = useMemo(() =>
+    Object.values(storeMap)
+      .filter(s => s.name.toLowerCase().includes(storeQ.toLowerCase()))
+      .sort((a, b) => b.total - a.total),
+    [storeMap, storeQ]
+  );
+
+  const totalAll = stores.reduce((s, st) => s + st.total, 0);
+
+  // ── Drilldown data ──
+  const drillStore = activeStore ? storeMap[activeStore.toLowerCase()] : null;
+  const drillItems = useMemo(() => {
+    if (!drillStore) return [];
+    return drillStore.items.filter(it =>
+      (it.name || "").toLowerCase().includes(drillQ.toLowerCase()) &&
+      (drillCat === "All" || it.category === drillCat)
+    );
+  }, [drillStore, drillQ, drillCat]);
+  const drillCats = drillStore
+    ? ["All", ...new Set(drillStore.items.map(i => i.category).filter(Boolean))]
+    : [];
+
+  // ── Store initial letter avatar color ──
+  const storeColor = name => {
+    const colors = ["#06C167","#3B82F6","#F59E0B","#EF4444","#8B5CF6","#EC4899","#0891B2","#D97706"];
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xFFFFFFFF;
+    return colors[Math.abs(h) % colors.length];
+  };
+
+  const fmtDate = d => d ? d.toLocaleDateString("pl-PL", { day: "2-digit", month: "short" }) : "—";
+
+  if (!receipts.length) return (
+    <>
+      <div className="page-hero"><div className="page-hero-inner">
+        <h1 className="page-title au">Sklepy</h1>
+        <p className="page-subtitle">Dodaj paragony, aby zobaczyć analizę sklepów</p>
+      </div></div>
+      <div className="container">
+        <Empty icon="🏪" title="Brak sklepów" sub="Dodaj paragony — każdy sklep otrzyma własną kartę z historią zakupów" />
+      </div>
+    </>
+  );
+
+  return (
+    <>
+      <div className="page-hero">
+        <div className="page-hero-inner page-hero-flex">
+          <div>
+            {activeStore ? (
+              <>
+                <button
+                  onClick={() => { setActiveStore(null); setDrillQ(""); setDrillCat("All"); }}
+                  className="btn-link-back"
+                  aria-label="Wróć do listy sklepów"
+                >
+                  ← Sklepy
+                </button>
+                <h1 className="page-title au" style={{ fontSize: "clamp(26px,4vw,42px)" }}>{activeStore}</h1>
+                <p className="page-subtitle au1">
+                  {drillStore?.visits} wizyt · {drillStore?.items.length} pozycji · ostatnia {fmtDate(drillStore?.lastDate)}
+                </p>
+              </>
+            ) : (
+              <>
+                <h1 className="page-title au">Moje <span>sklepy</span></h1>
+                <p className="page-subtitle au1">{stores.length} sklepów · {filtered.length} paragonów</p>
+              </>
+            )}
+          </div>
+          {/* Time range pills */}
+          {!activeStore && (
+            <div className="pills-row flex-shrink-0" role="group" aria-label="Zakres czasowy">
+              {TIME_RANGES.map(tr => (
+                <button key={tr.id} className={`pill${range === tr.id ? " on" : ""}`}
+                  onClick={() => setRange(tr.id)} aria-pressed={range === tr.id}>
+                  {tr.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="container">
+        <div className="section flex-col gap-20">
+
+          {/* ── LIST MODE ── */}
+          {!activeStore && (<>
+            {/* Search */}
+            <div className="au">
+              <label htmlFor="sq" className="sr-only">Szukaj sklepu</label>
+              <input id="sq" className="field" value={storeQ} onChange={e => setStoreQ(e.target.value)} placeholder="Szukaj sklepu…" />
+            </div>
+
+            {/* Store cards */}
+            <div className="flex-col gap-10">
+              {stores.length === 0 && (
+                <div className="td-empty">Brak wyników</div>
+              )}
+              {stores.map((st, i) => {
+                const pct = totalAll ? (st.total / totalAll * 100) : 0;
+                const avg = st.visits ? st.total / st.visits : 0;
+                const col = storeColor(st.name);
+                const key = st.name.toLowerCase();
+                const isExpanded = expanded[key];
+                const sortedReceipts = [...st.receipts].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+                return (
+                  <div key={st.name} className="store-card-wrap" style={{ animation: `fadeUp .4s cubic-bezier(.16,1,.3,1) ${i * .05}s both` }}>
+                    <div className="store-card store-card--expandable">
+                      {/* Expand toggle */}
+                      <button
+                        className={`budget-expand-btn${isExpanded ? " open" : ""}`}
+                        onClick={() => toggleExpand(key)}
+                        aria-label={isExpanded ? `Zwiń ${st.name}` : `Rozwiń ${st.name}`}
+                        aria-expanded={isExpanded}
+                      >
+                        ▸
+                      </button>
+
+                      {/* Avatar */}
+                      <div className="store-avatar" style={{ background: col + "18", border: `1px solid ${col}35`, color: col }}
+                        onClick={() => toggleExpand(key)}>
+                        {st.name.charAt(0).toUpperCase()}
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1" onClick={() => toggleExpand(key)} style={{ cursor: "pointer" }}>
+                        <div className="store-name">
+                          {st.name}
+                          <span className="budget-item-count">{st.visits}</span>
+                        </div>
+                        {/* Progress bar */}
+                        <div className="flex-row gap-8">
+                          <div className="store-progress">
+                            <div className="store-progress-fill" style={{ width: `${pct}%`, background: col }} />
+                          </div>
+                          <span className="store-pct">{pct.toFixed(0)}%</span>
+                        </div>
+                        <div className="store-meta">
+                          {Object.keys(st.cities).length > 0 && <span>📍 {Object.keys(st.cities).join(", ")}</span>}
+                          <span>{st.visits} wizyt</span>
+                          <span>śr. {avg.toFixed(0)} zł/wizyta</span>
+                          {st.saved > 0 && <span className="color-red">−{st.saved.toFixed(2)} zł saved</span>}
+                          <span className="detail-label">ost. {fmtDate(st.lastDate)}</span>
+                        </div>
+                      </div>
+
+                      {/* Total */}
+                      <div className="receipt-total-wrap">
+                        <div className="mono store-total-val" style={{ color: col }}>
+                          {st.total.toFixed(2)}
+                        </div>
+                        <div className="item-sub-sm">zł łącznie</div>
+                      </div>
+
+                      {/* Drilldown arrow */}
+                      <button className="store-chevron" onClick={() => setActiveStore(st.name)}
+                        aria-label={`Szczegóły ${st.name}`} title="Szczegóły">
+                        ›
+                      </button>
+                    </div>
+
+                    {/* Expanded receipt list: Store → City → Visit dates */}
+                    {isExpanded && (
+                      <div className="store-hierarchy">
+                        {(() => {
+                          const byLoc = {};
+                          sortedReceipts.forEach(r => {
+                            const loc = r.city || [r.address, r.zip_code].filter(Boolean).join(", ") || "Nieznana lokalizacja";
+                            if (!byLoc[loc]) byLoc[loc] = [];
+                            byLoc[loc].push(r);
+                          });
+                          return Object.entries(byLoc).map(([loc, recs]) => (
+                            <div key={loc} className="store-hierarchy-city">
+                              <div className="store-hierarchy-city-label" style={{ color: col }}>
+                                <span className="store-hierarchy-dash">–</span> {loc}
+                                <span className="store-hierarchy-count">{recs.length} wizyt</span>
+                              </div>
+                              <div className="store-hierarchy-visits">
+                                {recs.map((r, j) => (
+                                  <div key={r.id || j} className="store-hierarchy-visit">
+                                    <span className="store-hierarchy-vdash">—</span>
+                                    <span className="store-hierarchy-date">{r.date || "—"}</span>
+                                    <span className="store-hierarchy-info">
+                                      {r.itemCount > 0 && `${r.itemCount} prod.`}
+                                    </span>
+                                    <span className="mono store-hierarchy-total" style={{ color: col }}>
+                                      {r.total.toFixed(2)} zł
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>)}
+
+          {/* ── DRILLDOWN MODE ── */}
+          {activeStore && drillStore && (<>
+            {/* Drilldown stats */}
+            <div className="stat-grid au stat-grid-3">
+              {[
+                { l: "Łącznie",    v: drillStore.total.toFixed(2), u: "zł", col: storeColor(activeStore) },
+                { l: "Wizyt",      v: drillStore.visits,           u: "",   col: $.ink0 },
+                { l: "Zaoszcz.",   v: drillStore.saved.toFixed(2), u: "zł", col: $.red  },
+              ].map(s => (
+                <div className="stat-card" key={s.l}>
+                  <div className="stat-label">{s.l}</div>
+                  <div className="stat-val" style={{ color: s.col }}>
+                    {s.v}<span className="stat-val-unit--sm">{s.u}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Locations */}
+            {drillStore && Object.keys(drillStore.locations).length > 0 && (
+              <div className="au1 flex-col gap-8">
+                <div className="section-heading-sm">
+                  Lokalizacje · {Object.keys(drillStore.locations).length}
+                </div>
+                {Object.values(drillStore.locations).map((loc, i) => (
+                  <div key={i} className="location-card">
+                    <span className="location-icon">📍</span>
+                    <div className="flex-1">
+                      <div className="location-name">
+                        {[loc.address, loc.zip_code, loc.city].filter(Boolean).join(", ")}
+                      </div>
+                      <div className="item-sub">{loc.visits} wizyt · {loc.total.toFixed(2)} zł</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Drill filters */}
+            <div className="au1 flex-col gap-10">
+              <input className="field" value={drillQ} onChange={e => setDrillQ(e.target.value)} placeholder={`Szukaj w ${activeStore}…`} />
+              <div className="pills-row" role="group" aria-label="Filtruj kategorię">
+                {drillCats.map(dc => (
+                  <button key={dc} className={`pill${drillCat === dc ? " on" : ""}`}
+                    onClick={() => setDrillCat(dc)} aria-pressed={drillCat === dc}>
+                    {dc === "All" ? "Wszystko" : dc}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Drilldown table */}
+            <div className="card tbl-wrap au2">
+              <table className="tbl" aria-label={`Produkty z ${activeStore}`}>
+                <thead>
+                  <tr>
+                    {["Produkt", "Kategoria", "Data", "Ilość", "Cena jedn.", "Opust", "Razem"].map((h, i) => (
+                      <th key={h} scope="col" className={i >= 3 ? "text-right" : "text-left"}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {drillItems.length === 0 ? (
+                    <tr><td colSpan={7} className="td-no-results">Brak wyników</td></tr>
+                  ) : drillItems.map((item, i) => (
+                    <tr key={i}>
+                      <td className="td-name">{item.name}</td>
+                      <td><CatChip cat={item.category} /></td>
+                      <td className="mono color-ink3 fs-12">{item.date || "—"}</td>
+                      <td className="mono text-right color-ink2 fs-12">{item.quantity || 1}{item.unit ? ` ${item.unit}` : ""}</td>
+                      <td className="text-right"><Zl v={item.unit_price} /></td>
+                      <td className="text-right">
+                        {item.discount
+                          ? <span className="mono td-discount-13">−{item.discount.toFixed(2)}</span>
+                          : <span className="zl-dash">—</span>}
+                      </td>
+                      <td className="text-right"><Zl v={item.total_price} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>)}
+
+        </div>
+      </div>
+    </>
+  );
+}

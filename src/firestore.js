@@ -48,3 +48,18 @@ export function subscribeUserData(uid, callback) {
     console.error("Firestore realtime listener error:", err);
   });
 }
+
+/**
+ * Load app-level configuration from Firestore config/appConfig.
+ * Returns null if the document doesn't exist.
+ */
+export async function loadAppConfig() {
+  try {
+    const snap = await getDoc(doc(db, "config", "appConfig"));
+    if (snap.exists()) return snap.data();
+    return null;
+  } catch (e) {
+    console.error("Failed to load app config:", e);
+    return null;
+  }
+}

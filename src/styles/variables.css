@@ -1,0 +1,35 @@
+/* ── CSS Custom Properties (from $ theme object) ── */
+:root {
+  /* Core */
+  --c-black: #000000;
+  --c-white: #FFFFFF;
+  --c-canvas: transparent;
+
+  /* Glass surfaces */
+  --c-glass: rgba(255,255,255,0.60);
+  --c-glass-full: rgba(255,255,255,0.78);
+  --c-glass-hero: rgba(255,255,255,0.55);
+  --c-glass-border: rgba(255,255,255,0.75);
+  --c-glass-hover: rgba(255,255,255,0.88);
+
+  /* Ink scale */
+  --c-ink0: #1D1D1F;
+  --c-ink1: #3D3D3F;
+  --c-ink2: #6E6E73;
+  --c-ink3: #AEAEB2;
+  --c-ink4: rgba(0,0,0,0.09);
+
+  /* Green — accent */
+  --c-green: #06C167;
+  --c-green-bg: rgba(6,193,103,0.10);
+  --c-green-rim: rgba(6,193,103,0.28);
+
+  /* Red — discounts/danger */
+  --c-red: #D93025;
+  --c-red-bg: rgba(217,48,37,0.08);
+  --c-red-rim: rgba(217,48,37,0.22);
+
+  /* Amber */
+  --c-amber: #D97706;
+  --c-amber-bg: rgba(217,119,6,0.08);
+}

@@ -1,0 +1,106 @@
+/* ── DARK MODE ── */
+[data-dark="1"] body {
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 0%,   #0a2e1a 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 90% 5%,   #0d1a2e 0%, transparent 50%),
+    radial-gradient(ellipse 50% 70% at 85% 90%,  #2a1500 0%, transparent 55%),
+    radial-gradient(ellipse 70% 50% at 5%  95%,  #0a0f1e 0%, transparent 55%),
+    radial-gradient(ellipse 90% 80% at 50% 50%,  #0a1f12 0%, transparent 70%),
+    #080e0a;
+  color: #F5F5F7;
+}
+[data-dark="1"] .card,
+[data-dark="1"] .stat-card,
+[data-dark="1"] .shop-item,
+[data-dark="1"] .widget {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.12);
+}
+[data-dark="1"] .card:hover,
+[data-dark="1"] .stat-card:hover,
+[data-dark="1"] .widget:hover {
+  background: rgba(255,255,255,0.10);
+  border-color: rgba(255,255,255,0.20);
+}
+[data-dark="1"] .page-hero {
+  background: rgba(0,0,0,0.30);
+  border-bottom-color: rgba(255,255,255,0.10);
+}
+[data-dark="1"] .topnav { background: rgba(0,0,0,0.96); }
+[data-dark="1"] .botnav-pill {
+  background: rgba(20,30,22,0.88);
+  border-color: rgba(255,255,255,0.15);
+}
+[data-dark="1"] .field {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.18);
+  color: #F5F5F7;
+}
+[data-dark="1"] .field::placeholder { color: rgba(255,255,255,0.30); }
+[data-dark="1"] .tbl th { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.45); }
+[data-dark="1"] .tbl td { border-bottom-color: rgba(255,255,255,0.08); }
+[data-dark="1"] .pill {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.75);
+}
+[data-dark="1"] .pill:hover { border-color: #06C167; color: #06C167; }
+[data-dark="1"] .btn-secondary {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.80);
+}
+[data-dark="1"] .mgrid-outer { border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); }
+[data-dark="1"] .dropzone { background: rgba(255,255,255,0.05); }
+[data-dark="1"] .dropzone:hover, [data-dark="1"] .dropzone.drag { background: rgba(6,193,103,0.08); }
+[data-dark="1"] .feature-pill { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.14); }
+[data-dark="1"] .cur-toggle { background: rgba(255,255,255,0.08); }
+
+/* Dark mode toggle button */
+.dark-btn {
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.20);
+  border-radius: 99px;
+  width: 32px; height: 32px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  transition: background .15s, transform .15s;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+.dark-btn:hover { background: rgba(255,255,255,0.18); transform: scale(1.08); }
+
+/* QA/RV dark overrides */
+[data-dark="1"] .qa-drawer {
+  background: rgba(12,22,15,0.95);
+  border-color: rgba(255,255,255,0.12);
+}
+[data-dark="1"] .qa-handle { background: rgba(255,255,255,0.20); }
+[data-dark="1"] .rv-drawer {
+  background: rgba(12,22,15,0.95);
+  border-color: rgba(255,255,255,0.12);
+}
+[data-dark="1"] .rv-handle { background: rgba(255,255,255,0.20); }
+[data-dark="1"] .rv-title { color: #F5F5F7; }
+[data-dark="1"] .rv-lbl { color: rgba(255,255,255,0.55); }
+[data-dark="1"] .rv-item {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.12);
+}
+[data-dark="1"] .rv-item-num { background: rgba(255,255,255,0.08); }
+[data-dark="1"] .rv-del-btn { color: rgba(255,255,255,0.50); }
+[data-dark="1"] .rv-del-btn:hover { color: #FF6B6B; background: rgba(217,48,37,0.15); }
+[data-dark="1"] .rv-suggest-pill { border-color: rgba(6,193,103,0.35); background: rgba(6,193,103,0.12); color: #3DDC84; }
+[data-dark="1"] .rv-suggest-pill:hover { background: var(--c-green); color: #fff; }
+[data-dark="1"] .rv-more-toggle { color: rgba(255,255,255,0.50); }
+[data-dark="1"] .rv-more-toggle:hover { color: var(--c-green); background: rgba(6,193,103,0.12); }
+[data-dark="1"] .rv-footer { border-color: rgba(255,255,255,0.10); }
+[data-dark="1"] .rv-info { color: rgba(255,255,255,0.45); }
+
+/* Onboarding dark */
+[data-dark="1"] .onboard-card {
+  background: rgba(20,30,22,0.92);
+  border-color: rgba(255,255,255,0.15);
+  color: #F5F5F7;
+}
