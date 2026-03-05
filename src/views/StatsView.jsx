@@ -8,7 +8,7 @@ import InsightCard from "../components/charts/InsightCard";
 import { useAppData } from "../contexts/AppDataContext";
 
 export default function StatsView() {
-  const { receipts, expenses, allItems, recurring, currency } = useAppData();
+  const { receipts, allItems, recurring, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
 
   // ── Filter state (default to current month) ──
@@ -30,9 +30,10 @@ export default function StatsView() {
 
   const toggleGroup = (group) => setActiveGroups(prev => ({ ...prev, [group]: !prev[group] }));
 
-  // ── Merge all items: receipt items + manual expenses ──
-  const allRaw = allItems.length > 0 ? allItems :
-    receipts.flatMap(r => (r.items || []).map(it => ({ ...it, store: r.store, date: r.date })));
+  // ── Merge all items: receipt items only (exclude recurring — handled separately) ──
+  const allRaw = (allItems.length > 0 ? allItems :
+    receipts.flatMap(r => (r.items || []).map(it => ({ ...it, store: r.store, date: r.date })))
+  ).filter(it => it.source !== "recurring");
 
   // ── Available months for month filter ──
   const monthList = useMemo(() => {
@@ -46,12 +47,11 @@ export default function StatsView() {
       else if (m2) set.add(`${m2[3]}-${m2[2]}`);
     };
     receipts.forEach(r => addMonth(r.date));
-    expenses.forEach(e => addMonth(e.date));
     return [...set].sort().reverse().map(key => {
       const [y, m] = key.split("-");
       return { key, label: `${monthNames[parseInt(m, 10) - 1]} ${y}` };
     });
-  }, [receipts, expenses]);
+  }, [receipts]);
 
   // ── Unique stores for the shop filter ──
   const storeList = useMemo(() => {
@@ -80,18 +80,6 @@ export default function StatsView() {
     if (!matchesMonth(item.date)) return false;
     return true;
   }), [allRaw, allowedCats, selectedStore, selectedMonth]);
-
-  // ── Filtered expenses (manual) — same filters ──
-  const filteredExpenses = useMemo(() =>
-    expenses.filter(e => {
-      const cat = e.category || "Inne";
-      if (!allowedCats.has(cat)) return false;
-      if (selectedStore && (!e.store || e.store.trim() !== selectedStore)) return false;
-      if (!matchesMonth(e.date)) return false;
-      return true;
-    }),
-    [expenses, allowedCats, selectedStore, selectedMonth]
-  );
 
   // ── Filtered receipts — by store and month ──
   const filteredReceipts = useMemo(() =>
@@ -158,13 +146,12 @@ export default function StatsView() {
   // When all category groups are active, use receipt-level totals (matches Dashboard exactly).
   // When categories are filtered, fall back to item-level sums (only way to filter by category).
   const allGroupsOn = activeGroups["Spożywcze"] && activeGroups["Rachunki"] && activeGroups["Jednorazowe"];
-  const receiptLevelTotal = filteredReceipts.reduce((s, r) => s + (parseFloat(r.total) || 0), 0)
-    + filteredExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+  const receiptLevelTotal = filteredReceipts.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
   const itemLevelTotal = all.reduce((s, item) => s + (parseFloat(item.total_price) || 0), 0);
   const itemsTotal = allGroupsOn ? receiptLevelTotal : itemLevelTotal;
   const totalSpent  = itemsTotal + (includeRecurring ? recurringMonthly : 0);
   const totalSaved  = filteredReceipts.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
-  const totalCount  = filteredReceipts.length + filteredExpenses.length;
+  const totalCount  = filteredReceipts.length;
   const avgReceipt  = totalCount ? itemsTotal / totalCount : 0;
   const maxMonth    = Math.max(...monthData.map(m => m.total), 1);
 
@@ -173,11 +160,6 @@ export default function StatsView() {
   const topCatPct = topCat && totalSpent ? ((topCat.value / totalSpent) * 100).toFixed(0) : 0;
   const savePct   = totalSpent ? ((totalSaved / (totalSpent + totalSaved)) * 100).toFixed(1) : 0;
 
-  // Top 3 most expensive individual items
-  const top3Items = useMemo(() =>
-    [...all].sort((a, b) => (parseFloat(b.total_price) || 0) - (parseFloat(a.total_price) || 0)).slice(0, 3),
-    [all]
-  );
 
   // Most visited store
   const topStore = useMemo(() => {
@@ -211,7 +193,7 @@ export default function StatsView() {
   const anyGroupOff = !activeGroups["Spożywcze"] || !activeGroups["Rachunki"] || !activeGroups["Jednorazowe"];
   const hasActiveFilter = anyGroupOff || selectedStore !== "" || selectedMonth !== "";
 
-  if (!receipts.length && !expenses.length) return (
+  if (!receipts.length) return (
     <>
       <div className="page-hero"><div className="page-hero-inner">
         <h1 className="page-title au">Statystyki</h1>
@@ -357,17 +339,6 @@ export default function StatsView() {
             <div className="section-heading-sm">
               Spostrzeżenia
             </div>
-
-            {top3Items.length > 0 && (
-              <InsightCard
-                icon="🏆"
-                title="Top 3 najdroższe zakupy"
-                sub={top3Items.map((it, i) =>
-                  `${i + 1}. ${it.name} — ${convertAmt(parseFloat(it.total_price) || 0, currency)} ${sym}${it.store ? ` (${it.store})` : ""}`
-                ).join("\n")}
-                accent={false}
-              />
-            )}
 
             {topCat && (
               <InsightCard

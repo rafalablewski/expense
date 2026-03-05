@@ -26,8 +26,7 @@ import Fab from "./components/layout/Fab";
 export default function App() {
   const {
     onboarded, setOnboarded,
-    reviewQueue, dataLoaded,
-    addExpense, addCustomStore,
+    reviewQueue, setReviewQueue, dataLoaded,
     handleFiles, processTextReceipt,
     confirmReceipt, cancelReceipt,
   } = useAppData();
@@ -36,6 +35,22 @@ export default function App() {
   const [showQA,  setShowQA]  = useState(false);
   const [showKeyModal, setShowKeyModal] = useState(false);
   const pageRef = useRef();
+
+  const openManualEntry = () => {
+    const id = Date.now() + Math.random();
+    setReviewQueue(q => [...q, {
+      id,
+      source: "manual",
+      store: "",
+      address: "",
+      zip_code: "",
+      city: "",
+      date: new Date().toISOString().slice(0, 10),
+      total: 0,
+      total_discounts: 0,
+      items: [{ name: "", quantity: 1, unit: null, unit_price: 0, total_price: 0, discount: null, discount_label: null, category: "Inne" }],
+    }]);
+  };
 
   const go = id => {
     setView(id);
@@ -58,8 +73,8 @@ export default function App() {
 
       {showQA && (
         <QuickAddExpense
-          onAdd={addExpense}
           onClose={() => setShowQA(false)}
+          onManualEntry={() => openManualEntry()}
           onNeedKey={() => setShowKeyModal(true)}
           onTextReceipt={(text) => { setShowQA(false); processTextReceipt(text); }}
         />

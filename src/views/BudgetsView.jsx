@@ -5,7 +5,7 @@ import { convertAmt, parseDate } from "../utils/helpers";
 import { useAppData } from "../contexts/AppDataContext";
 
 export default function BudgetsView() {
-  const { receipts, expenses, allItems, budgets, setBudgets, currency } = useAppData();
+  const { receipts, allItems, budgets, setBudgets, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
   const [editing, setEditing] = useState(null); // cat being edited
   const [editVal, setEditVal] = useState("");
@@ -15,20 +15,14 @@ export default function BudgetsView() {
 
   // Current month spending per category
   const now = new Date();
-  const monthItems = useMemo(() => {
-    const receiptItems = receipts.flatMap(r => {
+  const monthItems = useMemo(() =>
+    receipts.flatMap(r => {
       const d = parseDate(r.date);
       if (!d || d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return [];
       return (r.items || []).map(it => ({ ...it, store: r.store, date: r.date }));
-    });
-    const manualItems = expenses
-      .filter(e => {
-        const d = parseDate(e.date);
-        return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      })
-      .map(e => ({ name: e.name, total_price: e.amount, category: e.category, store: e.store, date: e.date, source: "manual" }));
-    return [...receiptItems, ...manualItems];
-  }, [receipts, expenses]);
+    }),
+    [receipts]
+  );
 
   const spending = useMemo(() => {
     const map = {};

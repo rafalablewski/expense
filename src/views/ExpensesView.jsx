@@ -7,7 +7,7 @@ import Empty from "../components/primitives/Empty";
 import { useAppData } from "../contexts/AppDataContext";
 
 export default function ExpensesView() {
-  const { expenses, receipts, recurring, deleteExpense, currency } = useAppData();
+  const { receipts, setReceipts, recurring, allItems: contextItems, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
   const [q,   setQ]   = useState("");
   const [cat, setCat] = useState("All");
@@ -17,24 +17,16 @@ export default function ExpensesView() {
   const [dateTo, setDateTo] = useState("");
   const [expanded, setExpanded] = useState(null);
 
-  // Merge manual expenses + receipt items + recurring
-  const allItems = useMemo(() => [
-    ...expenses.map(e => ({
-      id: e.id, name: e.name, total_price: e.amount, category: e.category,
-      date: e.date, store: e.store, note: e.note, source: "manual", type: e.type,
-      unit_price: null, quantity: null, discount: null,
+  // Use merged items from context (receipt items + recurring)
+  const allItems = useMemo(() =>
+    contextItems.map(it => ({
+      ...it,
+      total_price: parseFloat(it.total_price) || 0,
+      note: it.note || null,
+      type: it.source === "recurring" ? "recurring" : "one-time",
     })),
-    ...receipts.flatMap(r =>
-      (r.items || []).map(it => ({
-        ...it, store: r.store, date: r.date, source: "receipt", type: "one-time", note: null,
-      }))
-    ),
-    ...recurring.filter(r => !isRecurringPaused(r)).map(r => ({
-      id: r.id, name: r.name, total_price: r.amount, category: r.category,
-      date: null, store: null, note: r.cycle, source: "recurring", type: "recurring",
-      unit_price: null, quantity: null, discount: null,
-    })),
-  ], [expenses, receipts, recurring]);
+    [contextItems]
+  );
 
   const cats = useMemo(() => [...new Set(allItems.map(i => i.category).filter(Boolean))], [allItems]);
 
@@ -56,10 +48,9 @@ export default function ExpensesView() {
     const a = parseFloat(item.amount) || 0;
     return { "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 }[item.cycle] || a;
   };
-  const totalManual    = expenses.reduce((s,e) => s + e.amount, 0);
   const totalReceipt   = receipts.reduce((s,r) => s + (parseFloat(r.total)||0), 0);
   const totalRecurring = recurring.filter(r => !isRecurringPaused(r)).reduce((s,r) => s + toMonthly(r), 0);
-  const totalAll       = totalManual + totalReceipt + totalRecurring;
+  const totalAll       = totalReceipt + totalRecurring;
 
   return (
     <>
@@ -73,10 +64,9 @@ export default function ExpensesView() {
         <div className="section flex-col gap-16">
 
           {/* Stats */}
-          <div className="stat-grid au stat-grid-4">
+          <div className="stat-grid au stat-grid-3">
             {[
               { l:"Łącznie",      v:convertAmt(totalAll,       currency), u:sym,      col:$.ink0 },
-              { l:"Ręcznie",      v:convertAmt(totalManual,    currency), u:sym,      col:$.green },
               { l:"Z paragonów",  v:convertAmt(totalReceipt,   currency), u:sym,      col:"#3B82F6" },
               { l:"Subskrypcje",  v:convertAmt(totalRecurring, currency), u:sym+"/m", col:"#8B5CF6" },
             ].map(s => (
@@ -182,9 +172,9 @@ export default function ExpensesView() {
                         {item.unit_price && <div><span className="detail-label">Cena jedn.:</span> {convertAmt(item.unit_price, currency)} {sym}</div>}
                         {item.discount > 0 && <div className="color-red"><span>Zniżka:</span> −{convertAmt(item.discount, currency)} {sym}</div>}
                         {item.note && <div className="detail-full" style={{ color:$.ink2 }}><span className="detail-label">Notatka:</span> {item.note}</div>}
-                        {item.source==="manual" && (
+                        {item.source==="manual" && item.id && (
                           <div className="detail-full" style={{ marginTop: 4 }}>
-                            <button onClick={() => { haptic(10); deleteExpense(item.id); }}
+                            <button onClick={() => { haptic(10); setReceipts(p => p.filter(x => x.id !== item.id)); }}
                               className="btn-delete">
                               🗑️ Usuń
                             </button>

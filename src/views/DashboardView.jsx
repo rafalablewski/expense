@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import $ from "../config/theme";
 import { FX_SYMBOLS } from "../config/defaults";
 import { convertAmt, isRecurringPaused, parseDate } from "../utils/helpers";
@@ -6,38 +6,26 @@ import Empty from "../components/primitives/Empty";
 import { useAppData } from "../contexts/AppDataContext";
 
 export default function DashboardView({ go }) {
-  const { receipts, expenses, budgets, recurring, currency, allItems } = useAppData();
+  const { receipts, budgets, recurring, currency, allItems } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
   const now = new Date();
+  const [includeRecurring, setIncludeRecurring] = useState(true);
 
-  // allItems comes from App (merged receipts + manual)
-  // This month — receipts
+  // This month — receipts (includes both scanned and manual)
   const thisMonth = useMemo(() => receipts.filter(r => {
     const d = parseDate(r.date);
     return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }), [receipts]);
 
-  // This month — manual expenses
-  const thisMonthExpenses = useMemo(() => expenses.filter(e => {
-    const d = parseDate(e.date);
-    return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  }), [expenses]);
-
-  const monthReceiptSpent = thisMonth.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
-  const monthExpenseSpent = thisMonthExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
-  const monthSpent = monthReceiptSpent + monthExpenseSpent;
-  const totalSpent = receipts.reduce((s, r) => s + (parseFloat(r.total) || 0), 0)
-    + expenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+  const monthSpent = thisMonth.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
+  const totalSpent = receipts.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
   const totalSaved = receipts.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
 
   // Budget alerts
-  const monthItems = useMemo(() => {
-    const fromReceipts = thisMonth.flatMap(r => r.items || []);
-    const fromExpenses = thisMonthExpenses.map(e => ({
-      name: e.name, total_price: e.amount, category: e.category,
-    }));
-    return [...fromReceipts, ...fromExpenses];
-  }, [thisMonth, thisMonthExpenses]);
+  const monthItems = useMemo(() =>
+    thisMonth.flatMap(r => r.items || []),
+    [thisMonth]
+  );
   const monthSpending = useMemo(() => {
     const map = {};
     monthItems.forEach(it => { const c = it.category || "Inne"; map[c] = (map[c] || 0) + (parseFloat(it.total_price) || 0); });
@@ -54,10 +42,18 @@ export default function DashboardView({ go }) {
   };
   const recurringMonthly = recurring.filter(r => !isRecurringPaused(r)).reduce((s, r) => s + toMonthly(r), 0);
 
+  // Filter allItems: exclude legacy expenses (duplicates of receipt data), optionally exclude recurring
+  const filteredItems = useMemo(
+    () => allItems.filter(it =>
+      includeRecurring || it.source !== "recurring"
+    ),
+    [allItems, includeRecurring]
+  );
+
   // Duplicates: items bought in 2+ stores, find price variance
   const duplicates = useMemo(() => {
     const nameMap = {};
-    allItems.forEach(it => {
+    filteredItems.forEach(it => {
       if (!it.name) return;
       const key = it.name.toLowerCase().trim();
       if (!nameMap[key]) nameMap[key] = [];
@@ -76,12 +72,12 @@ export default function DashboardView({ go }) {
       .filter(d => d.savings > 0.01)
       .sort((a, b) => b.savings - a.savings)
       .slice(0, 5);
-  }, [allItems]);
+  }, [filteredItems]);
 
   // Top 3 most expensive items (reactive — recalculates on every receipt change)
   const top3Items = useMemo(() =>
-    [...allItems].sort((a, b) => (parseFloat(b.total_price) || 0) - (parseFloat(a.total_price) || 0)).slice(0, 3),
-    [allItems]
+    [...filteredItems].sort((a, b) => (parseFloat(b.total_price) || 0) - (parseFloat(a.total_price) || 0)).slice(0, 3),
+    [filteredItems]
   );
 
   // Recent receipts
@@ -95,7 +91,7 @@ export default function DashboardView({ go }) {
         <div className="page-hero-inner">
           <h1 className="page-title au">Cześć! <span>MaszkaApp</span></h1>
           <p className="page-subtitle au1">
-            {receipts.length ? `${receipts.length} paragonów · ${allItems.length} pozycji` : "Dodaj pierwszy paragon aby zacząć"}
+            {receipts.length ? `${receipts.length} paragonów · ${filteredItems.length} pozycji` : "Dodaj pierwszy paragon aby zacząć"}
           </p>
         </div>
       </div>
@@ -109,11 +105,11 @@ export default function DashboardView({ go }) {
             <div className="widget">
               <div className="widget-label">Razem / miesiąc</div>
               <div className="widget-big color-green">
-                {convertAmt(monthSpent + recurringMonthly, currency)}
+                {convertAmt(monthSpent + (includeRecurring ? recurringMonthly : 0), currency)}
                 <span className="widget-unit">{sym}</span>
               </div>
               <div className="widget-desc">
-                paragony + subskrypcje · {monthName}
+                paragony{includeRecurring ? " + subskrypcje" : ""} · {monthName}
               </div>
               <button onClick={() => go("stats")} className="btn-link mt-12">
                 Zobacz statystyki →
@@ -124,11 +120,11 @@ export default function DashboardView({ go }) {
             <div className="widget">
               <div className="widget-label">Paragony</div>
               <div className="widget-big color-ink0">
-                {convertAmt(monthReceiptSpent + monthExpenseSpent, currency)}
+                {convertAmt(monthSpent, currency)}
                 <span className="widget-unit">{sym}</span>
               </div>
               <div className="widget-desc">
-                {thisMonth.length} paragonów{thisMonthExpenses.length > 0 ? ` · ${thisMonthExpenses.length} wydatków` : ""} · {monthName}
+                {thisMonth.length} paragonów · {monthName}
               </div>
               <button onClick={() => go("receipts")} className="btn-link mt-12">
                 Wszystkie paragony →
@@ -162,6 +158,20 @@ export default function DashboardView({ go }) {
               </div>
             </div>
           </div>
+
+          {/* ── Recurring toggle ── */}
+          {recurring.length > 0 && (
+            <button
+              onClick={() => setIncludeRecurring(v => !v)}
+              className={`stats-recurring-btn${includeRecurring ? " active" : ""}`}
+              aria-pressed={includeRecurring}
+            >
+              {includeRecurring
+                ? `🔄 Subskrypcje wliczone: +${convertAmt(recurringMonthly, currency)} ${sym}/mies.`
+                : "🔄 Subskrypcje wyłączone — kliknij aby wliczyć"
+              }
+            </button>
+          )}
 
           {/* ── Budget alerts ── */}
           {alerts.length > 0 && (

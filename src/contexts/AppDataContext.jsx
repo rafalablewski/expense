@@ -107,8 +107,35 @@ export function AppDataProvider({ uid, children }) {
   }, [uid]);
 
   function applyData(d) {
-    setReceipts((d.receipts || []).map(ensureCity));
-    setExpenses(d.expenses || []);
+    // Migrate old flat expenses into receipt format (one-time, on load)
+    const oldExpenses = (d.expenses || []).filter(e => e.type !== "recurring");
+    const migratedReceipts = oldExpenses.map(e => ensureCity({
+      id: e.id,
+      store: e.store || "",
+      address: "",
+      zip_code: "",
+      city: e.city || "",
+      date: e.date || "",
+      total: parseFloat(e.amount) || 0,
+      total_discounts: parseFloat(e.discount) || 0,
+      source: "manual",
+      items: [{
+        name: e.name || "",
+        quantity: e.quantity || 1,
+        unit: e.unit || null,
+        unit_price: e.unit_price || null,
+        total_price: parseFloat(e.amount) || 0,
+        discount: e.discount ? parseFloat(e.discount) : null,
+        discount_label: e.discount_label || null,
+        category: e.category || "Inne",
+      }],
+    }));
+    const existingReceipts = (d.receipts || []).map(ensureCity);
+    // Deduplicate: skip migrated receipts whose id already exists in receipts
+    const existingIds = new Set(existingReceipts.map(r => r.id));
+    const newMigrated = migratedReceipts.filter(r => !existingIds.has(r.id));
+    setReceipts([...existingReceipts, ...newMigrated]);
+    setExpenses([]); // Clear old expenses — now migrated to receipts
     setBudgets(d.budgets || {});
     setRecurring(d.recurring || []);
     setCustomStores(d.customStores || []);
@@ -196,15 +223,24 @@ export function AppDataProvider({ uid, children }) {
   }, [darkMode]);
 
   // ── Computed ──
-  const allItems = useMemo(() => [
-    ...expenses.map(e => ({
-      id: e.id, name: e.name, total_price: e.amount, category: e.category,
-      date: e.date, store: e.store, note: e.note, source: "manual", type: e.type,
-    })),
-    ...receipts.flatMap(r =>
-      (r.items || []).map(it => ({ ...it, store: r.store, address: r.address, zip_code: r.zip_code, date: r.date, source: "receipt" }))
-    ),
-  ], [expenses, receipts]);
+  const allItems = useMemo(() => {
+    // Receipt items (scanned + manual) are the single source of truth
+    const receiptItems = receipts.flatMap(r =>
+      (r.items || []).map(it => ({ ...it, store: r.store, address: r.address, zip_code: r.zip_code, date: r.date, source: r.source || "receipt" }))
+    );
+    // Active recurring subscriptions as monthly items
+    const toMonthlyAmt = (r) => {
+      const a = parseFloat(r.amount) || 0;
+      return ({ "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 })[r.cycle] || a;
+    };
+    const recurringItems = recurring
+      .filter(r => !r.paused || (r.pauseUntil && new Date().toISOString().slice(0, 10) >= r.pauseUntil))
+      .map(r => ({
+        id: r.id, name: r.name, total_price: toMonthlyAmt(r), category: r.category || "Subskrypcje",
+        date: null, store: null, source: "recurring", cycle: r.cycle,
+      }));
+    return [...receiptItems, ...recurringItems];
+  }, [receipts, recurring]);
 
   // ── Actions ──
   const addExpense = useCallback((exp) => {
@@ -283,7 +319,10 @@ export function AppDataProvider({ uid, children }) {
         learnFromCorrections(current._original, reviewed);
       }
       const { _original, ...rest } = current;
-      setReceipts(p => [ensureCity({ ...reviewed, id: rest.id }), ...p]);
+      const saved = ensureCity({ ...reviewed, id: rest.id });
+      // Preserve source from queue item (e.g. "manual" for hand-entered receipts)
+      if (current.source) saved.source = current.source;
+      setReceipts(p => [saved, ...p]);
     }
     setReviewQueue(q => q.slice(1));
     haptic(30);
@@ -318,7 +357,7 @@ export function AppDataProvider({ uid, children }) {
     apiKey, setApiKey,
     // Status
     processing, errors, setErrors,
-    reviewQueue,
+    reviewQueue, setReviewQueue,
     dataLoaded, loadFailed,
     // Computed
     allItems,
