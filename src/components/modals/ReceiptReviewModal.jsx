@@ -11,6 +11,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     store: receipt.store || "",
     address: receipt.address || "",
     zip_code: receipt.zip_code || "",
+    city: receipt.city || "",
     date: receipt.date || new Date().toISOString().slice(0, 10),
     total: receipt.total ?? 0,
     total_discounts: receipt.total_discounts ?? 0,
@@ -123,6 +124,10 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
             <div>
               <label className="rv-lbl" htmlFor="rv-address">Adres</label>
               <input id="rv-address" className="field" value={data.address} onChange={e => updateField("address", e.target.value)} placeholder="ul. Przykładowa 1" />
+            </div>
+            <div>
+              <label className="rv-lbl" htmlFor="rv-city">Miasto</label>
+              <input id="rv-city" className="field" value={data.city} onChange={e => updateField("city", e.target.value)} placeholder="np. Katowice" />
             </div>
             <div>
               <label className="rv-lbl" htmlFor="rv-zip">Kod pocztowy</label>

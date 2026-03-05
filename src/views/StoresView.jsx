@@ -42,12 +42,13 @@ export default function StoresView() {
     filtered.forEach(r => {
       const raw = (r.store || "Nieznany sklep").trim();
       const key = raw.toLowerCase();
-      if (!map[key]) map[key] = { name: raw, visits: 0, total: 0, saved: 0, items: [], receipts: [], lastDate: null, locations: {} };
+      if (!map[key]) map[key] = { name: raw, visits: 0, total: 0, saved: 0, items: [], receipts: [], lastDate: null, locations: {}, cities: {} };
       map[key].visits++;
       map[key].total  += parseFloat(r.total) || 0;
       map[key].saved  += parseFloat(r.total_discounts) || 0;
       (r.items || []).forEach(it => map[key].items.push({ ...it, date: r.date }));
-      map[key].receipts.push({ id: r.id, date: r.date, total: parseFloat(r.total) || 0, itemCount: (r.items || []).length, address: r.address, zip_code: r.zip_code });
+      map[key].receipts.push({ id: r.id, date: r.date, total: parseFloat(r.total) || 0, itemCount: (r.items || []).length, address: r.address, zip_code: r.zip_code, city: r.city });
+      if (r.city) map[key].cities[r.city] = (map[key].cities[r.city] || 0) + 1;
       const d = parseDate(r.date);
       if (d && (!map[key].lastDate || d > map[key].lastDate)) map[key].lastDate = d;
       // Track locations by address/zip
@@ -201,8 +202,8 @@ export default function StoresView() {
                           <span className="store-pct">{pct.toFixed(0)}%</span>
                         </div>
                         <div className="store-meta">
+                          {Object.keys(st.cities).length > 0 && <span>📍 {Object.keys(st.cities).join(", ")}</span>}
                           <span>{st.visits} wizyt</span>
-                          {Object.keys(st.locations).length > 0 && <span>📍 {Object.keys(st.locations).length} lokalizacj{Object.keys(st.locations).length === 1 ? "a" : "e"}</span>}
                           <span>śr. {avg.toFixed(0)} zł/wizyta</span>
                           {st.saved > 0 && <span className="color-red">−{st.saved.toFixed(2)} zł saved</span>}
                           <span className="detail-label">ost. {fmtDate(st.lastDate)}</span>
@@ -231,7 +232,7 @@ export default function StoresView() {
                           <div key={r.id || j} className="store-receipt-row">
                             <span className="store-receipt-icon" style={{ color: col }}>🧾</span>
                             <div className="flex-1">
-                              <div className="store-receipt-name">{r.date || "—"}</div>
+                              <div className="store-receipt-name">{r.date || "—"}{r.city && ` · ${r.city}`}</div>
                               <div className="store-receipt-meta">
                                 {r.itemCount > 0 && `${r.itemCount} produktów`}
                                 {r.itemCount > 0 && ` · `}{r.total.toFixed(2)} zł

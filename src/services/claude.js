@@ -25,6 +25,7 @@ export async function scanReceipt(b64, mt, apiKey, correctionsHint = "") {
   "store": string | null,
   "address": string | null,
   "zip_code": string | null,
+  "city": string | null,
   "date": "YYYY-MM-DD",
   "items": [
     {
@@ -46,6 +47,7 @@ Rules:
 - date MUST be in YYYY-MM-DD format. Extract from receipt header/footer. NEVER return null for date.
 - address: Extract the store's street address from the receipt header (e.g. "ul. Warszawska 15"). Return null if not found.
 - zip_code: Extract the postal/zip code (e.g. "00-001"). Return null if not found.
+- city: Extract the city name from the receipt header (e.g. "Katowice", "Mikołów"). For e-commerce stores return null. Return null if not found.
 - Product names: read carefully, expand abbreviations into readable Polish names (e.g. "PomidGustBel400g" → "Pomidory Gusto Bello 400g").
 - Categorize food products correctly: tomatoes/vegetables → "Warzywa", fruits → "Owoce", etc.
 - Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.
@@ -84,6 +86,7 @@ export async function parseTextReceipt(text, apiKey, correctionsHint = "") {
   "store": string | null,
   "address": string | null,
   "zip_code": string | null,
+  "city": string | null,
   "date": "${new Date().toISOString().slice(0, 10)}",
   "items": [
     {
@@ -109,6 +112,7 @@ Rules:
 - "total" = sum of all total_price values.
 - address: Extract the store's street address if present. Return null if not found.
 - zip_code: Extract the postal/zip code if present. Return null if not found.
+- city: Extract the city name if present (e.g. "Katowice", "Mikołów"). For e-commerce stores return null. Return null if not found.
 - Categorize products into the correct Polish category.
 - Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.
 - Grains, cereals, pasta, flour, rice (ryż, kasza, kasza pęczak, kasza jęczmienna, kasza gryczana, makaron, mąka, płatki) → category "Zboża". These are grain/carb products, NOT vegetables or bread.
