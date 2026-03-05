@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import $ from "../config/theme";
-import { CATS, CAT_GROUPS } from "../config/defaults";
-import { parseDate } from "../utils/helpers";
+import { CATS, CAT_GROUPS, FX_SYMBOLS } from "../config/defaults";
+import { parseDate, convertAmt } from "../utils/helpers";
 import BarChart from "../components/charts/BarChart";
 import DonutChart from "../components/charts/DonutChart";
 import InsightCard from "../components/charts/InsightCard";
@@ -9,9 +9,12 @@ import { useAppData } from "../contexts/AppDataContext";
 
 export default function StatsView() {
   const { receipts, expenses, allItems, currency } = useAppData();
+  const sym = FX_SYMBOLS[currency] || "zł";
+
   // ── Filter state ──
   const [activeGroups, setActiveGroups] = useState({ "Spożywcze": true, "Rachunki": true, "Jednorazowe": true });
   const [selectedStore, setSelectedStore] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState("");
 
   // Build set of allowed categories from active groups
   const allowedCats = useMemo(() => {
@@ -24,9 +27,28 @@ export default function StatsView() {
 
   const toggleGroup = (group) => setActiveGroups(prev => ({ ...prev, [group]: !prev[group] }));
 
-  // ── Merge all items: receipt items + manual expenses (treat manual as receipt) ──
+  // ── Merge all items: receipt items + manual expenses ──
   const allRaw = allItems.length > 0 ? allItems :
     receipts.flatMap(r => (r.items || []).map(it => ({ ...it, store: r.store, date: r.date })));
+
+  // ── Available months for month filter ──
+  const monthList = useMemo(() => {
+    const set = new Set();
+    const monthNames = ["Sty","Lut","Mar","Kwi","Maj","Cze","Lip","Sie","Wrz","Paź","Lis","Gru"];
+    const addMonth = (dateStr) => {
+      if (!dateStr) return;
+      const m1 = dateStr.match(/^(\d{4})-(\d{2})/);
+      const m2 = dateStr.match(/^(\d{2})[./](\d{2})[./](\d{4})/);
+      if (m1) set.add(`${m1[1]}-${m1[2]}`);
+      else if (m2) set.add(`${m2[3]}-${m2[2]}`);
+    };
+    receipts.forEach(r => addMonth(r.date));
+    expenses.forEach(e => addMonth(e.date));
+    return [...set].sort().reverse().map(key => {
+      const [y, m] = key.split("-");
+      return { key, label: `${monthNames[parseInt(m, 10) - 1]} ${y}` };
+    });
+  }, [receipts, expenses]);
 
   // ── Unique stores for the shop filter ──
   const storeList = useMemo(() => {
@@ -35,40 +57,50 @@ export default function StatsView() {
     return [...set].sort((a, b) => a.localeCompare(b, "pl"));
   }, [allRaw]);
 
-  // ── Apply filters ──
+  // Helper: check if a date string matches selectedMonth
+  const matchesMonth = (dateStr) => {
+    if (!selectedMonth) return true;
+    if (!dateStr) return false;
+    const m1 = dateStr.match(/^(\d{4})-(\d{2})/);
+    const m2 = dateStr.match(/^(\d{2})[./](\d{2})[./](\d{4})/);
+    let key = null;
+    if (m1) key = `${m1[1]}-${m1[2]}`;
+    else if (m2) key = `${m2[3]}-${m2[2]}`;
+    return key === selectedMonth;
+  };
+
+  // ── Apply all filters to items ──
   const all = useMemo(() => allRaw.filter(item => {
     const cat = item.category || "Inne";
     if (!allowedCats.has(cat)) return false;
     if (selectedStore && (!item.store || item.store.trim() !== selectedStore)) return false;
+    if (!matchesMonth(item.date)) return false;
     return true;
-  }), [allRaw, allowedCats, selectedStore]);
+  }), [allRaw, allowedCats, selectedStore, selectedMonth]);
 
-  // Build a set of receipt IDs that have at least one item passing filters, for filtering receipt-level totals
-  const filteredReceiptIds = useMemo(() => {
-    const ids = new Set();
-    // For receipt-level stats (monthly chart, savings), filter receipts by store only
-    receipts.forEach(r => {
-      if (selectedStore && (!r.store || r.store.trim() !== selectedStore)) return;
-      ids.add(r.id);
-    });
-    return ids;
-  }, [receipts, selectedStore]);
-
-  const filteredReceipts = useMemo(() =>
-    receipts.filter(r => filteredReceiptIds.has(r.id)),
-    [receipts, filteredReceiptIds]
-  );
+  // ── Filtered expenses (manual) — same filters ──
   const filteredExpenses = useMemo(() =>
     expenses.filter(e => {
       const cat = e.category || "Inne";
       if (!allowedCats.has(cat)) return false;
       if (selectedStore && (!e.store || e.store.trim() !== selectedStore)) return false;
+      if (!matchesMonth(e.date)) return false;
       return true;
     }),
-    [expenses, allowedCats, selectedStore]
+    [expenses, allowedCats, selectedStore, selectedMonth]
   );
 
-  // ── Category breakdown ──
+  // ── Filtered receipts — by store and month ──
+  const filteredReceipts = useMemo(() =>
+    receipts.filter(r => {
+      if (selectedStore && (!r.store || r.store.trim() !== selectedStore)) return false;
+      if (!matchesMonth(r.date)) return false;
+      return true;
+    }),
+    [receipts, selectedStore, selectedMonth]
+  );
+
+  // ── Category breakdown (from filtered items — single source of truth) ──
   const catTotals = useMemo(() => {
     const map = {};
     all.forEach(item => {
@@ -80,7 +112,7 @@ export default function StatsView() {
       .sort((a, b) => b.value - a.value);
   }, [all]);
 
-  // ── Monthly aggregation ──
+  // ── Monthly aggregation (from items — consistent with totals) ──
   const monthData = useMemo(() => {
     const map = {};
     const addToMap = (date, amount) => {
@@ -93,8 +125,7 @@ export default function StatsView() {
       if (!key) return;
       map[key] = (map[key] || 0) + (parseFloat(amount) || 0);
     };
-    filteredReceipts.forEach(r => addToMap(r.date, r.total));
-    filteredExpenses.forEach(e => addToMap(e.date, e.amount));
+    all.forEach(item => addToMap(item.date, item.total_price));
     const months = ["Sty","Lut","Mar","Kwi","Maj","Cze","Lip","Sie","Wrz","Paź","Lis","Gru"];
     return Object.entries(map)
       .sort(([a], [b]) => a.localeCompare(b))
@@ -103,11 +134,10 @@ export default function StatsView() {
         const [, mStr] = key.split("-");
         return { label: months[parseInt(mStr, 10) - 1] || mStr, total };
       });
-  }, [filteredReceipts, filteredExpenses]);
+  }, [all]);
 
-  // ── Summary numbers ──
-  const totalSpent  = filteredReceipts.reduce((s, r) => s + (parseFloat(r.total) || 0), 0)
-    + filteredExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+  // ── Summary numbers (from items — single source of truth) ──
+  const totalSpent  = all.reduce((s, item) => s + (parseFloat(item.total_price) || 0), 0);
   const totalSaved  = filteredReceipts.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
   const totalCount  = filteredReceipts.length + filteredExpenses.length;
   const avgReceipt  = totalCount ? totalSpent / totalCount : 0;
@@ -136,14 +166,14 @@ export default function StatsView() {
   const topDayOfWeek = useMemo(() => {
     const days = ["Niedziela", "Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek", "Sobota"];
     const map = new Array(7).fill(0);
-    filteredReceipts.forEach(r => {
-      const d = parseDate(r.date);
-      if (d) map[d.getDay()] += (parseFloat(r.total) || 0);
+    all.forEach(item => {
+      const d = parseDate(item.date);
+      if (d) map[d.getDay()] += (parseFloat(item.total_price) || 0);
     });
     const maxVal = Math.max(...map);
     const maxIdx = map.indexOf(maxVal);
     return maxVal > 0 ? { day: days[maxIdx], amount: map[maxIdx] } : null;
-  }, [filteredReceipts]);
+  }, [all]);
 
   // Average items per receipt
   const avgItemsPerReceipt = useMemo(() => {
@@ -154,7 +184,7 @@ export default function StatsView() {
 
   // ── Check if any filter is active ──
   const anyGroupOff = !activeGroups["Spożywcze"] || !activeGroups["Rachunki"] || !activeGroups["Jednorazowe"];
-  const hasActiveFilter = anyGroupOff || selectedStore !== "";
+  const hasActiveFilter = anyGroupOff || selectedStore !== "" || selectedMonth !== "";
 
   if (!receipts.length && !expenses.length) return (
     <>
@@ -205,9 +235,17 @@ export default function StatsView() {
               <option value="">Wszystkie sklepy</option>
               {storeList.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
+            <select
+              value={selectedMonth}
+              onChange={e => setSelectedMonth(e.target.value)}
+              className={`stats-filter-select${selectedMonth ? " active" : ""}`}
+            >
+              <option value="">Cały okres</option>
+              {monthList.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
+            </select>
             {hasActiveFilter && (
               <button
-                onClick={() => { setActiveGroups({ "Spożywcze": true, "Rachunki": true, "Jednorazowe": true }); setSelectedStore(""); }}
+                onClick={() => { setActiveGroups({ "Spożywcze": true, "Rachunki": true, "Jednorazowe": true }); setSelectedStore(""); setSelectedMonth(""); }}
                 className="stats-clear-btn"
               >
                 Wyczyść filtry
@@ -218,9 +256,9 @@ export default function StatsView() {
           {/* ── Top stats row ── */}
           <div className="stat-grid au stat-grid-3">
             {[
-              { l: "Łącznie wydano",    v: totalSpent.toFixed(2),  u: "zł", col: $.ink0 },
-              { l: "Śr. paragon",       v: avgReceipt.toFixed(2),  u: "zł", col: $.ink0 },
-              { l: "Zaoszczędzono",     v: totalSaved.toFixed(2),  u: "zł", col: $.red  },
+              { l: "Łącznie wydano",    v: convertAmt(totalSpent, currency),  u: sym, col: $.ink0 },
+              { l: "Śr. paragon",       v: convertAmt(avgReceipt, currency),  u: sym, col: $.ink0 },
+              { l: "Zaoszczędzono",     v: convertAmt(totalSaved, currency),  u: sym, col: $.red  },
             ].map(s => (
               <div className="stat-card" key={s.l}>
                 <div className="stat-label">{s.l}</div>
@@ -254,7 +292,7 @@ export default function StatsView() {
                           <div className="legend-bar-fill" style={{ width: `${pct}%`, background: d.color }} />
                         </div>
                         <span className="mono legend-pct">{pct}%</span>
-                        <span className="mono legend-amt">{d.value.toFixed(0)} zł</span>
+                        <span className="mono legend-amt">{convertAmt(d.value, currency)} {sym}</span>
                       </div>
                     </div>
                   );
@@ -287,7 +325,7 @@ export default function StatsView() {
                 icon="🏆"
                 title="Top 3 najdroższe zakupy"
                 sub={top3Items.map((it, i) =>
-                  `${i + 1}. ${it.name} — ${(parseFloat(it.total_price) || 0).toFixed(2)} zł${it.store ? ` (${it.store})` : ""}`
+                  `${i + 1}. ${it.name} — ${convertAmt(parseFloat(it.total_price) || 0, currency)} ${sym}${it.store ? ` (${it.store})` : ""}`
                 ).join("\n")}
                 accent={false}
               />
@@ -297,7 +335,7 @@ export default function StatsView() {
               <InsightCard
                 icon="📌"
                 title={`${topCat.cat} to Twój największy wydatek`}
-                sub={`${topCat.value.toFixed(2)} zł · ${topCatPct}% wszystkich wydatków`}
+                sub={`${convertAmt(topCat.value, currency)} ${sym} · ${topCatPct}% wszystkich wydatków`}
                 accent={false}
               />
             )}
@@ -306,7 +344,7 @@ export default function StatsView() {
               <InsightCard
                 icon="✦"
                 title={`Zaoszczędziłeś ${savePct}% dzięki rabatom`}
-                sub={`${totalSaved.toFixed(2)} zł zaoszczędzono na ${filteredReceipts.length} paragonach`}
+                sub={`${convertAmt(totalSaved, currency)} ${sym} zaoszczędzono na ${filteredReceipts.length} paragonach`}
                 accent={true}
               />
             )}
@@ -314,7 +352,7 @@ export default function StatsView() {
             {avgReceipt > 0 && (
               <InsightCard
                 icon="🧾"
-                title={`Średni paragon: ${avgReceipt.toFixed(2)} zł`}
+                title={`Średni paragon: ${convertAmt(avgReceipt, currency)} ${sym}`}
                 sub={`Łącznie ${totalCount} wizyt zakupowych · ${all.length} unikalnych pozycji`}
                 accent={false}
               />
@@ -342,7 +380,7 @@ export default function StatsView() {
               <InsightCard
                 icon="📅"
                 title={`Najwięcej wydajesz w: ${topDayOfWeek.day}`}
-                sub={`${topDayOfWeek.amount.toFixed(2)} zł łącznie w ten dzień tygodnia`}
+                sub={`${convertAmt(topDayOfWeek.amount, currency)} ${sym} łącznie w ten dzień tygodnia`}
                 accent={false}
               />
             )}
