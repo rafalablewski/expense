@@ -28,7 +28,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/).
   - ReceiptsView, ProductsView, ShoppingView, MealPlanView, StatsView, StoresView
   - ExportView, BudgetsView, RecurringView, DashboardView, InflationView, PredictionView, ExpensesView
 - **Phase 9**: Extracted layout components (TopNav, BottomNav, Fab) to src/components/layout/
-- App.jsx reduced from 5,936 lines to 433 lines (92.7% reduction)
+- **Phase 6**: Created AppDataContext — all data state, persistence, and actions extracted into React Context (`useAppData()` hook)
+- App.jsx reduced from 5,936 lines to 181 lines (96.9% reduction)
 
 ### Fixed
 - Stats page now includes manual expenses in totals, averages, and monthly chart

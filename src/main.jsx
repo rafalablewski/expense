@@ -4,13 +4,16 @@ import './styles/index.css'
 import App from './App.jsx'
 import AuthGate from './AuthGate.jsx'
 import { ConfigProvider } from './contexts/ConfigContext'
+import { AppDataProvider } from './contexts/AppDataContext'
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <AuthGate>
       {(user) => (
         <ConfigProvider>
-          <App key={user.uid} uid={user.uid} />
+          <AppDataProvider key={user.uid} uid={user.uid}>
+            <App />
+          </AppDataProvider>
         </ConfigProvider>
       )}
     </AuthGate>
