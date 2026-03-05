@@ -202,7 +202,7 @@ export function AppDataProvider({ uid, children }) {
       date: e.date, store: e.store, note: e.note, source: "manual", type: e.type,
     })),
     ...receipts.flatMap(r =>
-      (r.items || []).map(it => ({ ...it, store: r.store, address: r.address, zip_code: r.zip_code, date: r.date, source: "receipt" }))
+      (r.items || []).map(it => ({ ...it, store: r.store, address: r.address, zip_code: r.zip_code, date: r.date, source: r.source || "receipt" }))
     ),
   ], [expenses, receipts]);
 
@@ -283,7 +283,10 @@ export function AppDataProvider({ uid, children }) {
         learnFromCorrections(current._original, reviewed);
       }
       const { _original, ...rest } = current;
-      setReceipts(p => [ensureCity({ ...reviewed, id: rest.id }), ...p]);
+      const saved = ensureCity({ ...reviewed, id: rest.id });
+      // Preserve source from queue item (e.g. "manual" for hand-entered receipts)
+      if (current.source) saved.source = current.source;
+      setReceipts(p => [saved, ...p]);
     }
     setReviewQueue(q => q.slice(1));
     haptic(30);
@@ -318,7 +321,7 @@ export function AppDataProvider({ uid, children }) {
     apiKey, setApiKey,
     // Status
     processing, errors, setErrors,
-    reviewQueue,
+    reviewQueue, setReviewQueue,
     dataLoaded, loadFailed,
     // Computed
     allItems,
