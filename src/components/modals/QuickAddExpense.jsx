@@ -21,6 +21,7 @@ export default function QuickAddExpense({ onAdd, onClose, onTextReceipt, onNeedK
   const [category, setCategory] = useState("Inne");
   const [date,     setDate]     = useState(new Date().toISOString().slice(0,10));
   const [store,    setStore]    = useState("");
+  const [city,     setCity]     = useState("");
   const [note,     setNote]     = useState("");
   const [cycle,    setCycle]    = useState("Miesięcznie");
   const [catGroup, setCatGroup] = useState("Jednorazowe");
@@ -63,6 +64,7 @@ export default function QuickAddExpense({ onAdd, onClose, onTextReceipt, onNeedK
       category,
       date,
       store:    store.trim(),
+      city:     city.trim() || null,
       note:     note.trim(),
       type,
       cycle:    type === "recurring" ? cycle : null,
@@ -213,7 +215,7 @@ export default function QuickAddExpense({ onAdd, onClose, onTextReceipt, onNeedK
                 </div>
               </div>
 
-              {/* Date + store row */}
+              {/* Date + store + city row */}
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="qa-date" className="field-label">Data</label>
@@ -222,6 +224,10 @@ export default function QuickAddExpense({ onAdd, onClose, onTextReceipt, onNeedK
                 <div className="form-group">
                   <label htmlFor="qa-store" className="field-label">Sklep / źródło</label>
                   <StorePickerInput id="qa-store" value={store} onChange={setStore} customStores={customStores} onAddCustomStore={onAddCustomStore} placeholder="np. Leroy Merlin, Amazon…" />
+                </div>
+                <div className="form-group min-w-90">
+                  <label htmlFor="qa-city" className="field-label">Miasto</label>
+                  <input id="qa-city" className="field" value={city} onChange={e => setCity(e.target.value)} placeholder="np. Katowice" />
                 </div>
               </div>
 

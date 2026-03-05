@@ -26,7 +26,7 @@ export default function ReceiptCard({ r, onDelete, delay = 0 }) {
           </div>
           <div className="receipt-meta">
             {r.date || "Brak daty"} · {r.items?.length || 0} produktów
-            {(r.address || r.zip_code) && ` · ${[r.address, r.zip_code].filter(Boolean).join(", ")}`}
+            {(r.city || r.address || r.zip_code) && ` · ${[r.city, r.address, r.zip_code].filter(Boolean).join(", ")}`}
           </div>
         </div>
 

@@ -225,24 +225,37 @@ export default function StoresView() {
                       </button>
                     </div>
 
-                    {/* Expanded receipt list */}
+                    {/* Expanded receipt list grouped by city */}
                     {isExpanded && (
                       <div className="store-receipts-list">
-                        {sortedReceipts.map((r, j) => (
-                          <div key={r.id || j} className="store-receipt-row">
-                            <span className="store-receipt-icon" style={{ color: col }}>🧾</span>
-                            <div className="flex-1">
-                              <div className="store-receipt-name">{r.date || "—"}{r.city && ` · ${r.city}`}</div>
-                              <div className="store-receipt-meta">
-                                {r.itemCount > 0 && `${r.itemCount} produktów`}
-                                {r.itemCount > 0 && ` · `}{r.total.toFixed(2)} zł
-                              </div>
+                        {(() => {
+                          const byCity = {};
+                          sortedReceipts.forEach(r => {
+                            const c = r.city || "Nieznane";
+                            if (!byCity[c]) byCity[c] = [];
+                            byCity[c].push(r);
+                          });
+                          return Object.entries(byCity).map(([city, recs]) => (
+                            <div key={city}>
+                              <div className="store-city-heading" style={{ color: col }}>📍 {city}</div>
+                              {recs.map((r, j) => (
+                                <div key={r.id || j} className="store-receipt-row">
+                                  <span className="store-receipt-icon" style={{ color: col }}>🧾</span>
+                                  <div className="flex-1">
+                                    <div className="store-receipt-name">{r.date || "—"}</div>
+                                    <div className="store-receipt-meta">
+                                      {r.itemCount > 0 && `${r.itemCount} produktów`}
+                                      {r.itemCount > 0 && ` · `}{r.total.toFixed(2)} zł
+                                    </div>
+                                  </div>
+                                  <span className="mono store-receipt-total" style={{ color: col }}>
+                                    {r.total.toFixed(2)} zł
+                                  </span>
+                                </div>
+                              ))}
                             </div>
-                            <span className="mono store-receipt-total" style={{ color: col }}>
-                              {r.total.toFixed(2)} zł
-                            </span>
-                          </div>
-                        ))}
+                          ));
+                        })()}
                       </div>
                     )}
                   </div>
