@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import $ from "../config/theme";
 import { FX_SYMBOLS } from "../config/defaults";
 import { convertAmt, isRecurringPaused, parseDate } from "../utils/helpers";
@@ -9,6 +9,7 @@ export default function DashboardView({ go }) {
   const { receipts, expenses, budgets, recurring, currency, allItems } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
   const now = new Date();
+  const [includeRecurring, setIncludeRecurring] = useState(true);
 
   // allItems comes from App (merged receipts + manual)
   // This month — receipts
@@ -54,10 +55,16 @@ export default function DashboardView({ go }) {
   };
   const recurringMonthly = recurring.filter(r => !isRecurringPaused(r)).reduce((s, r) => s + toMonthly(r), 0);
 
+  // Filter allItems based on recurring toggle
+  const filteredItems = useMemo(
+    () => includeRecurring ? allItems : allItems.filter(it => it.source !== "recurring"),
+    [allItems, includeRecurring]
+  );
+
   // Duplicates: items bought in 2+ stores, find price variance
   const duplicates = useMemo(() => {
     const nameMap = {};
-    allItems.forEach(it => {
+    filteredItems.forEach(it => {
       if (!it.name) return;
       const key = it.name.toLowerCase().trim();
       if (!nameMap[key]) nameMap[key] = [];
@@ -76,12 +83,12 @@ export default function DashboardView({ go }) {
       .filter(d => d.savings > 0.01)
       .sort((a, b) => b.savings - a.savings)
       .slice(0, 5);
-  }, [allItems]);
+  }, [filteredItems]);
 
   // Top 3 most expensive items (reactive — recalculates on every receipt change)
   const top3Items = useMemo(() =>
-    [...allItems].sort((a, b) => (parseFloat(b.total_price) || 0) - (parseFloat(a.total_price) || 0)).slice(0, 3),
-    [allItems]
+    [...filteredItems].sort((a, b) => (parseFloat(b.total_price) || 0) - (parseFloat(a.total_price) || 0)).slice(0, 3),
+    [filteredItems]
   );
 
   // Recent receipts
@@ -95,7 +102,7 @@ export default function DashboardView({ go }) {
         <div className="page-hero-inner">
           <h1 className="page-title au">Cześć! <span>MaszkaApp</span></h1>
           <p className="page-subtitle au1">
-            {receipts.length ? `${receipts.length} paragonów · ${allItems.length} pozycji` : "Dodaj pierwszy paragon aby zacząć"}
+            {receipts.length ? `${receipts.length} paragonów · ${filteredItems.length} pozycji` : "Dodaj pierwszy paragon aby zacząć"}
           </p>
         </div>
       </div>
@@ -109,11 +116,11 @@ export default function DashboardView({ go }) {
             <div className="widget">
               <div className="widget-label">Razem / miesiąc</div>
               <div className="widget-big color-green">
-                {convertAmt(monthSpent + recurringMonthly, currency)}
+                {convertAmt(monthSpent + (includeRecurring ? recurringMonthly : 0), currency)}
                 <span className="widget-unit">{sym}</span>
               </div>
               <div className="widget-desc">
-                paragony + subskrypcje · {monthName}
+                paragony{includeRecurring ? " + subskrypcje" : ""} · {monthName}
               </div>
               <button onClick={() => go("stats")} className="btn-link mt-12">
                 Zobacz statystyki →
@@ -162,6 +169,20 @@ export default function DashboardView({ go }) {
               </div>
             </div>
           </div>
+
+          {/* ── Recurring toggle ── */}
+          {recurring.length > 0 && (
+            <button
+              onClick={() => setIncludeRecurring(v => !v)}
+              className={`stats-recurring-btn${includeRecurring ? " active" : ""}`}
+              aria-pressed={includeRecurring}
+            >
+              {includeRecurring
+                ? `🔄 Subskrypcje wliczone: +${convertAmt(recurringMonthly, currency)} ${sym}/mies.`
+                : "🔄 Subskrypcje wyłączone — kliknij aby wliczyć"
+              }
+            </button>
+          )}
 
           {/* ── Budget alerts ── */}
           {alerts.length > 0 && (

@@ -30,9 +30,10 @@ export default function StatsView() {
 
   const toggleGroup = (group) => setActiveGroups(prev => ({ ...prev, [group]: !prev[group] }));
 
-  // ── Merge all items: receipt items + manual expenses ──
-  const allRaw = allItems.length > 0 ? allItems :
-    receipts.flatMap(r => (r.items || []).map(it => ({ ...it, store: r.store, date: r.date })));
+  // ── Merge all items: receipt items + manual expenses (exclude recurring — handled separately) ──
+  const allRaw = (allItems.length > 0 ? allItems :
+    receipts.flatMap(r => (r.items || []).map(it => ({ ...it, store: r.store, date: r.date })))
+  ).filter(it => it.source !== "recurring");
 
   // ── Available months for month filter ──
   const monthList = useMemo(() => {

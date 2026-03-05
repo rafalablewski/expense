@@ -210,8 +210,19 @@ export function AppDataProvider({ uid, children }) {
         id: e.id, name: e.name, total_price: e.amount, category: e.category,
         date: e.date, store: e.store, note: e.note, source: "manual", type: e.type,
       }));
-    return [...manualItems, ...receiptItems];
-  }, [expenses, receipts]);
+    // Include active recurring subscriptions as monthly items
+    const toMonthlyAmt = (r) => {
+      const a = parseFloat(r.amount) || 0;
+      return ({ "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 })[r.cycle] || a;
+    };
+    const recurringItems = recurring
+      .filter(r => !r.paused || (r.pauseUntil && new Date().toISOString().slice(0, 10) >= r.pauseUntil))
+      .map(r => ({
+        id: r.id, name: r.name, total_price: toMonthlyAmt(r), category: r.category || "Subskrypcje",
+        date: null, store: null, source: "recurring", cycle: r.cycle,
+      }));
+    return [...manualItems, ...receiptItems, ...recurringItems];
+  }, [expenses, receipts, recurring]);
 
   // ── Actions ──
   const addExpense = useCallback((exp) => {
