@@ -10,7 +10,6 @@ import { isRecurringPaused } from "../utils/helpers";
 
 const TABS = [
   { id: "receipts",      label: "Paragony",    icon: "\uD83E\uDDFE" },
-  { id: "manual",        label: "R\u0119czne",      icon: "\u270F\uFE0F" },
   { id: "subscriptions", label: "Subskrypcje", icon: "\uD83D\uDD04" },
   { id: "invoices",      label: "Faktury",     icon: "\uD83D\uDCC4" },
 ];
@@ -30,13 +29,9 @@ export default function ReceiptsView({ onFiles }) {
   const [editingRecurring, setEditingRecurring] = useState(null);
   const sym = FX_SYMBOLS[currency] || "z\u0142";
 
-  // Split receipts into scanned vs manual
-  const scannedReceipts = useMemo(
-    () => receipts.filter(r => r.source !== "manual"),
-    [receipts]
-  );
-  const manualReceipts = useMemo(
-    () => [...receipts.filter(r => r.source === "manual")].sort((a, b) => (b.date || "").localeCompare(a.date || "")),
+  // All receipts (scanned + manual) shown together in Paragony
+  const allReceipts = useMemo(
+    () => [...receipts].sort((a, b) => (b.date || "").localeCompare(a.date || "")),
     [receipts]
   );
 
@@ -55,8 +50,7 @@ export default function ReceiptsView({ onFiles }) {
 
   // Counts for tab badges
   const counts = {
-    receipts: scannedReceipts.length,
-    manual: manualReceipts.length,
+    receipts: allReceipts.length,
     subscriptions: recurring.length,
     invoices: invoiceReceipts.length,
   };
@@ -124,11 +118,11 @@ export default function ReceiptsView({ onFiles }) {
                 ))}
               </div>
 
-              {scannedReceipts.length > 0 && (
+              {allReceipts.length > 0 && (
                 <div>
-                  <div className="section-label">Zeskanowane \u00B7 {scannedReceipts.length}</div>
+                  <div className="section-label">Paragony \u00B7 {allReceipts.length}</div>
                   <div className="flex-col gap-10">
-                    {scannedReceipts.map((r, i) => (
+                    {allReceipts.map((r, i) => (
                       <ReceiptCard
                         key={r.id} r={r} delay={i * 0.05}
                         onDelete={() => setReceipts(p => p.filter(x => x.id !== r.id))}
@@ -139,30 +133,8 @@ export default function ReceiptsView({ onFiles }) {
                 </div>
               )}
 
-              {!scannedReceipts.length && !processing.length && (
+              {!allReceipts.length && !processing.length && (
                 <Empty icon="\uD83E\uDDFE" title="Brak paragon\u00F3w" sub="Dodaj pierwszy paragon \u2014 przeci\u0105gnij zdj\u0119cie lub kliknij powy\u017Cej" />
-              )}
-            </>
-          )}
-
-          {/* \u2500\u2500 MANUAL RECEIPTS TAB \u2500\u2500 */}
-          {tab === "manual" && (
-            <>
-              {manualReceipts.length > 0 ? (
-                <div>
-                  <div className="section-label">Dodane r\u0119cznie \u00B7 {manualReceipts.length}</div>
-                  <div className="flex-col gap-10">
-                    {manualReceipts.map((r, i) => (
-                      <ReceiptCard
-                        key={r.id} r={r} delay={i * 0.05}
-                        onDelete={() => setReceipts(p => p.filter(x => x.id !== r.id))}
-                        onUpdate={updateReceipt}
-                      />
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <Empty icon="\u270F\uFE0F" title="Brak r\u0119cznych paragon\u00F3w" sub="Dodaj paragon r\u0119cznie za pomoc\u0105 przycisku + na dole ekranu" />
               )}
             </>
           )}
