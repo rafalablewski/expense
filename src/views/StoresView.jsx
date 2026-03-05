@@ -36,6 +36,14 @@ export default function StoresView() {
     });
   }, [receipts, range]);
 
+  // ── Extract city from receipt: explicit field, or parse from "ul. X, 40-645 Katowice" ──
+  const getCity = (r) => {
+    if (r.city) return r.city;
+    const addr = r.address || "";
+    const m = addr.match(/\d{2}-\d{3}\s+(.+)/);
+    return m ? m[1].trim() : null;
+  };
+
   // ── Build store summary map (grouped by normalized store name, with locations) ──
   const storeMap = useMemo(() => {
     const map = {};
@@ -48,7 +56,8 @@ export default function StoresView() {
       map[key].saved  += parseFloat(r.total_discounts) || 0;
       (r.items || []).forEach(it => map[key].items.push({ ...it, date: r.date }));
       map[key].receipts.push({ id: r.id, date: r.date, total: parseFloat(r.total) || 0, itemCount: (r.items || []).length, address: r.address, zip_code: r.zip_code, city: r.city });
-      if (r.city) map[key].cities[r.city] = (map[key].cities[r.city] || 0) + 1;
+      const city = getCity(r);
+      if (city) map[key].cities[city] = (map[key].cities[city] || 0) + 1;
       const d = parseDate(r.date);
       if (d && (!map[key].lastDate || d > map[key].lastDate)) map[key].lastDate = d;
       // Track locations by address/zip
@@ -231,7 +240,7 @@ export default function StoresView() {
                         {(() => {
                           const byLoc = {};
                           sortedReceipts.forEach(r => {
-                            const loc = r.city || [r.address, r.zip_code].filter(Boolean).join(", ") || "Nieznana lokalizacja";
+                            const loc = getCity(r) || [r.address, r.zip_code].filter(Boolean).join(", ") || "Nieznana lokalizacja";
                             if (!byLoc[loc]) byLoc[loc] = [];
                             byLoc[loc].push(r);
                           });
