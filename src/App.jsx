@@ -9,127 +9,17 @@ import { LS_KEYS, lsGet, lsSet } from "./services/localStorage";
 import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, getCorrectionsHint } from "./services/claude";
 import { initCorrections, getCorrections, saveCorrections, learnFromCorrections, applyLearnedCorrections, getCorrectionStats } from "./hooks/useCorrections";
 import { parseDate, convertAmt, haptic, isRecurringPaused } from "./utils/helpers";
-
-function StorePickerInput({ value, onChange, customStores = [], onAddCustomStore, id, placeholder }) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState(value || "");
-  const ref = useRef(null);
-
-  useEffect(() => { setSearch(value || ""); }, [value]);
-
-  useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const allStores = useMemo(() => [...new Set([...DEFAULT_STORES, ...(customStores || [])])], [customStores]);
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return q ? allStores.filter(s => s.toLowerCase().includes(q)) : allStores;
-  }, [search, allStores]);
-
-  const select = (s) => { onChange(s); setSearch(s); setOpen(false); };
-
-  return (
-    <div ref={ref} className="store-picker">
-      <input id={id} className="field" value={search}
-        onChange={e => { setSearch(e.target.value); onChange(e.target.value); setOpen(true); }}
-        onFocus={() => setOpen(true)}
-        placeholder={placeholder || "Wybierz lub wpisz sklep"}
-        autoComplete="off" />
-      {open && (
-        <div className="store-picker-dropdown">
-          {filtered.map(s => (
-            <div key={s} onClick={() => select(s)} className="store-picker-option">
-              {DEFAULT_STORES.includes(s) ? "🏪" : "📝"} {s}
-            </div>
-          ))}
-          {search && !allStores.some(s => s.toLowerCase() === search.toLowerCase()) && (
-            <div onClick={() => { if (onAddCustomStore) onAddCustomStore(search); select(search); }}
-              className="store-picker-add">
-              + Dodaj "{search}" jako nowy sklep
-            </div>
-          )}
-          {!search && filtered.length === 0 && (
-            <div className="store-picker-empty">Brak sklepów</div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-
-/* ─── Helpers ──────────────────────────────── */
-function Zl({ v, size = 14 }) {
-  if (v == null || v === "") return <span className="zl-dash">—</span>;
-  const n = parseFloat(v);
-  return (
-    <span className="mono" style={{ fontSize: size }}>
-      {n.toFixed(2)}<span className="zl-unit" style={{ fontSize: size - 2 }}> zł</span>
-    </span>
-  );
-}
-function CatChip({ cat }) {
-  const c = CATS[cat] || CATS["Inne"];
-  return (
-    <span className="chip" style={{ '--cat-color': c, background: c + "15", color: c, border: `1px solid ${c}25` }}>
-      <span className="cat-chip-dot" style={{ background: c }} aria-hidden="true" />
-      {cat}
-    </span>
-  );
-}
-function Spinner() {
-  return <div className="spinner" role="status" aria-label="Ładowanie" />;
-}
-function Empty({ icon, title, sub }) {
-  return (
-    <div className="empty" role="status">
-      <div className="empty-icon" aria-hidden="true">{icon}</div>
-      <div className="empty-title">{title}</div>
-      <div className="empty-sub">{sub}</div>
-    </div>
-  );
-}
-
-
-/* ─── Drop Zone ──────────────────────────────── */
-function DropZone({ onFiles }) {
-  const [drag, setDrag] = useState(false);
-  const ref = useRef();
-  const pick = useCallback(files => {
-    const imgs = Array.from(files).filter(f => f.type.startsWith("image/"));
-    if (imgs.length) onFiles(imgs);
-  }, [onFiles]);
-  return (
-    <div
-      role="button" tabIndex={0}
-      aria-label="Dodaj zdjęcia paragonów — kliknij lub przeciągnij i upuść"
-      className={`dropzone${drag ? " drag" : ""}`}
-      onClick={() => ref.current.click()}
-      onKeyDown={e => (e.key === "Enter" || e.key === " ") && ref.current.click()}
-      onDragOver={e => { e.preventDefault(); setDrag(true); }}
-      onDragLeave={() => setDrag(false)}
-      onDrop={e => { e.preventDefault(); setDrag(false); pick(e.dataTransfer.files); }}
-    >
-      <input ref={ref} type="file" accept="image/*" multiple className="hidden" onChange={e => pick(e.target.files)} />
-      <div className="dropzone-content">
-        <div className="dropzone-icon" aria-hidden="true">📸</div>
-        <div className="dropzone-title">Skanuj paragon</div>
-        <div className="dropzone-sub">
-          Przeciągnij zdjęcie tutaj<br />
-          <span className="dropzone-sub-hint">JPG · PNG · WEBP — Claude automatycznie odczyta dane</span>
-        </div>
-        <div className="dropzone-hint" aria-hidden="true">
-          <svg width="13" height="13" fill="none" viewBox="0 0 13 13"><path d="M6.5 1v11M1 6.5h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
-          Wybierz pliki
-        </div>
-      </div>
-    </div>
-  );
-}
+import StorePickerInput from "./components/primitives/StorePickerInput";
+import Zl from "./components/primitives/Zl";
+import CatChip from "./components/primitives/CatChip";
+import Spinner from "./components/primitives/Spinner";
+import Empty from "./components/primitives/Empty";
+import DropZone from "./components/receipts/DropZone";
+import ReceiptCard from "./components/receipts/ReceiptCard";
+import DonutChart from "./components/charts/DonutChart";
+import BarChart from "./components/charts/BarChart";
+import SparkLine from "./components/charts/SparkLine";
+import InsightCard from "./components/charts/InsightCard";
 
 /* ─── Receipt Review Drawer ──────────────────── */
 
@@ -398,100 +288,6 @@ function ReceiptReviewModal({ receipt, onConfirm, onCancel, customStores, onAddC
         </div>
       </div>
     </div>
-  );
-}
-
-/* ─── Receipt Card ───────────────────────────── */
-function ReceiptCard({ r, onDelete, delay = 0 }) {
-  const [open, setOpen] = useState(false);
-  const saved = parseFloat(r.total_discounts) || 0;
-  const bid = `rc-${r.id}`;
-  return (
-    <article
-      className="card"
-      style={{ animation: `fadeUp .45s cubic-bezier(.16,1,.3,1) ${delay}s both` }}
-      aria-labelledby={`${bid}-name`}
-    >
-      <button
-        className="receipt-header"
-        onClick={() => setOpen(o => !o)}
-        aria-expanded={open}
-        aria-controls={`${bid}-body`}
-      >
-        <div className="receipt-store-icon" aria-hidden="true">🧾</div>
-
-        <div className="flex-1-min0">
-          <div id={`${bid}-name`} className="receipt-name text-ellipsis">
-            {r.store || "Paragon"}
-          </div>
-          <div className="receipt-meta">
-            {r.date || "Brak daty"} · {r.items?.length || 0} produktów
-            {(r.address || r.zip_code) && ` · ${[r.address, r.zip_code].filter(Boolean).join(", ")}`}
-          </div>
-        </div>
-
-        <div className="text-right flex-shrink0">
-          <div className="mono receipt-total">
-            {parseFloat(r.total || 0).toFixed(2)}
-            <span className="receipt-total-unit">zł</span>
-          </div>
-          {saved > 0 && (
-            <div className="receipt-saved">
-              −{saved.toFixed(2)} zł saved
-            </div>
-          )}
-        </div>
-
-        <div aria-hidden="true" className={`receipt-chevron${open ? " receipt-chevron--open" : ""}`}>▼</div>
-      </button>
-
-      {open && (
-        <div id={`${bid}-body`} className="receipt-body-border">
-          <div className="tbl-wrap">
-            <table className="tbl">
-              <thead>
-                <tr>
-                  {["Produkt", "Kat.", "Ilość", "Cena jedn.", "Opust", "Razem"].map((h, i) => (
-                    <th key={h} scope="col" className={i >= 2 ? "text-right" : "text-left"}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {(r.items || []).map((item, i) => (
-                  <tr key={i}>
-                    <td>
-                      <div className="td-name fs-14">{item.name}</div>
-                      {item.discount_label && (
-                        <div className="discount-label">
-                          🏷 {item.discount_label}
-                        </div>
-                      )}
-                    </td>
-                    <td><CatChip cat={item.category} /></td>
-                    <td className="mono text-right color-ink2">
-                      {item.quantity || 1}{item.unit ? ` ${item.unit}` : ""}
-                    </td>
-                    <td className="text-right"><Zl v={item.unit_price} /></td>
-                    <td className="text-right">
-                      {item.discount
-                        ? <span className="mono discount-text">−{item.discount.toFixed(2)}</span>
-                        : <span className="color-ink3">—</span>
-                      }
-                    </td>
-                    <td className="text-right"><Zl v={item.total_price} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="receipt-footer">
-            <button className="btn-danger" onClick={onDelete} aria-label={`Usuń paragon ${r.store || "Paragon"}`}>
-              Usuń paragon
-            </button>
-          </div>
-        </div>
-      )}
-    </article>
   );
 }
 
@@ -923,13 +719,13 @@ Wygeneruj listę zakupów. Odpowiedz TYLKO jako JSON array stringów, np. ["Mlek
                   placeholder="np. ryż, pomidory, ser żółty…" />
               </div>
               <button className="btn-primary" onClick={generateAll} disabled={genAll}
-                style={{ gap:8, minHeight:48, opacity: genAll ? 0.7 : 1 }}>
+                style={{ gap: 8, minHeight: 48, opacity: genAll ? 0.7 : 1 }}>
                 {genAll ? <><Spinner />Generuję…</> : "✦ Generuj cały plan"}
               </button>
               {filledCells > 0 && (
                 <>
                   <button className="btn-secondary" onClick={generateShoppingList} disabled={genShop}
-                    style={{ minHeight:48 }}>
+                    style={{ minHeight: 48 }}>
                     {genShop ? <><Spinner />Listuję…</> : "🛒 Lista zakupów"}
                   </button>
                   <button onClick={clearPlan}
@@ -1016,95 +812,6 @@ Wygeneruj listę zakupów. Odpowiedz TYLKO jako JSON array stringów, np. ["Mlek
         </div>
       </div>
     </>
-  );
-}
-
-
-/* ─── Stats helpers ──────────────────────────── */
-function DonutChart({ data, size = 200 }) {
-  const total = data.reduce((s, d) => s + d.value, 0);
-  if (!total) return null;
-  const cx = size / 2, cy = size / 2;
-  const R = size * 0.38, r = size * 0.24;
-  const circ = 2 * Math.PI * R;
-  let cumPct = 0;
-  const slices = data.map(d => {
-    const pct = d.value / total;
-    const offset = circ * (1 - cumPct - pct);
-    const dash   = circ * pct - 2;
-    cumPct += pct;
-    return { ...d, offset, dash, pct };
-  });
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-      <defs>
-        <filter id="ds" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="rgba(0,0,0,0.12)" />
-        </filter>
-      </defs>
-      {/* Track */}
-      <circle cx={cx} cy={cy} r={R} fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth={R - r} />
-      {/* Slices */}
-      {slices.map((s, i) => (
-        <circle key={i} cx={cx} cy={cy} r={R} fill="none"
-          stroke={s.color} strokeWidth={R - r}
-          strokeDasharray={`${Math.max(0, s.dash)} ${circ}`}
-          strokeDashoffset={s.offset}
-          strokeLinecap="butt"
-          transform={`rotate(-90 ${cx} ${cy})`}
-          style={{ transition: `stroke-dasharray .8s cubic-bezier(.16,1,.3,1) ${i * .06}s, stroke-dashoffset .8s cubic-bezier(.16,1,.3,1) ${i * .06}s` }}
-          filter="url(#ds)"
-        />
-      ))}
-      {/* Centre label */}
-      <text x={cx} y={cy - 8} textAnchor="middle" fontSize={size * 0.09} fontWeight="700"
-        fill="#1D1D1F" fontFamily="'JetBrains Mono', monospace">{(total).toFixed(0)}</text>
-      <text x={cx} y={cy + 10} textAnchor="middle" fontSize={size * 0.054} fill="#AEAEB2"
-        fontFamily="'Plus Jakarta Sans', sans-serif" fontWeight="500">łącznie zł</text>
-    </svg>
-  );
-}
-
-function BarChart({ months, maxVal }) {
-  const W = 36, GAP = 10, H = 100;
-  const total = months.length;
-  const width = total * (W + GAP) - GAP;
-  return (
-    <svg width="100%" viewBox={`0 0 ${width} ${H + 32}`} preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-      {months.map((m, i) => {
-        const barH = maxVal ? Math.max(4, (m.total / maxVal) * H) : 4;
-        const x = i * (W + GAP);
-        const isLast = i === months.length - 1;
-        return (
-          <g key={m.label}>
-            <rect x={x} y={H - barH} width={W} height={barH} rx={6}
-              fill={isLast ? "#06C167" : "rgba(6,193,103,0.20)"}
-              style={{ transition: `height .7s cubic-bezier(.16,1,.3,1) ${i * .05}s, y .7s cubic-bezier(.16,1,.3,1) ${i * .05}s` }}
-            />
-            {isLast && (
-              <text x={x + W / 2} y={H - barH - 6} textAnchor="middle"
-                fontSize={9} fontWeight="700" fill="#06C167"
-                fontFamily="'JetBrains Mono', monospace">{m.total.toFixed(0)}</text>
-            )}
-            <text x={x + W / 2} y={H + 16} textAnchor="middle"
-              fontSize={9} fill="#AEAEB2"
-              fontFamily="'Plus Jakarta Sans', sans-serif" fontWeight="500">{m.label}</text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-function InsightCard({ icon, title, sub, accent }) {
-  return (
-    <div className={`insight-card${accent ? " accent" : ""}`}>
-      <div className="insight-icon">{icon}</div>
-      <div>
-        <div className="insight-title">{title}</div>
-        <div className="insight-sub">{sub}</div>
-      </div>
-    </div>
   );
 }
 
@@ -1625,32 +1332,10 @@ function StoresView({ receipts }) {
                     key={st.name}
                     onClick={() => setActiveStore(st.name)}
                     aria-label={`Otwórz ${st.name}`}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 16,
-                      background: $.glass,
-                      backdropFilter: "blur(24px) saturate(180%)",
-                      WebkitBackdropFilter: "blur(24px) saturate(180%)",
-                      border: "1px solid rgba(255,255,255,0.72)",
-                      borderRadius: 20,
-                      padding: "18px 22px",
-                      cursor: "pointer",
-                      textAlign: "left",
-                      width: "100%",
-                      transition: "box-shadow .2s, border-color .2s, transform .15s",
-                      animation: `fadeUp .4s cubic-bezier(.16,1,.3,1) ${i * .05}s both`,
-                      boxShadow: "0 2px 16px rgba(0,0,0,0.06)",
-                    }}
-                    onMouseOver={e => { e.currentTarget.style.boxShadow = "0 8px 40px rgba(0,0,0,0.10)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.96)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                    onMouseOut={e => { e.currentTarget.style.boxShadow = "0 2px 16px rgba(0,0,0,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.72)"; e.currentTarget.style.transform = "none"; }}
+                    className="store-card" style={{ animation: `fadeUp .4s cubic-bezier(.16,1,.3,1) ${i * .05}s both` }}
                   >
                     {/* Avatar */}
-                    <div style={{
-                      width: 46, height: 46, borderRadius: 14, flexShrink: 0,
-                      background: col + "18", border: `1px solid ${col}35`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontFamily: "'Bricolage Grotesque',serif", fontSize: 18, fontWeight: 800,
-                      color: col, letterSpacing: "-.02em",
-                    }}>
+                    <div className="store-avatar" style={{ background: col + "18", border: `1px solid ${col}35`, color: col }}>
                       {st.name.charAt(0).toUpperCase()}
                     </div>
 
@@ -1670,14 +1355,14 @@ function StoresView({ receipts }) {
                         <span>{st.visits} wizyt</span>
                         {Object.keys(st.locations).length > 0 && <span>📍 {Object.keys(st.locations).length} lokalizacj{Object.keys(st.locations).length === 1 ? "a" : "e"}</span>}
                         <span>śr. {avg.toFixed(0)} zł/wizyta</span>
-                        {st.saved > 0 && <span style={{ color: $.red }}>−{st.saved.toFixed(2)} zł saved</span>}
+                        {st.saved > 0 && <span className="color-red">−{st.saved.toFixed(2)} zł saved</span>}
                         <span className="detail-label">ost. {fmtDate(st.lastDate)}</span>
                       </div>
                     </div>
 
                     {/* Total */}
                     <div className="receipt-total-wrap">
-                      <div className="mono" style={{ fontSize: 20, fontWeight: 500, color: col, lineHeight: 1 }}>
+                      <div className="mono store-total-val" style={{ color: col }}>
                         {st.total.toFixed(2)}
                       </div>
                       <div className="item-sub-sm">zł łącznie</div>
@@ -1715,14 +1400,10 @@ function StoresView({ receipts }) {
                   Lokalizacje · {Object.keys(drillStore.locations).length}
                 </div>
                 {Object.values(drillStore.locations).map((loc, i) => (
-                  <div key={i} style={{
-                    display: "flex", alignItems: "center", gap: 12,
-                    background: $.glass, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-                    border: "1px solid rgba(255,255,255,0.72)", borderRadius: 12, padding: "10px 16px",
-                  }}>
-                    <span style={{ fontSize: 16 }}>📍</span>
+                  <div key={i} className="location-card">
+                    <span className="location-icon">📍</span>
                     <div className="flex-1">
-                      <div style={{ fontWeight: 600, fontSize: 13, color: $.ink0 }}>
+                      <div className="location-name">
                         {[loc.address, loc.zip_code].filter(Boolean).join(", ")}
                       </div>
                       <div className="item-sub">{loc.visits} wizyt · {loc.total.toFixed(2)} zł</div>
@@ -1886,17 +1567,7 @@ function ExportView({ receipts }) {
                       key={f.id}
                       onClick={() => setFormat(f.id)}
                       aria-pressed={format === f.id}
-                      style={{
-                        flex: 1, minWidth: 140,
-                        padding: "14px 18px",
-                        borderRadius: 14,
-                        border: `2px solid ${format === f.id ? $.green : "rgba(255,255,255,0.65)"}`,
-                        background: format === f.id ? $.greenBg : "rgba(255,255,255,0.45)",
-                        cursor: "pointer",
-                        textAlign: "left",
-                        transition: "all .18s",
-                        display: "flex", alignItems: "center", gap: 12,
-                      }}
+                      className={`export-format-btn${format === f.id ? " export-format-btn--active" : ""}`}
                     >
                       <span className="export-format-icon">{f.icon}</span>
                       <div>
@@ -2001,7 +1672,7 @@ function ExportView({ receipts }) {
                           <tr key={i}>
                             <td className="td-name">{r.store || "—"}</td>
                             <td className="mono color-ink3 fs-12">{r.date || "—"}</td>
-                            <td className="mono" style={{ textAlign: "right", color: $.ink2 }}>{(r.items || []).length}</td>
+                            <td className="mono text-right color-ink2">{(r.items || []).length}</td>
                             <td className="text-right"><Zl v={r.total} /></td>
                             <td className="text-right">
                               {parseFloat(r.total_discounts || 0) > 0
@@ -2126,36 +1797,27 @@ function BudgetsView({ receipts, expenses = [], allItems = [], budgets, setBudge
               const isEditing = editing === cat;
 
               return (
-                <div key={cat} style={{
-                  padding: "14px 22px",
-                  borderBottom: i < allCats.length - 1 ? "1px solid rgba(255,255,255,0.40)" : "none",
-                  display: "flex", alignItems: "center", gap: 14,
-                  background: over ? "rgba(217,48,37,0.04)" : "transparent",
-                  transition: "background .2s",
-                }}>
+                <div key={cat} className={`budget-row${over ? " budget-row--over" : ""}`} style={{ borderBottom: i < allCats.length - 1 ? "1px solid rgba(255,255,255,0.40)" : "none" }}>
                   {/* Dot */}
-                  <div style={{ width: 10, height: 10, borderRadius: 3, background: catCol, flexShrink: 0 }} />
+                  <div className="legend-dot" style={{ background: catCol }} />
 
                   {/* Cat name */}
-                  <div style={{ width: 110, fontWeight: 600, fontSize: 14, color: $.ink0, flexShrink: 0 }}>{cat}</div>
+                  <div className="budget-cat-name">{cat}</div>
 
                   {/* Bar + amounts */}
                   <div className="flex-1">
                     {budget > 0 ? (
                       <>
-                        <div className="flex-between" style={{ marginBottom: 5 }}>
-                          <span className="mono" style={{ fontSize: 12, color: over ? $.red : $.ink2, fontWeight: over ? 700 : 400 }}>
+                        <div className="flex-between mb-5">
+                          <span className="mono fs-12" style={{ color: over ? $.red : $.ink2, fontWeight: over ? 700 : 400 }}>
                             {convertAmt(spent, currency)} {sym}
                           </span>
-                          <span className="mono" style={{ fontSize: 12, color: $.ink3 }}>
+                          <span className="mono fs-12 color-ink3">
                             / {convertAmt(budget, currency)} {sym}
                           </span>
                         </div>
                         <div className="budget-bar-track">
-                          <div className="budget-bar-fill" style={{
-                            width: `${pct}%`,
-                            background: over ? $.red : pct > 80 ? $.amber : catCol,
-                          }} />
+                          <div className="budget-bar-fill" style={{ width: `${pct}%`, background: over ? $.red : pct > 80 ? $.amber : catCol }} />
                         </div>
                         {over && (
                           <div className="budget-over-text">
@@ -2330,20 +1992,9 @@ function RecurringView({ recurring, setRecurring, currency }) {
                 const dispAmt = (parseFloat(item.amount) * (FX[currency] || 1)).toFixed(2);
                 const paused = isRecurringPaused(item);
                 return (
-                  <div key={item.id} style={{
-                    display: "flex", alignItems: "center", gap: 14,
-                    background: $.glass,
-                    backdropFilter: "blur(24px) saturate(180%)",
-                    WebkitBackdropFilter: "blur(24px) saturate(180%)",
-                    border: "1px solid rgba(255,255,255,0.72)",
-                    borderRadius: 16, padding: "16px 20px",
-                    animation: `fadeUp .4s cubic-bezier(.16,1,.3,1) ${i * .05}s both`,
-                    boxShadow: "0 2px 12px rgba(0,0,0,0.05)",
-                    opacity: paused ? 0.45 : 1,
-                    transition: "opacity .2s",
-                  }}>
+                  <div key={item.id} className={`recurring-item${paused ? " recurring-item--paused" : ""}`} style={{ animation: `fadeUp .4s cubic-bezier(.16,1,.3,1) ${i * .05}s both` }}>
                     {/* Icon */}
-                    <div style={{ width: 42, height: 42, borderRadius: 12, flexShrink: 0, background: catCol + "18", border: `1px solid ${catCol}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
+                    <div className="icon-circle icon-circle--42" style={{ background: catCol + "18", border: `1px solid ${catCol}30` }}>
                       {item.category === "Subskrypcje" ? "📱" : item.category === "Zdrowie" ? "💪" : item.category === "Dom" ? "🏠" : item.category === "Transport" ? "🚗" : item.category === "Rozrywka" ? "🎬" : "🔄"}
                     </div>
 
@@ -2366,7 +2017,7 @@ function RecurringView({ recurring, setRecurring, currency }) {
                     </div>
 
                     <div className="text-right flex-shrink-0">
-                      <div className="mono" style={{ fontSize: 18, fontWeight: 500, color: catCol, lineHeight: 1 }}>
+                      <div className="mono store-total-val" style={{ fontSize: 18, color: catCol }}>
                         {dispAmt}
                       </div>
                       <div className="item-sub-sm">{sym} / {item.cycle.toLowerCase()}</div>
@@ -2546,14 +2197,14 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
             {/* Total month: receipts + expenses + subscriptions */}
             <div className="widget">
               <div className="widget-label">Razem / miesiąc</div>
-              <div className="widget-big" style={{ color: $.green }}>
+              <div className="widget-big color-green">
                 {convertAmt(monthSpent + recurringMonthly, currency)}
                 <span className="widget-unit">{sym}</span>
               </div>
               <div className="widget-desc">
                 paragony + subskrypcje · {monthName}
               </div>
-              <button onClick={() => go("stats")} className="btn-link" style={{ marginTop: 12 }}>
+              <button onClick={() => go("stats")} className="btn-link mt-12">
                 Zobacz statystyki →
               </button>
             </div>
@@ -2561,14 +2212,14 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
             {/* Just receipts */}
             <div className="widget">
               <div className="widget-label">Paragony</div>
-              <div className="widget-big" style={{ color: $.ink0 }}>
+              <div className="widget-big color-ink0">
                 {convertAmt(monthReceiptSpent + monthExpenseSpent, currency)}
                 <span className="widget-unit">{sym}</span>
               </div>
               <div className="widget-desc">
                 {thisMonth.length} paragonów{thisMonthExpenses.length > 0 ? ` · ${thisMonthExpenses.length} wydatków` : ""} · {monthName}
               </div>
-              <button onClick={() => go("receipts")} className="btn-link" style={{ marginTop: 12 }}>
+              <button onClick={() => go("receipts")} className="btn-link mt-12">
                 Wszystkie paragony →
               </button>
             </div>
@@ -2576,14 +2227,14 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
             {/* Just subscriptions */}
             <div className="widget">
               <div className="widget-label">Subskrypcje</div>
-              <div className="widget-big" style={{ color: $.ink0 }}>
+              <div className="widget-big color-ink0">
                 {convertAmt(recurringMonthly, currency)}
                 <span className="widget-unit">{sym}</span>
               </div>
               <div className="widget-desc">
                 {recurring.length} aktywnych subskrypcji
               </div>
-              <button onClick={() => go("recurring")} className="btn-link" style={{ marginTop: 12 }}>
+              <button onClick={() => go("recurring")} className="btn-link mt-12">
                 Zarządzaj →
               </button>
             </div>
@@ -2591,7 +2242,7 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
             {/* Savings */}
             <div className="widget">
               <div className="widget-label">Zaoszczędzono</div>
-              <div className="widget-big" style={{ color: $.red }}>
+              <div className="widget-big color-red">
                 {convertAmt(totalSaved, currency)}
                 <span className="widget-unit">{sym}</span>
               </div>
@@ -2607,15 +2258,10 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
               <div className="section-heading">Alerty budżetowe</div>
               <div className="flex-col gap-8">
                 {alerts.map(a => (
-                  <div key={a.cat} style={{
-                    display: "flex", alignItems: "center", gap: 14,
-                    padding: "14px 20px", borderRadius: 14,
-                    background: a.over ? $.redBg : $.amberBg,
-                    border: `1px solid ${a.over ? $.redRim : "rgba(217,119,6,0.22)"}`,
-                  }}>
+                  <div key={a.cat} className={`alert-card${a.over ? " alert-card--over" : " alert-card--warn"}`}>
                     <span className="alert-icon">{a.over ? "🔴" : "🟡"}</span>
                     <div className="flex-1">
-                      <div style={{ fontWeight: 700, fontSize: 14, color: a.over ? $.red : $.amber }}>
+                      <div className="alert-title" style={{ color: a.over ? $.red : $.amber }}>
                         {a.cat} — {a.over ? "Przekroczono limit!" : "Zbliżasz się do limitu"}
                       </div>
                       <div className="item-sub">
@@ -2638,11 +2284,7 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
               <div className="section-heading">Gdzie kupisz taniej</div>
               <div className="card overflow-hidden">
                 {duplicates.map((d, i) => (
-                  <div key={d.name} style={{
-                    padding: "13px 20px",
-                    borderBottom: i < duplicates.length - 1 ? "1px solid rgba(255,255,255,0.40)" : "none",
-                    display: "flex", alignItems: "center", gap: 14,
-                  }}>
+                  <div key={d.name} className="glass-card--p-row flex-row gap-14" style={{ borderBottom: i < duplicates.length - 1 ? "1px solid rgba(255,255,255,0.40)" : "none" }}>
                     <div className="icon-box icon-box-36" style={{ background: $.greenBg, border: `1px solid ${$.greenRim}` }}>💡</div>
                     <div className="flex-1">
                       <div className="item-title">{d.name}</div>
@@ -2651,7 +2293,7 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <div className="mono" style={{ fontSize: 15, fontWeight: 700, color: $.green }}>
+                      <div className="mono fs-15 fw-700 color-green">
                         -{convertAmt(d.savings, currency)} {sym}
                       </div>
                       <div className="item-possible-saving">możliwa oszczędność</div>
@@ -2668,12 +2310,8 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
               <div className="section-heading">Top 3 najdroższe zakupy</div>
               <div className="card overflow-hidden">
                 {top3Items.map((it, i) => (
-                  <div key={i} style={{
-                    padding: "13px 20px",
-                    borderBottom: i < top3Items.length - 1 ? "1px solid rgba(255,255,255,0.40)" : "none",
-                    display: "flex", alignItems: "center", gap: 14,
-                  }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: i === 0 ? "rgba(234,179,8,0.12)" : $.greenBg, border: `1px solid ${i === 0 ? "rgba(234,179,8,0.25)" : $.greenRim}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
+                  <div key={i} className="glass-card--p-row flex-row gap-14" style={{ borderBottom: i < top3Items.length - 1 ? "1px solid rgba(255,255,255,0.40)" : "none" }}>
+                    <div className="icon-circle icon-circle--36" style={{ background: i === 0 ? "rgba(234,179,8,0.12)" : $.greenBg, border: `1px solid ${i === 0 ? "rgba(234,179,8,0.25)" : $.greenRim}` }}>
                       {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
                     </div>
                     <div className="flex-1">
@@ -2682,7 +2320,7 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
                         {it.store || "—"}{it.date ? ` · ${it.date}` : ""}
                       </div>
                     </div>
-                    <div className="mono" style={{ fontSize: 15, fontWeight: 700, color: $.green, flexShrink: 0 }}>
+                    <div className="mono fs-15 fw-700 color-green flex-shrink-0">
                       {convertAmt(parseFloat(it.total_price) || 0, currency)} {sym}
                     </div>
                   </div>
@@ -2700,17 +2338,13 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
               </div>
               <div className="flex-col gap-8">
                 {recent.map(r => (
-                  <div key={r.id} style={{
-                    display: "flex", alignItems: "center", gap: 14,
-                    background: $.glass, backdropFilter: "blur(20px) saturate(160%)", WebkitBackdropFilter: "blur(20px) saturate(160%)",
-                    border: "1px solid rgba(255,255,255,0.72)", borderRadius: 14, padding: "13px 18px",
-                  }}>
+                  <div key={r.id} className="recent-receipt">
                     <div className="icon-box icon-box-38" style={{ background: $.greenBg, border: `1px solid ${$.greenRim}` }}>🧾</div>
                     <div className="flex-1">
                       <div className="item-title">{r.store || "Paragon"}</div>
                       <div className="item-sub">{r.date || "—"} · {(r.items || []).length} pozycji{(r.address || r.zip_code) ? ` · ${[r.zip_code, r.address].filter(Boolean).join(" ")}` : ""}</div>
                     </div>
-                    <div className="mono" style={{ fontSize: 16, fontWeight: 500, color: $.green, flexShrink: 0 }}>
+                    <div className="mono receipt-total flex-shrink-0" style={{ fontSize: 16 }}>
                       {convertAmt(r.total || 0, currency)} {sym}
                     </div>
                   </div>
@@ -2734,27 +2368,6 @@ function DashboardView({ receipts, expenses = [], budgets, recurring, currency, 
         </div>
       </div>
     </>
-  );
-}
-
-
-/* ─── InflationView ──────────────────────────── */
-function SparkLine({ points, color, width=120, height=36 }) {
-  if (!points || points.length < 2) return null;
-  const minV = Math.min(...points), maxV = Math.max(...points);
-  const range = maxV - minV || 1;
-  const pts = points.map((v, i) => {
-    const x = (i / (points.length - 1)) * width;
-    const y = height - ((v - minV) / range) * (height - 4) - 2;
-    return `${x},${y}`;
-  }).join(" ");
-  return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-        style={{ transition: "all .5s" }} />
-      <circle cx={pts.split(" ").at(-1).split(",")[0]} cy={pts.split(" ").at(-1).split(",")[1]}
-        r="3" fill={color} />
-    </svg>
   );
 }
 
@@ -2811,7 +2424,7 @@ function InflationView({ receipts, currency }) {
               <span className="date-label">Min. zakupów:</span>
               {[2,3,5].map(n => (
                 <button key={n} className={`pill${minOccurrences === n ? " on" : ""}`}
-                  onClick={() => setMin(n)} style={{ padding:"6px 12px" }}>{n}+</button>
+                  onClick={() => setMin(n)} style={{ padding: "6px 12px" }}>{n}+</button>
               ))}
             </div>
           </div>
@@ -2825,11 +2438,11 @@ function InflationView({ receipts, currency }) {
                 <table className="tbl" aria-label="Zmiany cen produktów">
                   <thead>
                     <tr>
-                      <th scope="col" style={{ textAlign:"left" }}>Produkt</th>
+                      <th scope="col" className="text-left">Produkt</th>
                       <th scope="col" className="field--text-right">Pierwsza cena</th>
                       <th scope="col" className="field--text-right">Ostatnia cena</th>
                       <th scope="col" className="field--text-right">Zmiana</th>
-                      <th scope="col" style={{ textAlign:"center" }}>Trend</th>
+                      <th scope="col" className="text-center">Trend</th>
                       <th scope="col" className="field--text-right">Zakupów</th>
                     </tr>
                   </thead>
@@ -2841,7 +2454,7 @@ function InflationView({ receipts, currency }) {
                       const arrow = up ? "↑" : down ? "↓" : "→";
                       return (
                         <tr key={i}>
-                          <td style={{ fontWeight:600 }}>{p.name}</td>
+                          <td className="td-name">{p.name}</td>
                           <td className="field--text-right">
                             <Zl v={p.first} />
                           </td>
@@ -2853,11 +2466,11 @@ function InflationView({ receipts, currency }) {
                               {arrow} {Math.abs(p.change).toFixed(1)}%
                             </span>
                           </td>
-                          <td style={{ textAlign:"center", padding:"8px 12px" }}>
+                          <td className="text-center" style={{ padding: "8px 12px" }}>
                             <SparkLine points={p.prices} color={color} width={100} height={28} />
                           </td>
                           <td className="field--text-right mono">
-                            <span style={{ color:$.ink3, fontSize:12 }}>{p.entries.length}×</span>
+                            <span className="color-ink3 fs-12">{p.entries.length}×</span>
                           </td>
                         </tr>
                       );
@@ -2972,7 +2585,7 @@ function PredictionView({ receipts, currency }) {
 
           {/* Hero prediction card */}
           {prediction && (
-            <div className="card au card--p32" style={{ position:"relative", overflow:"hidden" }}>
+            <div className="card au card--p32 pos-relative overflow-hidden">
               <div className="prediction-circle" />
               <div className="section-heading">
                 Prognozowane wydatki — {nextMonth}
@@ -2984,19 +2597,19 @@ function PredictionView({ receipts, currency }) {
               <div className="flex-row flex-wrap gap-24">
                 <div>
                   <div className="prediction-stat-label">Trend</div>
-                  <div style={{ fontSize:16, fontWeight:700, color:prediction.trendColor, marginTop:4 }}>
+                  <div className="pred-meta-val" style={{ color: prediction.trendColor }}>
                     {prediction.trend === "rosnący" ? "↑" : prediction.trend === "malejący" ? "↓" : "→"} {prediction.trend}
                   </div>
                 </div>
                 <div>
                   <div className="prediction-stat-label">Średnia miesięczna</div>
-                  <div className="mono" style={{ fontSize:16, fontWeight:700, color:$.ink0, marginTop:4 }}>
+                  <div className="mono pred-meta-val color-ink0">
                     {convertAmt(prediction.avg, currency)} {sym}
                   </div>
                 </div>
                 <div>
                   <div className="prediction-stat-label">Zmiana vs śr.</div>
-                  <div className="mono" style={{ fontSize:16, fontWeight:700, color: prediction.predicted > prediction.avg ? $.red : $.green, marginTop:4 }}>
+                  <div className="mono pred-meta-val" style={{ color: prediction.predicted > prediction.avg ? $.red : $.green }}>
                     {prediction.predicted > prediction.avg ? "+" : ""}{convertAmt(prediction.predicted - prediction.avg, currency)} {sym}
                   </div>
                 </div>
@@ -3005,7 +2618,7 @@ function PredictionView({ receipts, currency }) {
           )}
 
           {/* Bar chart - history + prediction */}
-          <div className="card au1" style={{ padding: "24px" }}>
+          <div className="card au1 card--p24" style={{ padding: "24px" }}>
             <div className="section-heading mb-20">
               Historia + prognoza
             </div>
@@ -3015,8 +2628,7 @@ function PredictionView({ receipts, currency }) {
                 return (
                   <div key={m.key} className="pred-bar-col">
                     <span className="mono pred-bar-amt">{convertAmt(m.total, currency)}</span>
-                    <div style={{ width:"100%", height:h, background:"rgba(6,193,103,0.25)", borderRadius:"6px 6px 0 0",
-                      transition:`height .7s cubic-bezier(.16,1,.3,1) ${i*.05}s` }} />
+                    <div className="pred-bar pred-bar--history" style={{ height: h, transition: `height .7s cubic-bezier(.16,1,.3,1) ${i*.05}s` }} />
                     <span className="pred-bar-label">{m.label}</span>
                   </div>
                 );
@@ -3024,12 +2636,9 @@ function PredictionView({ receipts, currency }) {
               {/* Prediction bar */}
               {prediction && (
                 <div className="pred-bar-col">
-                  <span className="mono" style={{ fontSize:10, color:$.green, fontWeight:700 }}>{convertAmt(prediction.predicted, currency)}</span>
-                  <div style={{ width:"100%", height: Math.max(8,(prediction.predicted/maxBar)*100),
-                    background:$.green, borderRadius:"6px 6px 0 0", opacity:0.7,
-                    border:`2px dashed ${$.green}`, boxSizing:"border-box",
-                    transition:"height .7s cubic-bezier(.16,1,.3,1) .35s" }} />
-                  <span style={{ fontSize:10, color:$.green, fontWeight:700 }}>{nextMonth} ✦</span>
+                  <span className="mono pred-bar-label color-green fw-700">{convertAmt(prediction.predicted, currency)}</span>
+                  <div className="pred-bar pred-bar--future" style={{ height: Math.max(8,(prediction.predicted/maxBar)*100) }} />
+                  <span className="pred-bar-label color-green fw-700">{nextMonth} ✦</span>
                 </div>
               )}
             </div>
@@ -3049,7 +2658,7 @@ function PredictionView({ receipts, currency }) {
                     <div className="pred-cat-bar">
                       <div className="pred-cat-fill" style={{ width:`${cp.pct}%`, background:cp.color }} />
                     </div>
-                    <span className="mono" style={{ fontSize:12, color:$.ink2, width:80, textAlign:"right", flexShrink:0 }}>
+                    <span className="mono fs-12 color-ink2 text-right flex-shrink-0" style={{ width: 80 }}>
                       {convertAmt(cp.v, currency)} {sym}
                     </span>
                   </div>
@@ -3238,8 +2847,7 @@ function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, cus
                   onTextReceipt(textVal.trim());
                 }}
                 disabled={!textVal.trim()}
-                style={{ width:"100%", justifyContent:"center", minHeight:52, fontSize:16, marginTop:14,
-                  opacity: textVal.trim() ? 1 : 0.4 }}
+                style={{ width: "100%", justifyContent: "center", minHeight: 52, fontSize: 16, marginTop: 14, opacity: textVal.trim() ? 1 : 0.4 }}
                 aria-label="Analizuj z AI">
                 Analizuj z AI
               </button>
@@ -3254,8 +2862,8 @@ function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, cus
                     onClick={() => setType(t.id)} aria-pressed={type === t.id}>
                     <div className="tb-icon">{t.icon}</div>
                     <div>
-                      <div className="fw-700" style={{ fontSize: 14, color: type===t.id ? $.green : $.ink0, letterSpacing: "-.01em" }}>{t.label}</div>
-                      <div style={{ fontSize: 11, color: $.ink3, marginTop: 1 }}>{t.sub}</div>
+                      <div className="fw-700 qa-type-label" style={{ color: type===t.id ? $.green : $.ink0 }}>{t.label}</div>
+                      <div className="qa-type-sub">{t.sub}</div>
                     </div>
                   </button>
                 ))}
@@ -3329,7 +2937,7 @@ function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, cus
               <div className="mb-14">
                 <div className="field-label mb-8">Kategoria</div>
                 {/* Group tabs */}
-                <div className="pills-row" style={{ marginBottom: 10 }} role="group" aria-label="Grupa kategorii">
+                <div className="pills-row mb-10" role="group" aria-label="Grupa kategorii">
                   {allCatGroups.map(([grp]) => (
                     <button key={grp} className={`pill${catGroup===grp?" on":""}`} onClick={() => setCatGroup(grp)} aria-pressed={catGroup===grp}>{grp}</button>
                   ))}
@@ -3367,7 +2975,7 @@ function QuickAddExpense({ onAdd, onClose, onTextReceipt, apiKey, onNeedKey, cus
               {/* Submit */}
               <button className="btn-primary" onClick={submit}
                 disabled={!name.trim() || !parseFloat(amount)}
-                style={{ width:"100%", justifyContent:"center", minHeight:52, fontSize:16, opacity: name.trim() && parseFloat(amount) ? 1 : 0.4 }}
+                style={{ width: "100%", justifyContent: "center", minHeight: 52, fontSize: 16, opacity: name.trim() && parseFloat(amount) ? 1 : 0.4 }}
                 aria-label="Dodaj wydatek">
                 {type==="recurring" ? "🔄 Dodaj cykliczny" : "✦ Dodaj wydatek"}
               </button>
@@ -3450,7 +3058,7 @@ function ExpensesView({ expenses, receipts, recurring = [], onDelete, currency }
               <div className="stat-card" key={s.l}>
                 <div className="stat-label">{s.l}</div>
                 <div className="stat-val" style={{ color:s.col }}>
-                  {s.v}<span style={{ fontSize:15, color:$.ink3, marginLeft:3 }}>{s.u}</span>
+                  {s.v}<span className="stat-unit-sm">{s.u}</span>
                 </div>
               </div>
             ))}
@@ -3460,9 +3068,9 @@ function ExpensesView({ expenses, receipts, recurring = [], onDelete, currency }
           <div className="au1 flex-col gap-10">
             <div className="onboard-btns">
               <input className="field" value={q} onChange={e=>setQ(e.target.value)}
-                placeholder="Szukaj wydatku…" style={{ flex:1 }} />
+                placeholder="Szukaj wydatku…" style={{ flex: 1 }} />
               <select className="field" value={sort} onChange={e=>setSort(e.target.value)}
-                style={{ width:"auto", flex:"none", minWidth:130, cursor:"pointer" }}
+                style={{ width: "auto", flex: "none", minWidth: 130, cursor: "pointer" }}
                 aria-label="Sortuj">
                 <option value="date">Data ↓</option>
                 <option value="amount">Kwota ↓</option>
@@ -3491,11 +3099,11 @@ function ExpensesView({ expenses, receipts, recurring = [], onDelete, currency }
             {/* Date filter */}
             <div className="date-filter-row">
               <label className="date-label">Od:</label>
-              <input className="field" type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{ flex:1, minWidth:130 }} />
+              <input className="field" type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} style={{ flex: 1, minWidth: 130 }} />
               <label className="date-label">Do:</label>
-              <input className="field" type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{ flex:1, minWidth:130 }} />
+              <input className="field" type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} style={{ flex: 1, minWidth: 130 }} />
               {(dateFrom || dateTo) && (
-                <button className="pill" onClick={()=>{ setDateFrom(""); setDateTo(""); }} style={{ whiteSpace:"nowrap" }}>✕ Wyczyść</button>
+                <button className="pill nowrap" onClick={()=>{ setDateFrom(""); setDateTo(""); }}>✕ Wyczyść</button>
               )}
             </div>
           </div>
@@ -3509,16 +3117,7 @@ function ExpensesView({ expenses, receipts, recurring = [], onDelete, currency }
                 const isOpen = expanded === i;
                 return (
                   <div key={i} onClick={() => setExpanded(isOpen ? null : i)}
-                    style={{
-                      background: $.glass,
-                      backdropFilter: "blur(24px) saturate(180%)",
-                      WebkitBackdropFilter: "blur(24px) saturate(180%)",
-                      border: "1px solid rgba(255,255,255,0.72)",
-                      borderRadius: 16, padding: "14px 18px",
-                      cursor: "pointer",
-                      boxShadow: "0 2px 12px rgba(0,0,0,0.05)",
-                      transition: "all .2s ease",
-                    }}>
+                    className="glass-card cursor-pointer">
 
                     {/* Collapsed row */}
                     <div className="expense-row">
@@ -3532,14 +3131,14 @@ function ExpensesView({ expenses, receipts, recurring = [], onDelete, currency }
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <span className="mono" style={{ fontWeight:600, fontSize:15 }}>
+                        <span className="mono fw-600 fs-15">
                           {convertAmt(item.total_price||0, currency)} {sym}
                         </span>
                         {item.discount > 0 && (
-                          <div style={{ fontSize:11, color:$.red, fontWeight:600 }}>−{convertAmt(item.discount, currency)}</div>
+                          <div className="discount-label color-red fw-600">−{convertAmt(item.discount, currency)}</div>
                         )}
                       </div>
-                      <span style={{ fontSize:12, color:$.ink3, transition:"transform .2s", transform: isOpen ? "rotate(180deg)" : "rotate(0)", flexShrink:0 }}>▼</span>
+                      <span className={`expand-chevron${isOpen ? " expand-chevron--open" : ""}`}>▼</span>
                     </div>
 
                     {/* Expanded details */}
@@ -3556,7 +3155,7 @@ function ExpensesView({ expenses, receipts, recurring = [], onDelete, currency }
                         {item.store && <div><span className="detail-label">Sklep:</span> {item.store}</div>}
                         {item.quantity && <div><span className="detail-label">Ilość:</span> {item.quantity}{item.unit ? ` ${item.unit}` : ""}</div>}
                         {item.unit_price && <div><span className="detail-label">Cena jedn.:</span> {convertAmt(item.unit_price, currency)} {sym}</div>}
-                        {item.discount > 0 && <div style={{ color:$.red }}><span>Zniżka:</span> −{convertAmt(item.discount, currency)} {sym}</div>}
+                        {item.discount > 0 && <div className="color-red"><span>Zniżka:</span> −{convertAmt(item.discount, currency)} {sym}</div>}
                         {item.note && <div className="detail-full" style={{ color:$.ink2 }}><span className="detail-label">Notatka:</span> {item.note}</div>}
                         {item.source==="manual" && (
                           <div className="detail-full" style={{ marginTop: 4 }}>
