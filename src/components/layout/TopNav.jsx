@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "../../firebase";
 import { VIEWS } from "../../config/constants";
@@ -8,11 +9,18 @@ export default function TopNav({ view, go, onAddExpense, onApiKey }) {
   const { receipts, currency, setCurrency, apiKey, darkMode, setDarkMode, allItems } = useAppData();
   const totalItems = allItems.length;
   const currentView = VIEWS.find(v => v.id === view);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const navigate = (id) => {
+    go(id);
+    setMenuOpen(false);
+  };
+
   return (
     <header>
       <nav className="topnav" aria-label="Nawigacja główna">
         {/* Logo */}
-        <a href="#" className="topnav-logo" onClick={e => { e.preventDefault(); go("receipts"); }} aria-label="MaszkaApp — strona główna">
+        <a href="#" className="topnav-logo" onClick={e => { e.preventDefault(); navigate("receipts"); }} aria-label="MaszkaApp — strona główna">
           <div className="topnav-logo-dot" aria-hidden="true" />
           MaszkaApp
         </a>
@@ -76,9 +84,52 @@ export default function TopNav({ view, go, onAddExpense, onApiKey }) {
           🚪
         </button>
 
+        {/* Mobile: hamburger button */}
+        <button
+          className={`hamburger-btn${menuOpen ? " open" : ""}`}
+          onClick={() => { setMenuOpen(o => !o); haptic(8); }}
+          aria-label={menuOpen ? "Zamknij menu" : "Otwórz menu"}
+          aria-expanded={menuOpen}
+        >
+          <span className="hamburger-line" />
+          <span className="hamburger-line" />
+          <span className="hamburger-line" />
+        </button>
+
         {/* Mobile: centered title */}
         <span className="topnav-mobile-title" aria-hidden="true">{currentView?.label}</span>
       </nav>
+
+      {/* Mobile slide-down menu */}
+      {menuOpen && (
+        <div className="mobile-menu-backdrop" onClick={() => setMenuOpen(false)}>
+          <div className="mobile-menu" onClick={e => e.stopPropagation()}>
+            <div className="mobile-menu-grid">
+              {VIEWS.map(v => (
+                <button
+                  key={v.id}
+                  className={`mobile-menu-item${view === v.id ? " active" : ""}`}
+                  onClick={() => navigate(v.id)}
+                >
+                  <span className="mobile-menu-icon">{v.icon}</span>
+                  <span className="mobile-menu-label">{v.label}</span>
+                </button>
+              ))}
+            </div>
+            <div className="mobile-menu-footer">
+              <div className="cur-toggle" role="group" aria-label="Waluta">
+                {["PLN","EUR","USD"].map(c => (
+                  <button key={c} className={`cur-btn${currency === c ? " active" : ""}`}
+                    onClick={() => setCurrency(c)} aria-pressed={currency === c}>{c}</button>
+                ))}
+              </div>
+              <button className="mobile-menu-action" onClick={() => { onAddExpense(); setMenuOpen(false); haptic(12); }}>
+                + Dodaj wydatek
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
