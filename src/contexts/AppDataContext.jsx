@@ -300,10 +300,11 @@ export function AppDataProvider({ uid, children }) {
       const parsed = await parseTextReceiptAPI(text, apiKey, getCorrectionsHint(getCorrections()));
       // AI may return an array of receipts (multiple orders) or a single object
       const receiptsArray = Array.isArray(parsed) ? parsed : [parsed];
+      const batchId = receiptsArray.length > 1 ? Date.now() + "_batch" : null;
       for (let i = 0; i < receiptsArray.length; i++) {
         const receiptId = Date.now() + Math.random() + i;
         const corrected = applyLearnedCorrections(receiptsArray[i]);
-        setReviewQueue(q => [...q, { ...corrected, id: receiptId, _original: receiptsArray[i] }]);
+        setReviewQueue(q => [...q, { ...corrected, id: receiptId, _original: receiptsArray[i], ...(batchId ? { _batchId: batchId } : {}) }]);
       }
       haptic(30);
     } catch (e) {
@@ -319,7 +320,7 @@ export function AppDataProvider({ uid, children }) {
       if (current._original) {
         learnFromCorrections(current._original, reviewed);
       }
-      const { _original, ...rest } = current;
+      const { _original, _batchId, ...rest } = current;
       const saved = ensureCity({ ...reviewed, id: rest.id });
       // Preserve source from queue item (e.g. "manual" for hand-entered receipts)
       if (current.source) saved.source = current.source;

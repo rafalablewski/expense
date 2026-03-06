@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { haptic } from "./utils/helpers";
 import { useAppData } from "./contexts/AppDataContext";
 import ReceiptReviewModal from "./components/modals/ReceiptReviewModal";
+import BatchSelectModal from "./components/modals/BatchSelectModal";
 import OnboardingOverlay from "./components/modals/OnboardingOverlay";
 import QuickAddExpense from "./components/modals/QuickAddExpense";
 import ApiKeyModal from "./components/modals/ApiKeyModal";
@@ -81,14 +82,41 @@ export default function App() {
         />
       )}
 
-      {reviewQueue.length > 0 && (
-        <ReceiptReviewModal
-          key={reviewQueue[0].id}
-          receipt={reviewQueue[0]}
-          onConfirm={confirmReceipt}
-          onCancel={cancelReceipt}
-        />
-      )}
+      {reviewQueue.length > 0 && (() => {
+        const first = reviewQueue[0];
+        const batchId = first._batchId;
+        // Show batch selection when there are multiple receipts from the same parse
+        if (batchId) {
+          const batchItems = reviewQueue.filter(r => r._batchId === batchId);
+          if (batchItems.length > 1) {
+            return (
+              <BatchSelectModal
+                key={batchId}
+                receipts={batchItems}
+                onConfirm={(selectedIds) => {
+                  // Remove unselected, clear _batchId on selected so they proceed to individual review
+                  setReviewQueue(q => q
+                    .filter(r => r._batchId !== batchId || selectedIds.has(r.id))
+                    .map(r => r._batchId === batchId ? { ...r, _batchId: null } : r)
+                  );
+                }}
+                onCancel={() => {
+                  // Remove entire batch
+                  setReviewQueue(q => q.filter(r => r._batchId !== batchId));
+                }}
+              />
+            );
+          }
+        }
+        return (
+          <ReceiptReviewModal
+            key={first.id}
+            receipt={first}
+            onConfirm={confirmReceipt}
+            onCancel={cancelReceipt}
+          />
+        );
+      })()}
 
       {showKeyModal && <ApiKeyModal onClose={() => setShowKeyModal(false)} />}
 
