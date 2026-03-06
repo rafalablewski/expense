@@ -344,7 +344,7 @@ export default function StatsView() {
             {totalSaved > 0 && (
               <InsightCard
                 icon="✦"
-                title={`Zaoszczędziłeś ${savePct}% dzięki rabatom`}
+                title={`Zaoszczędziłeś ${savePct}% dzięki rabatom, promocjom lub darmowej dostawie`}
                 sub={`${convertAmt(totalSaved, currency)} ${sym} zaoszczędzono na ${filteredReceipts.length} paragonach`}
                 accent={true}
               />

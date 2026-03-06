@@ -150,7 +150,7 @@ export default function DashboardView({ go }) {
                 <span className="widget-unit">{sym}</span>
               </div>
               <div className="widget-desc">
-                dzięki rabatom i promocjom
+                dzięki rabatom, promocjom lub darmowej dostawie
               </div>
             </div>
           </div>
