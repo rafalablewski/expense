@@ -15,6 +15,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     date: receipt.date || new Date().toISOString().slice(0, 10),
     total: receipt.total ?? 0,
     total_discounts: receipt.total_discounts ?? 0,
+    delivery_cost: receipt.delivery_cost ?? "",
     items: (receipt.items || []).map((it, i) => ({ ...it, _key: i })),
   }));
   const [expandedItem, setExpandedItem] = useState(null);
@@ -63,9 +64,11 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
   const warnings = useMemo(() => {
     const w = [];
     const itemsSum = data.items.reduce((s, it) => s + (parseFloat(it.total_price) || 0), 0);
+    const delivery = parseFloat(data.delivery_cost) || 0;
+    const itemsPlusDelivery = itemsSum + delivery;
     const total = parseFloat(data.total) || 0;
-    if (Math.abs(total - itemsSum) > 0.01) {
-      w.push(`Suma (${total.toFixed(2)}) nie zgadza się z sumą pozycji (${itemsSum.toFixed(2)})`);
+    if (Math.abs(total - itemsPlusDelivery) > 0.01) {
+      w.push(`Suma (${total.toFixed(2)}) nie zgadza się z sumą pozycji${delivery ? " + dostawa" : ""} (${itemsPlusDelivery.toFixed(2)})`);
     }
     data.items.forEach((it, idx) => {
       const up = parseFloat(it.unit_price);
@@ -88,6 +91,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
       ...data,
       total: parseFloat(data.total) || 0,
       total_discounts: parseFloat(data.total_discounts) || 0,
+      delivery_cost: parseFloat(data.delivery_cost) || null,
       items: data.items.map(({ _key, _suggestions, ...it }) => ({
         ...it,
         quantity: parseFloat(it.quantity) || 1,
@@ -142,6 +146,11 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
               <label className="rv-lbl" htmlFor="rv-discounts">Zniżki</label>
               <input id="rv-discounts" className="field field--text-right" type="number" step="0.01" value={data.total_discounts || 0}
                 onChange={e => updateField("total_discounts", e.target.value)} placeholder="0.00" />
+            </div>
+            <div>
+              <label className="rv-lbl" htmlFor="rv-delivery">Dostawa</label>
+              <input id="rv-delivery" className="field field--text-right" type="number" step="0.01" value={data.delivery_cost}
+                onChange={e => updateField("delivery_cost", e.target.value)} placeholder="0.00" />
             </div>
           </div>
 

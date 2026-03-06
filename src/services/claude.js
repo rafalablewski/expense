@@ -40,7 +40,8 @@ export async function scanReceipt(b64, mt, apiKey, correctionsHint = "") {
     }
   ],
   "total": number | null,
-  "total_discounts": number | null
+  "total_discounts": number | null,
+  "delivery_cost": number | null
 }
 
 Rules:
@@ -48,6 +49,7 @@ Rules:
 - address: Extract the store's street address from the receipt header (e.g. "ul. Warszawska 15"). Return null if not found.
 - zip_code: Extract the postal/zip code (e.g. "00-001"). Return null if not found.
 - city: Extract the city name from the receipt header (e.g. "Katowice", "Mikołów"). For e-commerce stores return null. Return null if not found.
+- delivery_cost: If there is a delivery/shipping fee (dostawa, przesyłka, kurier, wysyłka, shipping), extract it as a number. Return null if no delivery fee.
 - Product names: read carefully, expand abbreviations into readable Polish names (e.g. "PomidGustBel400g" → "Pomidory Gusto Bello 400g").
 - Categorize food products correctly: tomatoes/vegetables → "Warzywa", fruits → "Owoce", etc.
 - Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.
@@ -80,8 +82,12 @@ export async function parseTextReceipt(text, apiKey, correctionsHint = "") {
       max_tokens: 8192,
       messages: [{
         role: "user",
-        content: `Parse the following Polish text into structured JSON. The text may be either a full receipt (paragon fiskalny) or a simple shopping list. Respond with ONLY raw JSON — no markdown, no backticks, no commentary.
+        content: `Parse the following Polish text into structured JSON. The text may be either a full receipt (paragon fiskalny), a simple shopping list, or MULTIPLE orders/receipts pasted together. Respond with ONLY raw JSON — no markdown, no backticks, no commentary.
 
+If the text contains MULTIPLE separate orders/receipts (e.g. from different shops, different order confirmations, different dates), return a JSON ARRAY of receipt objects.
+If the text contains a SINGLE receipt or shopping list, return a single JSON object (NOT wrapped in an array).
+
+Each receipt object has this schema:
 {
   "store": string | null,
   "address": string | null,
@@ -101,11 +107,13 @@ export async function parseTextReceipt(text, apiKey, correctionsHint = "") {
     }
   ],
   "total": number | null,
-  "total_discounts": number | null
+  "total_discounts": number | null,
+  "delivery_cost": number | null
 }
 
 Rules:
-- The text can be a FULL RECEIPT (paragon fiskalny) or a simple shopping list. Detect the format automatically.
+- The text can be a FULL RECEIPT (paragon fiskalny), a simple shopping list, or MULTIPLE orders/receipts. Detect the format automatically.
+- If there are multiple separate orders (different shops, different order numbers, different confirmation emails), split them into separate receipt objects and return as a JSON array.
 - For FULL RECEIPTS (containing store headers, NIP, product codes, tax summaries, payment info):
   * Extract store name, address, zip_code, city from the receipt header.
   * date MUST be in YYYY-MM-DD format. Extract from receipt header/footer (e.g. "2026-03-04 14:15" → "2026-03-04"). NEVER return null for date.
@@ -121,6 +129,7 @@ Rules:
   * If price is missing, set total_price to 0.
   * If no date is found, use today: "${new Date().toISOString().slice(0, 10)}".
   * "total" = sum of all total_price values.
+- delivery_cost: If there is a delivery/shipping fee (dostawa, przesyłka, kurier, wysyłka, shipping, transport zamówienia), extract it as a number. Do NOT add delivery as an item — use the delivery_cost field instead. Return null if no delivery fee.
 - Calculate unit_price = total_price / quantity when both are known.
 - Categorize products into the correct Polish category.
 - Prices = plain numbers (4.99). Use dot as decimal separator. Discounts = positive numbers. Missing qty = 1.

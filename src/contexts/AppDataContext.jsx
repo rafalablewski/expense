@@ -298,8 +298,13 @@ export function AppDataProvider({ uid, children }) {
     setProcessing(p => [...p, { id, name: "Analiza tekstu..." }]);
     try {
       const parsed = await parseTextReceiptAPI(text, apiKey, getCorrectionsHint(getCorrections()));
-      const corrected = applyLearnedCorrections(parsed);
-      setReviewQueue(q => [...q, { ...corrected, id, _original: parsed }]);
+      // AI may return an array of receipts (multiple orders) or a single object
+      const receiptsArray = Array.isArray(parsed) ? parsed : [parsed];
+      for (let i = 0; i < receiptsArray.length; i++) {
+        const receiptId = Date.now() + Math.random() + i;
+        const corrected = applyLearnedCorrections(receiptsArray[i]);
+        setReviewQueue(q => [...q, { ...corrected, id: receiptId, _original: receiptsArray[i] }]);
+      }
       haptic(30);
     } catch (e) {
       setErrors(p => [...p, `Tekst: ${e.message}`]);

@@ -48,6 +48,7 @@ export default function App() {
       date: new Date().toISOString().slice(0, 10),
       total: 0,
       total_discounts: 0,
+      delivery_cost: null,
       items: [{ name: "", quantity: 1, unit: null, unit_price: 0, total_price: 0, discount: null, discount_label: null, category: "Inne" }],
     }]);
   };

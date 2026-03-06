@@ -22,7 +22,9 @@ export function haptic(ms = 10) {
 
 export function sumReceiptItems(receipt) {
   if (!receipt?.items?.length) return parseFloat(receipt?.total) || 0;
-  return receipt.items.reduce((s, it) => s + (parseFloat(it.total_price) || 0), 0);
+  const itemsSum = receipt.items.reduce((s, it) => s + (parseFloat(it.total_price) || 0), 0);
+  const delivery = parseFloat(receipt.delivery_cost) || 0;
+  return itemsSum + delivery;
 }
 
 export function toMonthly(item) {
