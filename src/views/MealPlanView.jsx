@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { haptic } from "../utils/helpers";
 import Spinner from "../components/primitives/Spinner";
 import { useAppData } from "../contexts/AppDataContext";
+import { claudeChat } from "../services/claude";
 
 export default function MealPlanView() {
   const { receipts, apiKey } = useAppData();
@@ -26,26 +27,7 @@ export default function MealPlanView() {
     )].slice(0, 40);
   }, [receipts]);
 
-  const callClaude = async (prompt) => {
-    if (!apiKey) throw new Error("Brak klucza API");
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1024,
-        messages: [{ role: "user", content: prompt }],
-      })
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const d = await res.json();
-    return d.content?.find(b => b.type === "text")?.text || "";
-  };
+  const callClaude = (prompt) => claudeChat(prompt, apiKey);
 
   const generateCell = async (day, meal) => {
     const key = `${day}-${meal}`;

@@ -1,17 +1,56 @@
 // Claude API integration for receipt scanning and text parsing
 
+const API_URL = "https://api.anthropic.com/v1/messages";
+const MODEL = "claude-sonnet-4-20250514";
+
+function apiHeaders(apiKey) {
+  return {
+    "Content-Type": "application/json",
+    "x-api-key": apiKey,
+    "anthropic-version": "2023-06-01",
+    "anthropic-dangerous-direct-browser-access": "true",
+  };
+}
+
+async function handleApiResponse(res) {
+  if (res.ok) return;
+  if (res.status === 401) throw new Error("Nieprawidłowy klucz API — sprawdź lub zaktualizuj klucz w ustawieniach (ikona klucza)");
+  throw new Error(`HTTP ${res.status}`);
+}
+
+function extractText(data) {
+  return data.content?.find(b => b.type === "text")?.text || "";
+}
+
+function parseJsonResponse(data) {
+  const raw = extractText(data);
+  return JSON.parse(raw.replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\`\`\`\s*$/i, "").trim());
+}
+
+export async function claudeChat(prompt, apiKey, maxTokens = 1024) {
+  if (!apiKey) throw new Error("Brak klucza API — ustaw go w ustawieniach (ikona klucza)");
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: apiHeaders(apiKey),
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: maxTokens,
+      messages: [{ role: "user", content: prompt }],
+    })
+  });
+  await handleApiResponse(res);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || "API error");
+  return extractText(data);
+}
+
 export async function scanReceipt(b64, mt, apiKey, correctionsHint = "") {
   if (!apiKey) throw new Error("Brak klucza API — ustaw go w ustawieniach (ikona klucza)");
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch(API_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
+    headers: apiHeaders(apiKey),
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: MODEL,
       max_tokens: 8192,
       messages: [{
         role: "user",
@@ -64,25 +103,19 @@ Rules:
       }]
     })
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  await handleApiResponse(res);
   const data = await res.json();
   if (data.error) throw new Error(data.error.message || "API error");
-  const raw = data.content?.find(b => b.type === "text")?.text || "";
-  return JSON.parse(raw.replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\`\`\`\s*$/i, "").trim());
+  return parseJsonResponse(data);
 }
 
 export async function parseTextReceipt(text, apiKey, correctionsHint = "") {
   if (!apiKey) throw new Error("Brak klucza API — ustaw go w ustawieniach (ikona klucza)");
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetch(API_URL, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
+    headers: apiHeaders(apiKey),
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: MODEL,
       max_tokens: 8192,
       messages: [{
         role: "user",
@@ -161,11 +194,10 @@ ${text}`
       }]
     })
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  await handleApiResponse(res);
   const data = await res.json();
   if (data.error) throw new Error(data.error.message || "API error");
-  const raw = data.content?.find(b => b.type === "text")?.text || "";
-  return JSON.parse(raw.replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\`\`\`\s*$/i, "").trim());
+  return parseJsonResponse(data);
 }
 
 export function getCorrectionsHint(corrections) {
