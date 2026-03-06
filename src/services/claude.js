@@ -64,7 +64,10 @@ Rules:
       }]
     })
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    if (res.status === 401) throw new Error("Nieprawidłowy klucz API — sprawdź lub zaktualizuj klucz w ustawieniach (ikona klucza)");
+    throw new Error(`HTTP ${res.status}`);
+  }
   const data = await res.json();
   if (data.error) throw new Error(data.error.message || "API error");
   const raw = data.content?.find(b => b.type === "text")?.text || "";
@@ -161,7 +164,10 @@ ${text}`
       }]
     })
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    if (res.status === 401) throw new Error("Nieprawidłowy klucz API — sprawdź lub zaktualizuj klucz w ustawieniach (ikona klucza)");
+    throw new Error(`HTTP ${res.status}`);
+  }
   const data = await res.json();
   if (data.error) throw new Error(data.error.message || "API error");
   const raw = data.content?.find(b => b.type === "text")?.text || "";

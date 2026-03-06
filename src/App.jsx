@@ -79,7 +79,7 @@ export default function App() {
           onClose={() => setShowQA(false)}
           onManualEntry={() => openManualEntry()}
           onNeedKey={() => setShowKeyModal(true)}
-          onTextReceipt={(text) => { setShowQA(false); processTextReceipt(text); }}
+          onTextReceipt={(text) => { setShowQA(false); processTextReceipt(text, () => setShowKeyModal(true)); }}
         />
       )}
 

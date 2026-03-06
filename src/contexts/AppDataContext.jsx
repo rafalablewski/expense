@@ -299,7 +299,12 @@ export function AppDataProvider({ uid, children }) {
     }
   }, [apiKey, processFiles]);
 
-  const processTextReceipt = useCallback(async (text) => {
+  const processTextReceipt = useCallback(async (text, onNeedKey) => {
+    if (!apiKey) {
+      if (onNeedKey) onNeedKey();
+      else setErrors(p => [...p, "Brak klucza API — ustaw go w ustawieniach (ikona klucza)"]);
+      return;
+    }
     const id = Date.now() + Math.random();
     setProcessing(p => [...p, { id, name: "Analiza tekstu..." }]);
     try {

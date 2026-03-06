@@ -42,7 +42,10 @@ export default function MealPlanView() {
         messages: [{ role: "user", content: prompt }],
       })
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      if (res.status === 401) throw new Error("Nieprawidłowy klucz API — sprawdź lub zaktualizuj klucz w ustawieniach (ikona klucza)");
+      throw new Error(`HTTP ${res.status}`);
+    }
     const d = await res.json();
     return d.content?.find(b => b.type === "text")?.text || "";
   };
