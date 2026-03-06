@@ -4,7 +4,7 @@ import { CAT_GROUPS, FX_SYMBOLS } from "../config/defaults";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import Zl from "../components/primitives/Zl";
-import { convertAmt, sumReceiptItems } from "../utils/helpers";
+import { convertAmt, receiptSavings, sumReceiptItems } from "../utils/helpers";
 import { useAppData } from "../contexts/AppDataContext";
 
 export default function ProductsView() {
@@ -19,7 +19,7 @@ export default function ProductsView() {
     (cat === "All" || i.category === cat)
   );
   const spent = receipts.reduce((s, r) => s + sumReceiptItems(r), 0);
-  const saved = receipts.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
+  const saved = receipts.reduce((s, r) => s + receiptSavings(r), 0);
 
   if (!receipts.length) return (
     <>

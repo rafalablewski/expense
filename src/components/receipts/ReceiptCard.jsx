@@ -4,14 +4,14 @@ import CatChip from '../primitives/CatChip';
 import ReceiptReviewModal from '../modals/ReceiptReviewModal';
 import { useAppData } from '../../contexts/AppDataContext';
 import { FX_SYMBOLS } from '../../config/defaults';
-import { convertAmt, sumReceiptItems } from '../../utils/helpers';
+import { convertAmt, receiptSavings, sumReceiptItems } from '../../utils/helpers';
 
 export default function ReceiptCard({ r, onDelete, onUpdate, delay = 0 }) {
   const { currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
-  const saved = parseFloat(r.total_discounts) || 0;
+  const saved = receiptSavings(r);
   const bid = `rc-${r.id}`;
   return (
     <>
@@ -92,6 +92,14 @@ export default function ReceiptCard({ r, onDelete, onUpdate, delay = 0 }) {
                 </tbody>
               </table>
             </div>
+            {parseFloat(r.delivery_cost) > 0 && (
+              <div className="receipt-delivery">
+                🚚 Dostawa: {r.delivery_free
+                  ? <><s className="delivery-strikethrough">{convertAmt(r.delivery_cost, currency)} {sym}</s> <span className="delivery-free-badge">darmowa</span></>
+                  : <>{convertAmt(r.delivery_cost, currency)} {sym}</>
+                }
+              </div>
+            )}
             <div className="receipt-footer">
               <button className="btn-secondary" onClick={() => setEditing(true)} aria-label={`Edytuj paragon ${r.store || "Paragon"}`}>
                 Edytuj

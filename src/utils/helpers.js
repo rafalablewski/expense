@@ -20,9 +20,18 @@ export function haptic(ms = 10) {
   try { navigator.vibrate && navigator.vibrate(ms); } catch(e) {}
 }
 
+// Total savings for a receipt: item discounts + free delivery cost
+export function receiptSavings(receipt) {
+  const discounts = parseFloat(receipt?.total_discounts) || 0;
+  const freeDelivery = (receipt?.delivery_free && receipt?.delivery_cost) ? (parseFloat(receipt.delivery_cost) || 0) : 0;
+  return discounts + freeDelivery;
+}
+
 export function sumReceiptItems(receipt) {
   if (!receipt?.items?.length) return parseFloat(receipt?.total) || 0;
-  return receipt.items.reduce((s, it) => s + (parseFloat(it.total_price) || 0), 0);
+  const itemsSum = receipt.items.reduce((s, it) => s + (parseFloat(it.total_price) || 0), 0);
+  const delivery = receipt.delivery_free ? 0 : (parseFloat(receipt.delivery_cost) || 0);
+  return itemsSum + delivery;
 }
 
 export function toMonthly(item) {

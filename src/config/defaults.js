@@ -11,12 +11,15 @@ export const CATS = {
   "Pieczywo":      "#D97706",
   "Zboża":         "#B45309",
   "Słodycze":      "#BE185D",
+  "Przyprawy":     "#A16207",
+  "Oleje":         "#CA8A04",
   "Chemia":        "#0891B2",
   // Bills & services
   "Paliwo":        "#F59E0B",
   "Subskrypcje":   "#7C3AED",
   "Restauracje":   "#EF4444",
   "Transport":     "#8B5CF6",
+  "Dostawa":       "#7E22CE",
   "Rozrywka":      "#F97316",
   // One-time purchases
   "Elektronika":   "#3B82F6",
@@ -39,14 +42,14 @@ export const CATS = {
 export const ALL_CATS = Object.keys(CATS);
 
 export const CAT_GROUPS = {
-  "Spożywcze":   ["Nabiał","Mięso","Warzywa","Owoce","Napoje","Pieczywo","Zboża","Słodycze","Chemia"],
-  "Rachunki":    ["Paliwo","Subskrypcje","Transport","Rozrywka","Restauracje"],
+  "Spożywcze":   ["Nabiał","Mięso","Warzywa","Owoce","Napoje","Pieczywo","Zboża","Słodycze","Przyprawy","Oleje","Chemia"],
+  "Rachunki":    ["Paliwo","Subskrypcje","Transport","Dostawa","Rozrywka","Restauracje"],
   "Jednorazowe": ["Elektronika","Odzież","Zdrowie","Narzędzia","Meble","AGD","Ogród","Zwierzęta","Podróże","Sport","Kosmetyki","Edukacja","Prezenty","Dom","Inne"],
 };
 
 export const CAT_ICONS = {
-  "Nabiał":"🥛","Mięso":"🥩","Warzywa":"🥦","Owoce":"🍎","Napoje":"🥤","Pieczywo":"🍞","Zboża":"🌾","Słodycze":"🍬","Chemia":"🧹",
-  "Paliwo":"⛽","Subskrypcje":"📱","Restauracje":"🍽️","Transport":"🚗","Rozrywka":"🎬",
+  "Nabiał":"🥛","Mięso":"🥩","Warzywa":"🥦","Owoce":"🍎","Napoje":"🥤","Pieczywo":"🍞","Zboża":"🌾","Słodycze":"🍬","Przyprawy":"🧂","Oleje":"🫒","Chemia":"🧹",
+  "Paliwo":"⛽","Subskrypcje":"📱","Restauracje":"🍽️","Transport":"🚗","Dostawa":"🚚","Rozrywka":"🎬",
   "Elektronika":"💻","Odzież":"👔","Zdrowie":"💊","Narzędzia":"🔧","Meble":"🛋️","AGD":"🫙",
   "Ogród":"🌿","Zwierzęta":"🐾","Podróże":"✈️","Sport":"🏃","Kosmetyki":"💄","Edukacja":"📚","Prezenty":"🎁","Dom":"🏠","Inne":"📦",
 };

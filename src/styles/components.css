@@ -903,6 +903,23 @@
   border-top: 1px solid rgba(255,255,255,0.45);
 }
 
+/* ── Receipt delivery ── */
+.receipt-delivery {
+  padding: 8px 20px;
+  font-size: 13px;
+  color: var(--c-ink2);
+  border-top: 1px dashed rgba(0,0,0,0.1);
+  text-align: right;
+}
+.delivery-strikethrough {
+  color: var(--c-ink3);
+  text-decoration: line-through;
+}
+.delivery-free-badge {
+  color: var(--c-green);
+  font-weight: 700;
+}
+
 /* ── Receipt card footer ── */
 .receipt-footer {
   padding: 14px 20px;

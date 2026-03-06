@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import $ from "../config/theme";
 import { FX_SYMBOLS } from "../config/defaults";
-import { convertAmt, parseDate, sumReceiptItems } from "../utils/helpers";
+import { convertAmt, parseDate, receiptSavings, sumReceiptItems } from "../utils/helpers";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import Zl from "../components/primitives/Zl";
@@ -47,7 +47,7 @@ export default function StoresView() {
       if (!map[key]) map[key] = { name: raw, visits: 0, total: 0, saved: 0, items: [], receipts: [], lastDate: null, locations: {}, cities: {} };
       map[key].visits++;
       map[key].total  += sumReceiptItems(r);
-      map[key].saved  += parseFloat(r.total_discounts) || 0;
+      map[key].saved  += receiptSavings(r);
       (r.items || []).forEach(it => map[key].items.push({ ...it, date: r.date }));
       map[key].receipts.push({ id: r.id, date: r.date, total: sumReceiptItems(r), itemCount: (r.items || []).length, address: r.address, zip_code: r.zip_code, city: r.city });
       if (r.city) map[key].cities[r.city] = (map[key].cities[r.city] || 0) + 1;

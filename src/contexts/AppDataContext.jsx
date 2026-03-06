@@ -225,9 +225,15 @@ export function AppDataProvider({ uid, children }) {
   // ── Computed ──
   const allItems = useMemo(() => {
     // Receipt items (scanned + manual) are the single source of truth
-    const receiptItems = receipts.flatMap(r =>
-      (r.items || []).map(it => ({ ...it, store: r.store, address: r.address, zip_code: r.zip_code, date: r.date, source: r.source || "receipt" }))
-    );
+    const receiptItems = receipts.flatMap(r => {
+      const items = (r.items || []).map(it => ({ ...it, store: r.store, address: r.address, zip_code: r.zip_code, date: r.date, source: r.source || "receipt" }));
+      // Inject delivery cost as a synthetic "Dostawa" category item for stats
+      const deliveryCost = !r.delivery_free ? (parseFloat(r.delivery_cost) || 0) : 0;
+      if (deliveryCost > 0) {
+        items.push({ name: "Dostawa", quantity: 1, unit: null, unit_price: deliveryCost, total_price: deliveryCost, discount: null, discount_label: null, category: "Dostawa", store: r.store, address: r.address, zip_code: r.zip_code, date: r.date, source: r.source || "receipt" });
+      }
+      return items;
+    });
     // Active recurring subscriptions as monthly items
     const recurringItems = recurring
       .filter(r => !r.paused || (r.pauseUntil && new Date().toISOString().slice(0, 10) >= r.pauseUntil))
@@ -298,8 +304,14 @@ export function AppDataProvider({ uid, children }) {
     setProcessing(p => [...p, { id, name: "Analiza tekstu..." }]);
     try {
       const parsed = await parseTextReceiptAPI(text, apiKey, getCorrectionsHint(getCorrections()));
-      const corrected = applyLearnedCorrections(parsed);
-      setReviewQueue(q => [...q, { ...corrected, id, _original: parsed }]);
+      // AI may return an array of receipts (multiple orders) or a single object
+      const receiptsArray = Array.isArray(parsed) ? parsed : [parsed];
+      const batchId = receiptsArray.length > 1 ? Date.now() + "_batch" : null;
+      for (let i = 0; i < receiptsArray.length; i++) {
+        const receiptId = Date.now() + Math.random() + i;
+        const corrected = applyLearnedCorrections(receiptsArray[i]);
+        setReviewQueue(q => [...q, { ...corrected, id: receiptId, _original: receiptsArray[i], ...(batchId ? { _batchId: batchId } : {}) }]);
+      }
       haptic(30);
     } catch (e) {
       setErrors(p => [...p, `Tekst: ${e.message}`]);
@@ -314,7 +326,7 @@ export function AppDataProvider({ uid, children }) {
       if (current._original) {
         learnFromCorrections(current._original, reviewed);
       }
-      const { _original, ...rest } = current;
+      const { _original, _batchId, ...rest } = current;
       const saved = ensureCity({ ...reviewed, id: rest.id });
       // Preserve source from queue item (e.g. "manual" for hand-entered receipts)
       if (current.source) saved.source = current.source;
