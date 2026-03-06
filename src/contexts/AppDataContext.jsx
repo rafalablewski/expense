@@ -7,6 +7,7 @@ import { initCorrections, getCorrections, learnFromCorrections, applyLearnedCorr
 import { haptic, sumReceiptItems, toMonthly } from "../utils/helpers";
 
 const AppDataContext = createContext(null);
+const deepEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 // Extract city from Polish address like "Radockiego 150, 40-645 Katowice"
 const extractCity = (addr) => {
@@ -134,14 +135,15 @@ export function AppDataProvider({ uid, children }) {
     // Deduplicate: skip migrated receipts whose id already exists in receipts
     const existingIds = new Set(existingReceipts.map(r => r.id));
     const newMigrated = migratedReceipts.filter(r => !existingIds.has(r.id));
-    setReceipts([...existingReceipts, ...newMigrated]);
-    setExpenses([]); // Clear old expenses — now migrated to receipts
-    setBudgets(d.budgets || {});
-    setRecurring(d.recurring || []);
-    setCustomStores(d.customStores || []);
-    setCurrency(d.currency || "PLN");
-    setDarkMode(d.darkMode || false);
-    setOnboarded(d.onboarded || false);
+    const newReceipts = [...existingReceipts, ...newMigrated];
+    setReceipts(prev => deepEqual(prev, newReceipts) ? prev : newReceipts);
+    setExpenses(prev => prev.length === 0 ? prev : []);
+    setBudgets(prev => deepEqual(prev, d.budgets || {}) ? prev : (d.budgets || {}));
+    setRecurring(prev => deepEqual(prev, d.recurring || []) ? prev : (d.recurring || []));
+    setCustomStores(prev => deepEqual(prev, d.customStores || []) ? prev : (d.customStores || []));
+    setCurrency(prev => prev === (d.currency || "PLN") ? prev : (d.currency || "PLN"));
+    setDarkMode(prev => prev === (d.darkMode || false) ? prev : (d.darkMode || false));
+    setOnboarded(prev => prev === (d.onboarded || false) ? prev : (d.onboarded || false));
     initCorrections(uid, d.corrections);
   }
 
@@ -150,13 +152,14 @@ export function AppDataProvider({ uid, children }) {
     if (dataLoaded && !loadFailed) initialLoadDone.current = true;
   }, [dataLoaded, loadFailed]);
 
-  const prevReceipts  = useRef(null);
-  const prevExpenses  = useRef(null);
-  const prevBudgets   = useRef(null);
-  const prevRecurring = useRef(null);
-  const prevCurrency  = useRef(null);
-  const prevDarkMode  = useRef(null);
-  const prevOnboarded = useRef(null);
+  const prevReceipts     = useRef(null);
+  const prevExpenses     = useRef(null);
+  const prevBudgets      = useRef(null);
+  const prevRecurring    = useRef(null);
+  const prevCustomStores = useRef(null);
+  const prevCurrency     = useRef(null);
+  const prevDarkMode     = useRef(null);
+  const prevOnboarded    = useRef(null);
 
   const guardedWrite = useCallback((field, value) => {
     pendingWrites.current++;
@@ -188,13 +191,19 @@ export function AppDataProvider({ uid, children }) {
     guardedWrite("budgets", budgets);
   }, [budgets]);
   useEffect(() => {
-    if (!initialLoadDone.current) return;
+    if (!initialLoadDone.current) {
+      if (recurring.length > 0) lsSet(LS_KEYS.recurring, recurring);
+      return;
+    }
     if (prevRecurring.current === null) { prevRecurring.current = recurring; return; }
     prevRecurring.current = recurring;
     guardedWrite("recurring", recurring);
+    lsSet(LS_KEYS.recurring, recurring);
   }, [recurring]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
+    if (prevCustomStores.current === null) { prevCustomStores.current = customStores; return; }
+    prevCustomStores.current = customStores;
     guardedWrite("customStores", customStores);
   }, [customStores]);
   useEffect(() => {
