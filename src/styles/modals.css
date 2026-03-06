@@ -181,6 +181,21 @@
   gap: 8px;
   margin-bottom: 12px;
 }
+.rv-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  cursor: pointer;
+}
+.rv-checkbox-row input[type="checkbox"] {
+  accent-color: var(--c-green);
+  cursor: pointer;
+}
+.rv-checkbox-label {
+  font-size: 11px;
+  color: var(--c-ink2);
+}
 .rv-item {
   background: rgba(255,255,255,0.40);
   border: 1px solid rgba(255,255,255,0.60);

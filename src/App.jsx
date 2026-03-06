@@ -50,6 +50,7 @@ export default function App() {
       total: 0,
       total_discounts: 0,
       delivery_cost: null,
+      delivery_free: false,
       items: [{ name: "", quantity: 1, unit: null, unit_price: 0, total_price: 0, discount: null, discount_label: null, category: "Inne" }],
     }]);
   };

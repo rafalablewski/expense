@@ -41,7 +41,8 @@ export async function scanReceipt(b64, mt, apiKey, correctionsHint = "") {
   ],
   "total": number | null,
   "total_discounts": number | null,
-  "delivery_cost": number | null
+  "delivery_cost": number | null,
+  "delivery_free": boolean
 }
 
 Rules:
@@ -49,7 +50,8 @@ Rules:
 - address: Extract the store's street address from the receipt header (e.g. "ul. Warszawska 15"). Return null if not found.
 - zip_code: Extract the postal/zip code (e.g. "00-001"). Return null if not found.
 - city: Extract the city name from the receipt header (e.g. "Katowice", "Mikołów"). For e-commerce stores return null. Return null if not found.
-- delivery_cost: If there is a delivery/shipping fee (dostawa, przesyłka, kurier, wysyłka, shipping), extract it as a number. Return null if no delivery fee.
+- delivery_cost: If there is a delivery/shipping fee (dostawa, przesyłka, kurier, wysyłka, shipping), extract the listed price as a number. Return null if no delivery fee.
+- delivery_free: Set to true if delivery is explicitly free or fully discounted (darmowa dostawa, free shipping, koszt 0 zł, delivery 0.00). When true, still set delivery_cost to the original listed fee if shown. Default false.
 - Product names: read carefully, expand abbreviations into readable Polish names (e.g. "PomidGustBel400g" → "Pomidory Gusto Bello 400g").
 - Categorize food products correctly: tomatoes/vegetables → "Warzywa", fruits → "Owoce", etc.
 - Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.
@@ -110,7 +112,8 @@ Each receipt object has this schema:
   ],
   "total": number | null,
   "total_discounts": number | null,
-  "delivery_cost": number | null
+  "delivery_cost": number | null,
+  "delivery_free": boolean
 }
 
 Rules:
@@ -131,7 +134,8 @@ Rules:
   * If price is missing, set total_price to 0.
   * If no date is found, use today: "${new Date().toISOString().slice(0, 10)}".
   * "total" = sum of all total_price values.
-- delivery_cost: If there is a delivery/shipping fee (dostawa, przesyłka, kurier, wysyłka, shipping, transport zamówienia), extract it as a number. Do NOT add delivery as an item — use the delivery_cost field instead. Return null if no delivery fee.
+- delivery_cost: If there is a delivery/shipping fee (dostawa, przesyłka, kurier, wysyłka, shipping, transport zamówienia), extract the listed price as a number. Do NOT add delivery as an item — use the delivery_cost field instead. Return null if no delivery fee.
+- delivery_free: Set to true if delivery is explicitly free or fully discounted (darmowa dostawa, free shipping, koszt 0 zł, delivery 0.00). When true, still set delivery_cost to the original listed fee if shown. Default false.
 - Calculate unit_price = total_price / quantity when both are known.
 - Categorize products into the correct Polish category.
 - Prices = plain numbers (4.99). Use dot as decimal separator. Discounts = positive numbers. Missing qty = 1.

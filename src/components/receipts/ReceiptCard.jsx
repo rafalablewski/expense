@@ -94,7 +94,10 @@ export default function ReceiptCard({ r, onDelete, onUpdate, delay = 0 }) {
             </div>
             {parseFloat(r.delivery_cost) > 0 && (
               <div className="receipt-delivery">
-                🚚 Dostawa: {convertAmt(r.delivery_cost, currency)} {sym}
+                🚚 Dostawa: {r.delivery_free
+                  ? <><s className="delivery-strikethrough">{convertAmt(r.delivery_cost, currency)} {sym}</s> <span className="delivery-free-badge">darmowa</span></>
+                  : <>{convertAmt(r.delivery_cost, currency)} {sym}</>
+                }
               </div>
             )}
             <div className="receipt-footer">

@@ -79,11 +79,11 @@ export default function BatchSelectModal({ receipts, onConfirm, onCancel }) {
                   {r.date || "Brak daty"}
                   {" · "}
                   {(r.items || []).length} produktów
-                  {r.delivery_cost > 0 && " · 🚚 dostawa"}
+                  {r.delivery_cost > 0 && (r.delivery_free ? " · 🚚 darmowa dostawa" : " · 🚚 dostawa")}
                 </div>
               </div>
               <div className="batch-item-total">
-                {((r.items || []).reduce((s, it) => s + (parseFloat(it.total_price) || 0), 0) + (parseFloat(r.delivery_cost) || 0)).toFixed(2)} zł
+                {((r.items || []).reduce((s, it) => s + (parseFloat(it.total_price) || 0), 0) + (r.delivery_free ? 0 : (parseFloat(r.delivery_cost) || 0))).toFixed(2)} zł
               </div>
             </label>
           ))}
