@@ -36,7 +36,13 @@ export default function DashboardView({ go }) {
     .map(([cat, bgt]) => ({ cat, spent: monthSpending[cat] || 0, budget: bgt, over: monthSpending[cat] > bgt }));
 
   // Monthly recurring total
-  const recurringMonthly = recurring.filter(r => !isRecurringPaused(r)).reduce((s, r) => s + toMonthly(r), 0);
+  const activeRecurring = recurring.filter(r => !isRecurringPaused(r));
+  const recurringMonthly = activeRecurring.reduce((s, r) => s + toMonthly(r), 0);
+
+  // This month's receipt items with "Subskrypcje" category (one-off subscription payments)
+  const monthSubReceipts = monthItems.filter(it => it.category === "Subskrypcje")
+    .reduce((s, it) => s + (parseFloat(it.total_price) || 0), 0);
+  const subscriptionsTotal = recurringMonthly + monthSubReceipts;
 
   // Filter allItems: exclude legacy expenses (duplicates of receipt data), optionally exclude recurring
   const filteredItems = useMemo(
@@ -131,11 +137,11 @@ export default function DashboardView({ go }) {
             <div className="widget">
               <div className="widget-label">Subskrypcje</div>
               <div className="widget-big color-ink0">
-                {convertAmt(recurringMonthly, currency)}
+                {convertAmt(subscriptionsTotal, currency)}
                 <span className="widget-unit">{sym}</span>
               </div>
               <div className="widget-desc">
-                {recurring.length} aktywnych subskrypcji
+                {activeRecurring.length} cyklicznych{monthSubReceipts > 0 ? ` + ${convertAmt(monthSubReceipts, currency)} ${sym} z paragonów` : ""} · {monthName}
               </div>
               <button onClick={() => go("recurring")} className="btn-link mt-12">
                 Zarządzaj →
