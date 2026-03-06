@@ -135,11 +135,36 @@ export function AppDataProvider({ uid, children }) {
     // Deduplicate: skip migrated receipts whose id already exists in receipts
     const existingIds = new Set(existingReceipts.map(r => r.id));
     const newMigrated = migratedReceipts.filter(r => !existingIds.has(r.id));
-    const newReceipts = [...existingReceipts, ...newMigrated];
-    setReceipts(prev => deepEqual(prev, newReceipts) ? prev : newReceipts);
+    let finalReceipts = [...existingReceipts, ...newMigrated];
+    const rec = d.recurring || [];
+
+    // One-time migration: move Netflix from receipts → recurring subscription
+    const hasNetflixRecurring = rec.some(r => /netflix/i.test(r.name));
+    if (!hasNetflixRecurring) {
+      const netflixItems = [];
+      finalReceipts = finalReceipts.map(r => {
+        const nf = (r.items || []).filter(it => /netflix/i.test(it.name));
+        const rest = (r.items || []).filter(it => !/netflix/i.test(it.name));
+        if (nf.length > 0) {
+          netflixItems.push(...nf);
+          if (rest.length === 0) return null; // remove entire receipt
+          return { ...r, items: rest, total: rest.reduce((s, it) => s + (parseFloat(it.total_price) || 0), 0) };
+        }
+        return r;
+      }).filter(Boolean);
+      if (netflixItems.length > 0) {
+        const amt = netflixItems.reduce((s, it) => s + (parseFloat(it.total_price) || 0), 0);
+        rec.push({ id: Date.now(), name: "Netflix", amount: amt, cycle: "Miesięcznie", category: "Subskrypcje", currency: "PLN" });
+        // Persist the migration
+        updateField(uid, "receipts", finalReceipts);
+        updateField(uid, "recurring", rec);
+      }
+    }
+
+    setReceipts(prev => deepEqual(prev, finalReceipts) ? prev : finalReceipts);
     setExpenses(prev => prev.length === 0 ? prev : []);
     setBudgets(prev => deepEqual(prev, d.budgets || {}) ? prev : (d.budgets || {}));
-    setRecurring(prev => deepEqual(prev, d.recurring || []) ? prev : (d.recurring || []));
+    setRecurring(prev => deepEqual(prev, rec) ? prev : rec);
     setCustomStores(prev => deepEqual(prev, d.customStores || []) ? prev : (d.customStores || []));
     setCurrency(prev => prev === (d.currency || "PLN") ? prev : (d.currency || "PLN"));
     setDarkMode(prev => prev === (d.darkMode || false) ? prev : (d.darkMode || false));
