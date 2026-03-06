@@ -36,7 +36,7 @@ export async function scanReceipt(b64, mt, apiKey, correctionsHint = "") {
       "total_price": number,
       "discount": number | null,
       "discount_label": string | null,
-      "category": "Nabiał"|"Mięso"|"Warzywa"|"Owoce"|"Napoje"|"Pieczywo"|"Zboża"|"Słodycze"|"Chemia"|"Paliwo"|"Subskrypcje"|"Restauracje"|"Transport"|"Rozrywka"|"Elektronika"|"Odzież"|"Zdrowie"|"Narzędzia"|"Meble"|"AGD"|"Ogród"|"Zwierzęta"|"Podróże"|"Sport"|"Kosmetyki"|"Edukacja"|"Prezenty"|"Dom"|"Inne"
+      "category": "Nabiał"|"Mięso"|"Warzywa"|"Owoce"|"Napoje"|"Pieczywo"|"Zboża"|"Słodycze"|"Przyprawy"|"Oleje"|"Chemia"|"Paliwo"|"Subskrypcje"|"Restauracje"|"Transport"|"Rozrywka"|"Elektronika"|"Odzież"|"Zdrowie"|"Narzędzia"|"Meble"|"AGD"|"Ogród"|"Zwierzęta"|"Podróże"|"Sport"|"Kosmetyki"|"Edukacja"|"Prezenty"|"Dom"|"Inne"
     }
   ],
   "total": number | null,
@@ -54,7 +54,9 @@ Rules:
 - Categorize food products correctly: tomatoes/vegetables → "Warzywa", fruits → "Owoce", etc.
 - Prices = plain numbers (4.99). Discounts = positive numbers. Missing qty = 1.
 - Grains, cereals, pasta, flour, rice (ryż, kasza, kasza pęczak, kasza jęczmienna, kasza gryczana, makaron, mąka, płatki) → category "Zboża". These are grain/carb products, NOT vegetables or bread.
-- Bread, rolls, buns, bagels (chleb, bułka, rogal, bajgiel) → category "Pieczywo".${correctionsHint}`
+- Bread, rolls, buns, bagels (chleb, bułka, rogal, bajgiel) → category "Pieczywo".
+- Spices, herbs, salt, pepper, seasoning (przyprawy, sól, pieprz, oregano, bazylia, curry, papryka mielona, cynamon, kurkuma) → category "Przyprawy".
+- Cooking oils, olive oil, vinegar (olej, oliwa, ocet, olej rzepakowy, olej kokosowy) → category "Oleje".${correctionsHint}`
           }
         ]
       }]
@@ -103,7 +105,7 @@ Each receipt object has this schema:
       "total_price": number,
       "discount": number | null,
       "discount_label": string | null,
-      "category": "Nabiał"|"Mięso"|"Warzywa"|"Owoce"|"Napoje"|"Pieczywo"|"Zboża"|"Słodycze"|"Chemia"|"Paliwo"|"Subskrypcje"|"Restauracje"|"Transport"|"Rozrywka"|"Elektronika"|"Odzież"|"Zdrowie"|"Narzędzia"|"Meble"|"AGD"|"Ogród"|"Zwierzęta"|"Podróże"|"Sport"|"Kosmetyki"|"Edukacja"|"Prezenty"|"Dom"|"Inne"
+      "category": "Nabiał"|"Mięso"|"Warzywa"|"Owoce"|"Napoje"|"Pieczywo"|"Zboża"|"Słodycze"|"Przyprawy"|"Oleje"|"Chemia"|"Paliwo"|"Subskrypcje"|"Restauracje"|"Transport"|"Rozrywka"|"Elektronika"|"Odzież"|"Zdrowie"|"Narzędzia"|"Meble"|"AGD"|"Ogród"|"Zwierzęta"|"Podróże"|"Sport"|"Kosmetyki"|"Edukacja"|"Prezenty"|"Dom"|"Inne"
     }
   ],
   "total": number | null,
@@ -138,7 +140,8 @@ Rules:
 - Meat products (mielone, filet, serce, wątroba, kurczak, wołowina, wieprzowina) → category "Mięso".
 - Dairy (ser, serek, mleko, jogurt, śmietana, masło) → category "Nabiał".
 - Sauces, ketchup, mustard, horseradish → category "Inne" (condiments).
-- Salt, sugar, spices → category "Inne".
+- Spices, herbs, salt, pepper, seasoning mixes (przyprawy, sól, pieprz, oregano, bazylia, curry, papryka mielona, cynamon, kurkuma, kminek, ziele angielskie) → category "Przyprawy".
+- Cooking oils, olive oil, vinegar (olej, oliwa, ocet, olej rzepakowy, olej kokosowy, olej słonecznikowy) → category "Oleje".
 - Chips, snacks → category "Słodycze".
 - Canned/dried legumes (fasola, ciecierzyca, soczewica) → category "Warzywa".${correctionsHint}
 
