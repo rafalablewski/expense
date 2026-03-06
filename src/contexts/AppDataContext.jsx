@@ -225,9 +225,15 @@ export function AppDataProvider({ uid, children }) {
   // ── Computed ──
   const allItems = useMemo(() => {
     // Receipt items (scanned + manual) are the single source of truth
-    const receiptItems = receipts.flatMap(r =>
-      (r.items || []).map(it => ({ ...it, store: r.store, address: r.address, zip_code: r.zip_code, date: r.date, source: r.source || "receipt" }))
-    );
+    const receiptItems = receipts.flatMap(r => {
+      const items = (r.items || []).map(it => ({ ...it, store: r.store, address: r.address, zip_code: r.zip_code, date: r.date, source: r.source || "receipt" }));
+      // Inject delivery cost as a synthetic "Dostawa" category item for stats
+      const deliveryCost = !r.delivery_free ? (parseFloat(r.delivery_cost) || 0) : 0;
+      if (deliveryCost > 0) {
+        items.push({ name: "Dostawa", quantity: 1, unit: null, unit_price: deliveryCost, total_price: deliveryCost, discount: null, discount_label: null, category: "Dostawa", store: r.store, address: r.address, zip_code: r.zip_code, date: r.date, source: r.source || "receipt" });
+      }
+      return items;
+    });
     // Active recurring subscriptions as monthly items
     const recurringItems = recurring
       .filter(r => !r.paused || (r.pauseUntil && new Date().toISOString().slice(0, 10) >= r.pauseUntil))
