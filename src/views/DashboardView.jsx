@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import $ from "../config/theme";
 import { FX_SYMBOLS } from "../config/defaults";
-import { convertAmt, isRecurringPaused, parseDate, sumReceiptItems, toMonthly } from "../utils/helpers";
+import { convertAmt, isRecurringPaused, parseDate, receiptSavings, sumReceiptItems, toMonthly } from "../utils/helpers";
 import Empty from "../components/primitives/Empty";
 import { useAppData } from "../contexts/AppDataContext";
 
@@ -19,7 +19,7 @@ export default function DashboardView({ go }) {
 
   const monthSpent = thisMonth.reduce((s, r) => s + sumReceiptItems(r), 0);
   const totalSpent = receipts.reduce((s, r) => s + sumReceiptItems(r), 0);
-  const totalSaved = receipts.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
+  const totalSaved = receipts.reduce((s, r) => s + receiptSavings(r), 0);
 
   // Budget alerts
   const monthItems = useMemo(() =>

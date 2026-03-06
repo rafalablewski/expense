@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import $ from "../config/theme";
 import { CATS, CAT_GROUPS, FX_SYMBOLS, MONTH_NAMES } from "../config/defaults";
-import { parseDate, convertAmt, isRecurringPaused, toMonthly } from "../utils/helpers";
+import { parseDate, convertAmt, isRecurringPaused, receiptSavings, toMonthly } from "../utils/helpers";
 import BarChart from "../components/charts/BarChart";
 import DonutChart from "../components/charts/DonutChart";
 import InsightCard from "../components/charts/InsightCard";
@@ -142,7 +142,7 @@ export default function StatsView() {
   // ── Summary numbers (item-level — single source of truth, consistent with category breakdown) ──
   const itemsTotal = all.reduce((s, item) => s + (parseFloat(item.total_price) || 0), 0);
   const totalSpent  = itemsTotal + (includeRecurring ? recurringMonthly : 0);
-  const totalSaved  = filteredReceipts.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
+  const totalSaved  = filteredReceipts.reduce((s, r) => s + receiptSavings(r), 0);
   const totalCount  = filteredReceipts.length;
   const avgReceipt  = totalCount ? itemsTotal / totalCount : 0;
   const maxMonth    = Math.max(...monthData.map(m => m.total), 1);

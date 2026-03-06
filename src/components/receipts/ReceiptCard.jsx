@@ -4,14 +4,14 @@ import CatChip from '../primitives/CatChip';
 import ReceiptReviewModal from '../modals/ReceiptReviewModal';
 import { useAppData } from '../../contexts/AppDataContext';
 import { FX_SYMBOLS } from '../../config/defaults';
-import { convertAmt, sumReceiptItems } from '../../utils/helpers';
+import { convertAmt, receiptSavings, sumReceiptItems } from '../../utils/helpers';
 
 export default function ReceiptCard({ r, onDelete, onUpdate, delay = 0 }) {
   const { currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
-  const saved = parseFloat(r.total_discounts) || 0;
+  const saved = receiptSavings(r);
   const bid = `rc-${r.id}`;
   return (
     <>

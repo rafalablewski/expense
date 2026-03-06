@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import $ from "../config/theme";
 import { FX_SYMBOLS } from "../config/defaults";
-import { convertAmt, parseDate, sumReceiptItems } from "../utils/helpers";
+import { convertAmt, parseDate, receiptSavings, sumReceiptItems } from "../utils/helpers";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import Zl from "../components/primitives/Zl";
@@ -38,7 +38,7 @@ export default function ExportView() {
   );
 
   const totalSpent = filtered.reduce((s, r) => s + sumReceiptItems(r), 0);
-  const totalSaved = filtered.reduce((s, r) => s + (parseFloat(r.total_discounts) || 0), 0);
+  const totalSaved = filtered.reduce((s, r) => s + receiptSavings(r), 0);
 
   const downloadCSV = () => {
     let rows, headers;
@@ -63,7 +63,7 @@ export default function ExportView() {
         r.date || "",
         (r.items || []).length,
         sumReceiptItems(r).toFixed(2),
-        parseFloat(r.total_discounts || 0).toFixed(2),
+        receiptSavings(r).toFixed(2),
       ]);
     }
 
@@ -224,8 +224,8 @@ export default function ExportView() {
                             <td className="mono text-right color-ink2">{(r.items || []).length}</td>
                             <td className="text-right"><Zl v={sumReceiptItems(r)} /></td>
                             <td className="text-right">
-                              {parseFloat(r.total_discounts || 0) > 0
-                                ? <span className="mono td-discount-13">−{parseFloat(r.total_discounts).toFixed(2)}</span>
+                              {receiptSavings(r) > 0
+                                ? <span className="mono td-discount-13">−{receiptSavings(r).toFixed(2)}</span>
                                 : <span className="zl-dash">—</span>}
                             </td>
                           </tr>
