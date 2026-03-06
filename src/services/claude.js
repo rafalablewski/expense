@@ -134,6 +134,13 @@ Rules:
   * If price is missing, set total_price to 0.
   * If no date is found, use today: "${new Date().toISOString().slice(0, 10)}".
   * "total" = sum of all total_price values.
+- For E-COMMERCE ORDERS (Allegro, Amazon, online shops):
+  * These contain product names with seller info, total prices like "47,88 zł", quantity notation like "2 × 23,94 zł", delivery method lines (e.g. "Paczkomat InPost", "Kurier DPD") with cost, and a final total.
+  * Extract product name (clean, without seller name or item ID codes in parentheses), quantity, unit_price, and total_price.
+  * "2 × 23,94 zł" means quantity=2, unit_price=23.94, total_price=47.88.
+  * Set store to the marketplace/shop name (e.g. "Allegro", seller name).
+  * Delivery lines (e.g. "Paczkomat InPost ... 10,95 zł") go into delivery_cost, NOT as items.
+  * Ignore navigation text like "Przejdź do Szczegółów zakupu", "Masz wątpliwości?", etc.
 - delivery_cost: If there is a delivery/shipping fee (dostawa, przesyłka, kurier, wysyłka, shipping, transport zamówienia), extract the listed price as a number. Do NOT add delivery as an item — use the delivery_cost field instead. Return null if no delivery fee.
 - delivery_free: Set to true if delivery is explicitly free or fully discounted (darmowa dostawa, free shipping, koszt 0 zł, delivery 0.00). When true, still set delivery_cost to the original listed fee if shown. Default false.
 - Calculate unit_price = total_price / quantity when both are known.
