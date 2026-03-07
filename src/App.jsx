@@ -19,6 +19,7 @@ import DashboardView from "./views/DashboardView";
 import InflationView from "./views/InflationView";
 import PredictionView from "./views/PredictionView";
 import ExpensesView from "./views/ExpensesView";
+import ScrapeView from "./views/ScrapeView";
 import TopNav from "./components/layout/TopNav";
 import BottomNav from "./components/layout/BottomNav";
 import Fab from "./components/layout/Fab";
@@ -142,6 +143,7 @@ export default function App() {
         {view === "prediction" && <PredictionView />}
         {view === "mealplan"   && <MealPlanView />}
         {view === "export"     && <ExportView />}
+        {view === "scrape"     && <ScrapeView />}
       </main>
 
       <Fab onClick={() => setShowQA(true)} />

@@ -13,6 +13,7 @@ export const VIEWS = [
   { id: "prediction", label: "Predykcja",   icon: "🔮", mobile: false },
   { id: "mealplan",   label: "Planner",     icon: "🗓️", mobile: false },
   { id: "export",     label: "Eksport",     icon: "⬇️", mobile: false },
+  { id: "scrape",     label: "Scrape",      icon: "🌐", mobile: false },
 ];
 
 export const MOBILE_VIEWS = VIEWS.filter(v => v.mobile);
