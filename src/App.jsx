@@ -155,7 +155,7 @@ export default function App() {
         {view === "stats"      && <StatsView />}
         {view === "inflation"  && <InflationView />}
         {view === "prediction" && <PredictionView />}
-        {view === "mealplan"   && <MealPlanView />}
+        {view === "mealplan"   && <MealPlanView onNeedKey={() => setShowKeyModal(true)} />}
         {view === "export"     && <ExportView />}
       </main>
 

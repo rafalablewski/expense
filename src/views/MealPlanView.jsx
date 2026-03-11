@@ -4,7 +4,7 @@ import Spinner from "../components/primitives/Spinner";
 import { useAppData } from "../contexts/AppDataContext";
 import { claudeChat } from "../services/claude";
 
-export default function MealPlanView() {
+export default function MealPlanView({ onNeedKey }) {
   const { receipts, apiKey } = useAppData();
   const DAYS  = ["Pon","Wt","Śr","Czw","Pt","Sob","Ndz"];
   const MEALS = ["Śniadanie","Obiad","Kolacja"];
@@ -14,6 +14,7 @@ export default function MealPlanView() {
   const [genAll,   setGenAll]   = useState(false);
   const [shopList, setShopList] = useState([]);
   const [genShop,  setGenShop]  = useState(false);
+  const [error,    setError]    = useState(null);
 
   // Build ingredient list from recent receipts
   const knownItems = useMemo(() => {
@@ -28,13 +29,17 @@ export default function MealPlanView() {
   }, [receipts]);
 
   const callClaude = (prompt) => {
-    if (!apiKey) throw new Error("Brak klucza API");
+    if (!apiKey) {
+      if (onNeedKey) onNeedKey();
+      throw new Error("Brak klucza API — ustaw go w ustawieniach (ikona klucza)");
+    }
     return claudeChat(prompt, apiKey);
   };
 
   const generateCell = async (day, meal) => {
     const key = `${day}-${meal}`;
     setLoading(key);
+    setError(null);
     haptic(15);
     try {
       const context = knownItems.length
@@ -48,15 +53,23 @@ Odpowiedz TYLKO nazwą dania i jednym zdaniem opisu (max 60 znaków). Format: "N
       setPlan(p => ({ ...p, [key]: text.trim() }));
       haptic(20);
     } catch(e) {
-      setPlan(p => ({ ...p, [key]: "Błąd — spróbuj ponownie" }));
+      setError(e.message || "Błąd generowania — spróbuj ponownie");
+      setPlan(p => ({ ...p, [key]: "Błąd" }));
     } finally {
       setLoading(null);
     }
   };
 
   const generateAll = async () => {
+    if (!apiKey) {
+      if (onNeedKey) onNeedKey();
+      setError("Brak klucza API — ustaw go w ustawieniach (ikona klucza)");
+      return;
+    }
     setGenAll(true);
+    setError(null);
     haptic(30);
+    let failCount = 0;
     for (const day of DAYS) {
       for (const meal of MEALS) {
         const key = `${day}-${meal}`;
@@ -68,33 +81,53 @@ Odpowiedz TYLKO nazwą dania i jednym zdaniem opisu (max 60 znaków). Format: "N
             `Danie na ${meal}, ${day}. ${context} Odpowiedz TYLKO: "Nazwa — krótki opis" (max 55 znaków). Zero list.`
           );
           setPlan(p => ({ ...p, [key]: text.trim() }));
-        } catch(e) { /* skip */ }
+        } catch(e) {
+          failCount++;
+          if (e.message?.includes("klucz") || e.message?.includes("401")) {
+            setLoading(null);
+            setGenAll(false);
+            setError(e.message);
+            return;
+          }
+        }
         setLoading(null);
         await new Promise(r => setTimeout(r, 200));
       }
+    }
+    if (failCount > 0) {
+      setError(`${failCount} posiłków nie udało się wygenerować — spróbuj ponownie`);
     }
     setGenAll(false);
   };
 
   const generateShoppingList = async () => {
     if (!Object.keys(plan).length) return;
+    if (!apiKey) {
+      if (onNeedKey) onNeedKey();
+      setError("Brak klucza API — ustaw go w ustawieniach (ikona klucza)");
+      return;
+    }
     setGenShop(true);
+    setError(null);
     haptic(20);
     try {
       const meals = Object.values(plan).join("\n");
       const text = await callClaude(
         `Na podstawie tych posiłków: ${meals}
-        
+
 Wygeneruj listę zakupów. Odpowiedz TYLKO jako JSON array stringów, np. ["Mleko","Jajka"]. Zero innych słów.`
       );
       const clean = text.replace(/```(?:json)?/g,"").trim();
       const arr = JSON.parse(clean);
       if (Array.isArray(arr)) setShopList(arr);
-    } catch(e) { setShopList([]); }
+    } catch(e) {
+      setError(e.message || "Nie udało się wygenerować listy zakupów");
+      setShopList([]);
+    }
     setGenShop(false);
   };
 
-  const clearPlan = () => { setPlan({}); setShopList([]); };
+  const clearPlan = () => { setPlan({}); setShopList([]); setError(null); };
 
   const filledCells = Object.keys(plan).length;
   const totalCells  = DAYS.length * MEALS.length;
@@ -112,6 +145,22 @@ Wygeneruj listę zakupów. Odpowiedz TYLKO jako JSON array stringów, np. ["Mlek
       <div className="container">
         <div className="section flex-col gap-20">
 
+          {/* Error banner */}
+          {error && (
+            <div className="toast-err" role="alert">
+              <span>{error}</span>
+              <button onClick={() => setError(null)} aria-label="Zamknij" className="btn-err-close">×</button>
+            </div>
+          )}
+
+          {/* API key warning */}
+          {!apiKey && (
+            <div className="toast-warn au" role="alert">
+              <span>🔑 Ustaw klucz API Anthropic aby korzystać z planera posiłków</span>
+              {onNeedKey && <button className="btn-primary" style={{ marginLeft: "auto", minHeight: 36, fontSize: 13 }} onClick={onNeedKey}>Ustaw klucz</button>}
+            </div>
+          )}
+
           {/* Controls */}
           <div className="card au card--p20">
             <div className="flex-row flex-wrap gap-10 flex-end">
@@ -122,8 +171,8 @@ Wygeneruj listę zakupów. Odpowiedz TYLKO jako JSON array stringów, np. ["Mlek
                 <input id="pantry" className="field" value={pantry} onChange={e=>setPantry(e.target.value)}
                   placeholder="np. ryż, pomidory, ser żółty…" />
               </div>
-              <button className="btn-primary" onClick={generateAll} disabled={genAll}
-                style={{ gap: 8, minHeight: 48, opacity: genAll ? 0.7 : 1 }}>
+              <button className="btn-primary" onClick={generateAll} disabled={genAll || !apiKey}
+                style={{ gap: 8, minHeight: 48, opacity: (genAll || !apiKey) ? 0.5 : 1 }}>
                 {genAll ? <><Spinner />Generuję…</> : "✦ Generuj cały plan"}
               </button>
               {filledCells > 0 && (
@@ -175,6 +224,7 @@ Wygeneruj listę zakupów. Odpowiedz TYLKO jako JSON array stringów, np. ["Mlek
                               onClick={() => !busy && generateCell(day, meal)}
                               aria-label={`${meal} ${day}${text ? ": "+text : " — kliknij aby wygenerować"}`}
                               className={`meal-cell-btn${busy ? " busy" : ""}`}
+                              disabled={!apiKey}
                             >
                               {busy ? (
                                 <div className="meal-spinner-wrap">
