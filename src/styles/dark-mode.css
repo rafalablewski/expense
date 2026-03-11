@@ -282,6 +282,13 @@
   color: rgba(255,255,255,0.50);
 }
 
+/* Store drilldown location badges */
+[data-dark="1"] .drill-loc {
+  color: rgba(255,255,255,0.60);
+  background: rgba(6,193,103,0.10);
+  border-color: rgba(6,193,103,0.20);
+}
+
 /* Store database dark mode */
 [data-dark="1"] .sdb-tab { color: rgba(255,255,255,0.40); }
 [data-dark="1"] .sdb-tab:hover { color: rgba(255,255,255,0.70); }

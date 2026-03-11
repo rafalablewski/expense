@@ -171,6 +171,19 @@ export default function StoresView() {
                   ← Sklepy
                 </button>
                 <h1 className="page-title au" style={{ fontSize: "clamp(26px,4vw,42px)" }}>{activeStore}</h1>
+                {(() => {
+                  const locs = storeLocations.filter(l => l.store.toLowerCase() === activeStore.toLowerCase());
+                  if (!locs.length) return null;
+                  return (
+                    <div className="drill-locs">
+                      {locs.map((l, i) => (
+                        <span key={i} className="drill-loc">
+                          📍 {l.label}{l.address || l.city ? ` — ${[l.address, l.zip_code, l.city].filter(Boolean).join(", ")}` : ""}
+                        </span>
+                      ))}
+                    </div>
+                  );
+                })()}
                 <p className="page-subtitle au1">
                   {drillStore?.visits} wizyt · {drillStore?.items.length} pozycji · ostatnia {fmtDate(drillStore?.lastDate)}
                 </p>
