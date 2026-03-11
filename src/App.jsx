@@ -135,7 +135,17 @@ export default function App() {
       />
 
       <main id="main" className="page" ref={pageRef}>
-        {view === "receipts"   && <ReceiptsView onFiles={(files) => handleFiles(files, () => setShowKeyModal(true))} />}
+        {view === "receipts"   && <ReceiptsView
+          onFiles={(files) => handleFiles(files, () => setShowKeyModal(true))}
+          onManualEntry={() => openManualEntry()}
+          onTextReceipt={(text) => processTextReceipt(text, () => setShowKeyModal(true))}
+          onJsonImport={(files) => processJsonFiles(files, () => setShowKeyModal(true))}
+          onSourceImport={(source, files, text) => {
+            if (files) processJsonFiles(files, () => setShowKeyModal(true), source);
+            else if (text) processSourceText(source, text, () => setShowKeyModal(true));
+          }}
+          onNeedKey={() => setShowKeyModal(true)}
+        />}
         {view === "home"       && <DashboardView go={go} />}
         {view === "expenses"   && <ExpensesView />}
         {view === "shopping"   && <ShoppingView />}

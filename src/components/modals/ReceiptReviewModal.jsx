@@ -1,9 +1,17 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import StorePickerInput from '../primitives/StorePickerInput';
-import { ALL_CATS, CAT_ICONS } from '../../config/defaults';
+import { CATS, ALL_CATS, CAT_ICONS, CAT_GROUPS } from '../../config/defaults';
 import { haptic } from '../../utils/helpers';
-import { getCorrectionStats } from '../../hooks/useCorrections';
 import { useAppData } from '../../contexts/AppDataContext';
+
+const MONTH_PL = ["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"];
+const fmtDate = (d) => {
+  if (!d) return "";
+  const [y, m, day] = d.split("-");
+  return `${parseInt(day)} ${MONTH_PL[parseInt(m) - 1] || m} ${y}`;
+};
+
+const TOP_CATS = ["Nabiał","Mięso","Warzywa","Owoce","Napoje","Pieczywo","Zboża","Słodycze","Chemia","Kosmetyki","Inne"];
 
 export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
   const { customStores, addCustomStore: onAddCustomStore } = useAppData();
@@ -19,16 +27,26 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     delivery_free: receipt.delivery_free || false,
     items: (receipt.items || []).map((it, i) => ({ ...it, _key: i })),
   }));
-  const [expandedItem, setExpandedItem] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
+  const [headerOpen, setHeaderOpen] = useState(false);
+  const [showAllCats, setShowAllCats] = useState(false);
   const overlayRef = useRef();
   const drawerRef = useRef();
-  const firstFieldRef = useRef();
 
-  /* ── Focus trap & keyboard ── */
+  // Auto-open header when manual entry (no store name)
   useEffect(() => {
-    firstFieldRef.current?.focus();
+    if (!data.store && receipt.source === "manual") setHeaderOpen(true);
+  }, []);
+
+  /* Focus trap & keyboard */
+  useEffect(() => {
     const handleKey = e => {
-      if (e.key === "Escape") { onCancel(); return; }
+      if (e.key === "Escape") {
+        if (editingItem !== null) { setEditingItem(null); return; }
+        if (headerOpen) { setHeaderOpen(false); return; }
+        onCancel();
+        return;
+      }
       if (e.key !== "Tab" || !drawerRef.current) return;
       const focusable = drawerRef.current.querySelectorAll(
         'input,select,textarea,button,[tabindex]:not([tabindex="-1"])'
@@ -40,7 +58,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     };
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
-  }, [onCancel]);
+  }, [onCancel, editingItem, headerOpen]);
 
   const updateField = (field, val) => setData(d => ({ ...d, [field]: val }));
   const updateItem = (idx, field, val) => setData(d => ({
@@ -50,7 +68,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
   const removeItem = idx => {
     haptic(12);
     setData(d => ({ ...d, items: d.items.filter((_, i) => i !== idx) }));
-    setExpandedItem(null);
+    setEditingItem(null);
   };
   const addItem = () => {
     haptic(12);
@@ -59,17 +77,25 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
       ...d,
       items: [...d.items, { _key: key, name: "", quantity: 1, unit: null, unit_price: 0, total_price: 0, discount: null, discount_label: null, category: "Inne" }],
     }));
-    setExpandedItem(data.items.length);
+    setEditingItem(data.items.length);
   };
+
+  // Computed totals
+  const computedTotal = useMemo(() => {
+    const itemsSum = data.items.reduce((s, it) => s + (parseFloat(it.total_price) || 0), 0);
+    const delivery = data.delivery_free ? 0 : (parseFloat(data.delivery_cost) || 0);
+    return itemsSum + delivery;
+  }, [data.items, data.delivery_cost, data.delivery_free]);
+
+  const computedDiscounts = useMemo(() =>
+    data.items.reduce((s, it) => s + (parseFloat(it.discount) || 0), 0),
+  [data.items]);
 
   const warnings = useMemo(() => {
     const w = [];
-    const itemsSum = data.items.reduce((s, it) => s + (parseFloat(it.total_price) || 0), 0);
-    const delivery = data.delivery_free ? 0 : (parseFloat(data.delivery_cost) || 0);
-    const expectedTotal = itemsSum + delivery;
     const total = parseFloat(data.total) || 0;
-    if (Math.abs(total - expectedTotal) > 0.01) {
-      w.push(`Suma (${total.toFixed(2)}) nie zgadza się z sumą pozycji${delivery ? " + dostawa" : ""} (${expectedTotal.toFixed(2)})`);
+    if (total > 0 && Math.abs(total - computedTotal) > 0.01) {
+      w.push(`Suma z paragonu (${total.toFixed(2)}) \u2260 suma pozycji (${computedTotal.toFixed(2)})`);
     }
     data.items.forEach((it, idx) => {
       const up = parseFloat(it.unit_price);
@@ -79,19 +105,19 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
       if (up && qty) {
         const expected = up * qty - disc;
         if (Math.abs(tp - expected) > 0.01) {
-          w.push(`Produkt ${idx + 1} "${it.name || "?"}": cena (${tp.toFixed(2)}) \u2260 cena jedn. \u00d7 ilo\u015b\u0107 \u2212 zni\u017cka (${expected.toFixed(2)})`);
+          w.push(`"${it.name || "?"}": ${tp.toFixed(2)} \u2260 ${up.toFixed(2)} \u00d7 ${qty} \u2212 ${disc.toFixed(2)}`);
         }
       }
     });
     return w;
-  }, [data]);
+  }, [data, computedTotal]);
 
   const handleConfirm = () => {
     haptic(20);
     const cleaned = {
       ...data,
-      total: parseFloat(data.total) || 0,
-      total_discounts: parseFloat(data.total_discounts) || 0,
+      total: computedTotal,
+      total_discounts: computedDiscounts,
       delivery_cost: parseFloat(data.delivery_cost) || null,
       delivery_free: data.delivery_free || false,
       items: data.items.map(({ _key, _suggestions, ...it }) => ({
@@ -105,189 +131,273 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     onConfirm(cleaned);
   };
 
+  // Format item display line
+  const fmtItemLine = (item) => {
+    const qty = parseFloat(item.quantity) || 1;
+    const up = parseFloat(item.unit_price);
+    const unit = item.unit || "szt";
+    if (up && qty !== 1) {
+      return `${qty}${unit === "kg" ? "kg" : ""} \u00d7 ${up.toFixed(2)}`;
+    }
+    if (qty !== 1) return `${qty} ${unit}`;
+    return null;
+  };
+
+  // Header summary line
+  const headerSummary = () => {
+    const parts = [];
+    if (data.date) parts.push(fmtDate(data.date));
+    if (data.address) parts.push(data.address);
+    else if (data.city) parts.push(data.city);
+    return parts.join(" \u00b7 ");
+  };
+
   return (
     <div className="rv-overlay" ref={overlayRef}
       onClick={e => e.target === overlayRef.current && onCancel()}
       role="dialog" aria-modal="true" aria-labelledby="rv-dialog-title">
       <div className="rv-drawer" ref={drawerRef}>
         <div className="rv-handle" aria-hidden="true" />
-        <div className="rv-head">
-          <h2 id="rv-dialog-title" className="rv-title">Sprawdź paragon</h2>
-          <button onClick={onCancel} aria-label="Zamknij" className="btn-close">✕</button>
-        </div>
 
+        {/* ── HEADER: collapsed summary or expanded form ── */}
         <div className="rv-body">
-          {/* Header: date | shop | price | discounts */}
-          <div className="rv-meta">
-            <div>
-              <label className="rv-lbl" htmlFor="rv-date">Data</label>
-              <input id="rv-date" ref={firstFieldRef} className="field" type="date" value={data.date} onChange={e => updateField("date", e.target.value)} />
+          {!headerOpen ? (
+            <div className="rv2-header" onClick={() => { haptic(10); setHeaderOpen(true); }} role="button" tabIndex={0}
+              onKeyDown={e => (e.key === "Enter" || e.key === " ") && setHeaderOpen(true)}
+              aria-label="Edytuj dane paragonu">
+              <div className="rv2-header-top">
+                <div className="rv2-store-name">{data.store || "Nieznany sklep"}</div>
+                <button className="rv2-edit-link" onClick={e => { e.stopPropagation(); haptic(10); setHeaderOpen(true); }}
+                  aria-label="Edytuj">Edytuj</button>
+              </div>
+              <div className="rv2-header-sub">{headerSummary() || "Kliknij aby uzupełnić dane"}</div>
             </div>
-            <div>
-              <label className="rv-lbl" htmlFor="rv-store">Sklep</label>
-              <StorePickerInput id="rv-store" value={data.store} onChange={v => updateField("store", v)} customStores={customStores} onAddCustomStore={onAddCustomStore} placeholder="Nazwa sklepu" />
-            </div>
-            <div>
-              <label className="rv-lbl" htmlFor="rv-address">Adres</label>
-              <input id="rv-address" className="field" value={data.address} onChange={e => updateField("address", e.target.value)} placeholder="ul. Przykładowa 1" />
-            </div>
-            <div>
-              <label className="rv-lbl" htmlFor="rv-city">Miasto</label>
-              <input id="rv-city" className="field" value={data.city} onChange={e => updateField("city", e.target.value)} placeholder="np. Katowice" />
-            </div>
-            <div>
-              <label className="rv-lbl" htmlFor="rv-zip">Kod pocztowy</label>
-              <input id="rv-zip" className="field" value={data.zip_code} onChange={e => updateField("zip_code", e.target.value)} placeholder="00-000" />
-            </div>
-            <div>
-              <label className="rv-lbl" htmlFor="rv-total">Suma</label>
-              <input id="rv-total" className="field field--text-right" type="number" step="0.01" value={data.total}
-                onChange={e => updateField("total", e.target.value)} placeholder="0.00" />
-            </div>
-            <div>
-              <label className="rv-lbl" htmlFor="rv-discounts">Zniżki</label>
-              <input id="rv-discounts" className="field field--text-right" type="number" step="0.01" value={data.total_discounts || 0}
-                onChange={e => updateField("total_discounts", e.target.value)} placeholder="0.00" />
-            </div>
-            <div>
-              <label className="rv-lbl" htmlFor="rv-delivery">Dostawa</label>
-              <input id="rv-delivery" className="field field--text-right" type="number" step="0.01" value={data.delivery_cost}
-                onChange={e => updateField("delivery_cost", e.target.value)} placeholder="0.00" />
-              <label className="rv-checkbox-row">
-                <input type="checkbox" checked={data.delivery_free} onChange={e => updateField("delivery_free", e.target.checked)} />
-                <span className="rv-checkbox-label">Darmowa</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Items header */}
-          <div className="rv-items-header">
-            <div className="rv-lbl mb-0" aria-live="polite" aria-atomic="true">Produkty · {data.items.length}</div>
-            <button onClick={addItem} aria-label="Dodaj produkt" className="btn-add-item">
-              + Dodaj
-            </button>
-          </div>
-
-          {/* Items */}
-          {data.items.map((item, idx) => {
-            const isExpanded = expandedItem === idx;
-            const suggestions = item._suggestions;
-            const itemId = `rv-item-${item._key}`;
-            return (
-              <div key={item._key} className="rv-item" role="group" aria-label={`Produkt ${idx + 1}: ${item.name || "bez nazwy"}`}>
-                {/* Row 1: # badge, product name, delete */}
-                <div className="rv-item-r1">
-                  <div className="rv-item-num" aria-hidden="true">{idx + 1}</div>
-                  <div className="rv-i-name">
-                    <input id={`${itemId}-name`} className="field field--bold" value={item.name || ""} onChange={e => updateItem(idx, "name", e.target.value)}
-                      placeholder="Nazwa produktu" aria-label={`Nazwa produktu ${idx + 1}`} />
-                  </div>
-                  <button className="rv-del-btn" onClick={() => removeItem(idx)} title="Usuń" aria-label={`Usuń produkt ${idx + 1}${item.name ? ": " + item.name : ""}`}>✕</button>
+          ) : (
+            <div className="rv2-header-form">
+              <div className="rv2-form-row">
+                <div className="rv2-form-group rv2-form-grow">
+                  <label className="rv2-label">Sklep</label>
+                  <StorePickerInput value={data.store} onChange={v => updateField("store", v)}
+                    customStores={customStores} onAddCustomStore={onAddCustomStore} placeholder="Nazwa sklepu" />
                 </div>
+                <div className="rv2-form-group">
+                  <label className="rv2-label">Data</label>
+                  <input className="field" type="date" value={data.date} onChange={e => updateField("date", e.target.value)} />
+                </div>
+              </div>
+              <div className="rv2-form-row">
+                <div className="rv2-form-group rv2-form-grow">
+                  <label className="rv2-label">Adres</label>
+                  <input className="field" value={data.address} onChange={e => updateField("address", e.target.value)} placeholder="ul. Przykładowa 1" />
+                </div>
+              </div>
+              <div className="rv2-form-row">
+                <div className="rv2-form-group rv2-form-grow">
+                  <label className="rv2-label">Miasto</label>
+                  <input className="field" value={data.city} onChange={e => updateField("city", e.target.value)} placeholder="np. Katowice" />
+                </div>
+                <div className="rv2-form-group">
+                  <label className="rv2-label">Kod</label>
+                  <input className="field" value={data.zip_code} onChange={e => updateField("zip_code", e.target.value)} placeholder="00-000" />
+                </div>
+              </div>
+              {(parseFloat(data.delivery_cost) > 0 || data.delivery_free) && (
+                <div className="rv2-form-row">
+                  <div className="rv2-form-group">
+                    <label className="rv2-label">Dostawa</label>
+                    <input className="field field--text-right" type="number" step="0.01" value={data.delivery_cost}
+                      onChange={e => updateField("delivery_cost", e.target.value)} placeholder="0.00" />
+                  </div>
+                  <div className="rv2-form-group" style={{ alignSelf: "flex-end" }}>
+                    <label className="rv-checkbox-row">
+                      <input type="checkbox" checked={data.delivery_free} onChange={e => updateField("delivery_free", e.target.checked)} />
+                      <span className="rv-checkbox-label">Darmowa</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+              <button className="rv2-done-btn" onClick={() => setHeaderOpen(false)}>Gotowe</button>
+            </div>
+          )}
 
-                {/* Suggestions (when ambiguous) */}
-                {suggestions && suggestions.length > 1 && (
-                  <div className="rv-suggest" role="group" aria-label="Sugerowane nazwy">
-                    <span className="rv-suggest-lbl" aria-hidden="true">Może:</span>
-                    {suggestions.map(s => (
-                      <button key={s} className="rv-suggest-pill"
-                        aria-label={`Użyj nazwy: ${s}`}
-                        onClick={() => { haptic(10); updateItem(idx, "name", s); updateItem(idx, "_suggestions", null); }}>
-                        {s}
+          {/* ── ITEMS HEADER ── */}
+          <div className="rv-items-header">
+            <div className="rv2-section-title" aria-live="polite">Produkty ({data.items.length})</div>
+            <button onClick={addItem} aria-label="Dodaj produkt" className="btn-add-item">+ Dodaj</button>
+          </div>
+
+          {/* ── ITEMS LIST ── */}
+          {data.items.map((item, idx) => {
+            const isEditing = editingItem === idx;
+            const suggestions = item._suggestions;
+            const catIcon = CAT_ICONS[item.category] || "";
+            const catColor = CATS[item.category] || "#6B7280";
+            const discount = parseFloat(item.discount) || 0;
+            const qtyLine = fmtItemLine(item);
+            const totalPrice = parseFloat(item.total_price) || 0;
+
+            if (isEditing) {
+              return (
+                <div key={item._key} className="rv2-item rv2-item--editing" role="group"
+                  aria-label={`Edytuj: ${item.name || "nowy produkt"}`}>
+                  <div className="rv2-edit-name-row">
+                    <input className="field field--bold" value={item.name || ""} onChange={e => updateItem(idx, "name", e.target.value)}
+                      placeholder="Nazwa produktu" autoFocus />
+                    <button className="rv-del-btn" onClick={() => removeItem(idx)} title="Usuń" aria-label="Usuń produkt">✕</button>
+                  </div>
+
+                  {/* Suggestions */}
+                  {suggestions && suggestions.length > 1 && (
+                    <div className="rv-suggest" role="group" aria-label="Sugerowane nazwy">
+                      <span className="rv-suggest-lbl">Może:</span>
+                      {suggestions.map(s => (
+                        <button key={s} className="rv-suggest-pill"
+                          onClick={() => { haptic(10); updateItem(idx, "name", s); updateItem(idx, "_suggestions", null); }}>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Category pills */}
+                  <div className="rv2-label">Kategoria</div>
+                  <div className="rv2-cat-pills">
+                    {(showAllCats ? ALL_CATS : TOP_CATS).map(c => (
+                      <button key={c}
+                        className={`rv2-cat-pill${item.category === c ? " rv2-cat-pill--on" : ""}`}
+                        style={item.category === c ? { borderColor: CATS[c], background: CATS[c] + "18", color: CATS[c] } : {}}
+                        onClick={() => { haptic(8); updateItem(idx, "category", c); }}>
+                        <span>{CAT_ICONS[c]}</span> {c}
                       </button>
                     ))}
                   </div>
-                )}
+                  {!showAllCats && (
+                    <button className="rv2-show-all-cats" onClick={() => setShowAllCats(true)}>
+                      Wszystkie kategorie ({ALL_CATS.length})
+                    </button>
+                  )}
+                  {showAllCats && (
+                    <button className="rv2-show-all-cats" onClick={() => setShowAllCats(false)}>
+                      Mniej kategorii
+                    </button>
+                  )}
 
-                {/* Row 2: category | total price */}
-                <div className="rv-item-r2">
-                  <div className="rv-i-cat">
-                    <label className="rv-lbl" htmlFor={`${itemId}-cat`}>Kategoria</label>
-                    <select id={`${itemId}-cat`} className="field field--cursor" value={item.category || "Inne"} onChange={e => updateItem(idx, "category", e.target.value)}>
-                      {ALL_CATS.map(c => <option key={c} value={c}>{CAT_ICONS[c] || ""} {c}</option>)}
-                    </select>
+                  {/* Price & quantity row */}
+                  <div className="rv2-form-row" style={{ marginTop: 10 }}>
+                    <div className="rv2-form-group rv2-form-grow">
+                      <label className="rv2-label">Cena</label>
+                      <input className="field field--text-right" type="number" step="0.01" value={item.total_price ?? 0}
+                        onChange={e => updateItem(idx, "total_price", e.target.value)} placeholder="0.00" />
+                    </div>
+                    <div className="rv2-form-group">
+                      <label className="rv2-label">Ilość</label>
+                      <input className="field field--text-right" type="number" step="0.001" value={item.quantity ?? 1}
+                        onChange={e => updateItem(idx, "quantity", e.target.value)} />
+                    </div>
+                    <div className="rv2-form-group">
+                      <label className="rv2-label">Jedn.</label>
+                      <input className="field" value={item.unit || ""} onChange={e => updateItem(idx, "unit", e.target.value)}
+                        placeholder="szt" />
+                    </div>
                   </div>
-                  <div>
-                    <label className="rv-lbl" htmlFor={`${itemId}-price`}>Cena</label>
-                    <input id={`${itemId}-price`} className="field field--text-right field--bold700" type="number" step="0.01" value={item.total_price ?? 0}
-                      onChange={e => updateItem(idx, "total_price", e.target.value)}
-                      placeholder="0.00" />
+
+                  {/* Unit price */}
+                  <div className="rv2-form-row">
+                    <div className="rv2-form-group rv2-form-grow">
+                      <label className="rv2-label">Cena jedn.</label>
+                      <input className="field field--text-right" type="number" step="0.01" value={item.unit_price ?? ""}
+                        onChange={e => updateItem(idx, "unit_price", e.target.value)} placeholder="auto" />
+                    </div>
                   </div>
+
+                  {/* Discount row */}
+                  <div className="rv2-form-row">
+                    <div className="rv2-form-group">
+                      <label className="rv2-label">Zniżka</label>
+                      <input className="field field--text-right" type="number" step="0.01" value={item.discount ?? ""}
+                        onChange={e => updateItem(idx, "discount", e.target.value)} placeholder="0.00" />
+                    </div>
+                    <div className="rv2-form-group rv2-form-grow">
+                      <label className="rv2-label">Etykieta</label>
+                      <input className="field" value={item.discount_label || ""}
+                        onChange={e => updateItem(idx, "discount_label", e.target.value)} placeholder="np. -20%, PROMO" />
+                    </div>
+                  </div>
+
+                  <button className="rv2-done-btn" onClick={() => { setEditingItem(null); setShowAllCats(false); }}>
+                    Gotowe
+                  </button>
                 </div>
+              );
+            }
 
-                {/* More toggle */}
-                <button className="rv-more-toggle"
-                  aria-expanded={isExpanded}
-                  aria-controls={`${itemId}-details`}
-                  onClick={() => { haptic(10); setExpandedItem(isExpanded ? null : idx); }}>
-                  {isExpanded ? "▲ Mniej" : "▼ Więcej"}
-                </button>
-
-                {/* Expanded details */}
-                {isExpanded && (
-                  <div id={`${itemId}-details`} role="group" aria-label="Szczegóły produktu">
-                    {/* Row 3: jednostka | zniżka */}
-                    <div className="rv-item-r3">
-                      <div>
-                        <label className="rv-lbl" htmlFor={`${itemId}-unit`}>Jednostka</label>
-                        <input id={`${itemId}-unit`} className="field" value={item.unit || ""} onChange={e => updateItem(idx, "unit", e.target.value)}
-                          placeholder="szt, kg…" />
-                      </div>
-                      <div>
-                        <label className="rv-lbl" htmlFor={`${itemId}-discount`}>Zniżka</label>
-                        <input id={`${itemId}-discount`} className="field field--text-right" type="number" step="0.01" value={item.discount ?? ""}
-                          onChange={e => updateItem(idx, "discount", e.target.value)} placeholder="0.00" />
-                      </div>
-                    </div>
-                    {/* Row 4: cena jednostkowa | ilość */}
-                    <div className="rv-item-r4">
-                      <div>
-                        <label className="rv-lbl" htmlFor={`${itemId}-uprice`}>Cena jedn.</label>
-                        <input id={`${itemId}-uprice`} className="field field--text-right" type="number" step="0.01" value={item.unit_price ?? ""}
-                          onChange={e => updateItem(idx, "unit_price", e.target.value)} placeholder="—" />
-                      </div>
-                      <div>
-                        <label className="rv-lbl" htmlFor={`${itemId}-qty`}>Ilość</label>
-                        <input id={`${itemId}-qty`} className="field field--text-right" type="number" step="0.001" value={item.quantity ?? 1}
-                          onChange={e => updateItem(idx, "quantity", e.target.value)} />
-                      </div>
-                    </div>
-                    {/* Row 5: etykieta zniżki (full width) */}
-                    <div className="rv-item-r5">
-                      <label className="rv-lbl" htmlFor={`${itemId}-dlabel`}>Etykieta zniżki</label>
-                      <input id={`${itemId}-dlabel`} className="field" value={item.discount_label || ""}
-                        onChange={e => updateItem(idx, "discount_label", e.target.value)} placeholder="np. -20%, PROMO, 2+1 gratis…" />
-                    </div>
-                  </div>
-                )}
+            // Collapsed item row
+            return (
+              <div key={item._key} className="rv2-item" role="button" tabIndex={0}
+                onClick={() => { haptic(8); setEditingItem(idx); setShowAllCats(false); }}
+                onKeyDown={e => (e.key === "Enter" || e.key === " ") && setEditingItem(idx)}
+                aria-label={`${item.name || "Produkt"} — kliknij aby edytować`}>
+                <div className="rv2-item-top">
+                  <div className="rv2-item-name">{item.name || "Bez nazwy"}</div>
+                  <div className="rv2-item-price">{totalPrice.toFixed(2)}</div>
+                </div>
+                <div className="rv2-item-bottom">
+                  <span className="rv2-item-cat" style={{ color: catColor }}>
+                    {catIcon} {item.category}
+                  </span>
+                  {qtyLine && <span className="rv2-item-qty">{qtyLine}</span>}
+                  {discount > 0 && (
+                    <span className="rv2-item-discount">
+                      -{discount.toFixed(2)}{item.discount_label ? ` ${item.discount_label}` : ""}
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })}
 
+          {/* ── TOTALS ── */}
+          <div className="rv2-totals">
+            <div className="rv2-total-row">
+              <span>Razem</span>
+              <span className="rv2-total-val">{computedTotal.toFixed(2)} zł</span>
+            </div>
+            {computedDiscounts > 0 && (
+              <div className="rv2-total-row rv2-total-row--discount">
+                <span>Zniżki</span>
+                <span>-{computedDiscounts.toFixed(2)} zł</span>
+              </div>
+            )}
+            {!data.delivery_free && parseFloat(data.delivery_cost) > 0 && (
+              <div className="rv2-total-row rv2-total-row--sub">
+                <span>w tym dostawa</span>
+                <span>{parseFloat(data.delivery_cost).toFixed(2)} zł</span>
+              </div>
+            )}
+            {data.delivery_free && parseFloat(data.delivery_cost) > 0 && (
+              <div className="rv2-total-row rv2-total-row--sub">
+                <span>Dostawa (darmowa)</span>
+                <span style={{ textDecoration: "line-through" }}>{parseFloat(data.delivery_cost).toFixed(2)} zł</span>
+              </div>
+            )}
+          </div>
+
+          {/* ── WARNINGS ── */}
           {warnings.length > 0 && (
             <div className="warnings-box">
-              <div className="warnings-title">{"\u26A0"} Uwaga — niezgodności:</div>
-              {warnings.map((w, i) => <div key={i}>• {w}</div>)}
+              {warnings.map((w, i) => <div key={i} className="rv2-warning-line">⚠ {w}</div>)}
             </div>
           )}
         </div>
 
-        <div className="rv-footer">
-          <button className="btn-secondary" onClick={onCancel}>Odrzuć</button>
-          <button className="btn-primary" onClick={handleConfirm}>Zatwierdź</button>
-        </div>
-
-        {/* Learning info */}
-        <div className="rv-info" role="note">
-          {(() => {
-            const s = getCorrectionStats();
-            return s.names + s.categories > 0
-              ? <span>Nauczono: {s.names} nazw, {s.categories} kategorii — poprawki stosowane automatycznie.</span>
-              : <span>Popraw błędy AI — aplikacja zapamięta Twoje korekty na przyszłość.</span>;
-          })()}
-          <span className="rv-info-note">
-            Korekty działają lokalnie (słownik). Uczenie modelu AI w czasie rzeczywistym wymaga treningu na serwerze (server-side ML) — nie jest dostępne w trybie przeglądarkowym.
-          </span>
+        {/* ── FOOTER ── */}
+        <div className="rv2-footer">
+          <button className="btn-primary rv2-confirm-btn" onClick={handleConfirm}>
+            Zatwierdź paragon
+          </button>
+          <button className="rv2-cancel-link" onClick={onCancel}>
+            Odrzuć
+          </button>
         </div>
       </div>
     </div>
