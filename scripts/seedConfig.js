@@ -50,6 +50,13 @@ const appConfig = {
     "Jednorazowe": ["Elektronika","Odzież","Zdrowie","Narzędzia","Meble","AGD","Ogród","Zwierzęta","Podróże","Sport","Kosmetyki","Edukacja","Prezenty","Dom","Inne"],
   },
   defaultStores: ["Biedronka","Auchan","Lidl","Netto","InterMarche","Kaufland","Leroy Merlin","Circle K","Shell","BP","Orlen","OBI"],
+  defaultStoreLocations: [
+    { store: "Lidl",      label: "Lidl Bazantowo",      address: "Szarych Szeregów 3A",   zip_code: "40-750", city: "Katowice" },
+    { store: "Biedronka", label: "Biedronka Bazantowo",  address: "ul. Radockiego 150",    zip_code: "40-645", city: "Katowice" },
+    { store: "Lidl",      label: "Lidl Zarzecze",        address: "Grota Roweckiego 2F",   zip_code: "40-748", city: "Katowice" },
+    { store: "Auchan",    label: "Auchan Mikołów",       address: "Gliwicka 3",            zip_code: "43-190", city: "Mikołów" },
+    { store: "Netto",     label: "Netto Bazantowo",      address: "Armii Krajowej 208",    zip_code: "40-750", city: "Katowice" },
+  ],
   fxRates: { PLN: 1, EUR: 0.234, USD: 0.252 },
   fxSymbols: { PLN: "zł", EUR: "€", USD: "$" },
 };

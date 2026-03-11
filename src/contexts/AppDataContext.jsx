@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { loadUserData, saveAllUserData, updateField, subscribeUserData } from "../firestore";
-import { DEFAULT_STORES } from "../config/defaults";
+import { DEFAULT_STORES, DEFAULT_STORE_LOCATIONS } from "../config/defaults";
 import { LS_KEYS, lsGet, lsSet } from "../services/localStorage";
 import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, parseJsonReceipt as parseJsonReceiptAPI, getCorrectionsHint } from "../services/claude";
 import { initCorrections, getCorrections, learnFromCorrections, applyLearnedCorrections } from "../hooks/useCorrections";
@@ -168,17 +168,25 @@ export function AppDataProvider({ uid, children }) {
     setRecurring(prev => deepEqual(prev, rec) ? prev : rec);
     setCustomStores(prev => deepEqual(prev, d.customStores || []) ? prev : (d.customStores || []));
 
-    // Seed store locations from existing receipts + any already saved
+    // Seed store locations from defaults + existing receipts + any already saved
     const savedLocs = d.storeLocations || [];
     const seenKeys = new Set(savedLocs.map(l => `${l.store}|${l.address || ""}|${l.city || ""}`));
-    const fromReceipts = [];
+    const newLocs = [];
+    // Merge default store locations
+    for (const loc of DEFAULT_STORE_LOCATIONS) {
+      const key = `${loc.store}|${loc.address || ""}|${loc.city || ""}`;
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      newLocs.push(loc);
+    }
+    // Merge locations discovered from receipts
     for (const r of finalReceipts) {
       if (!r.store || (!r.address && !r.city)) continue;
       const key = `${r.store}|${r.address || ""}|${r.city || ""}`;
       if (seenKeys.has(key)) continue;
       seenKeys.add(key);
       const shortAddr = r.city || (r.address ? r.address.split(",")[0].trim() : "");
-      fromReceipts.push({
+      newLocs.push({
         store: r.store,
         label: shortAddr ? `${r.store} ${shortAddr}` : r.store,
         address: r.address || "",
@@ -186,10 +194,10 @@ export function AppDataProvider({ uid, children }) {
         city: r.city || "",
       });
     }
-    const mergedLocs = [...savedLocs, ...fromReceipts];
+    const mergedLocs = [...savedLocs, ...newLocs];
     setStoreLocations(prev => deepEqual(prev, mergedLocs) ? prev : mergedLocs);
-    // Persist if we discovered new locations from receipts
-    if (fromReceipts.length > 0) {
+    // Persist if we discovered new locations
+    if (newLocs.length > 0) {
       updateField(uid, "storeLocations", mergedLocs);
     }
     setCurrency(prev => prev === (d.currency || "PLN") ? prev : (d.currency || "PLN"));
