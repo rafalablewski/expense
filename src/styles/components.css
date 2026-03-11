@@ -1154,6 +1154,14 @@
   color: #3B82F6;
   border: 1px solid rgba(59,130,246,0.25);
 }
+.source-badge--clickable {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.source-badge--clickable:hover {
+  background: rgba(59,130,246,0.20);
+  border-color: rgba(59,130,246,0.45);
+}
 
 /* ── Pause badge ── */
 .pause-badge {
@@ -1664,6 +1672,23 @@
 .store-hierarchy-total {
   font-size: 13px; font-weight: 600; flex-shrink: 0; white-space: nowrap;
 }
+.store-hierarchy-visit--clickable {
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s;
+  padding: 5px 6px;
+  margin: 0 -6px;
+}
+.store-hierarchy-visit--clickable:hover {
+  background: rgba(6,193,103,0.06);
+}
+.receipt-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-ink3);
+  letter-spacing: -.01em;
+}
 
 .drill-locs {
   display: flex;
@@ -1851,6 +1876,16 @@
   font-size: 13px;
 }
 .budget-item-row:last-child { border-bottom: none; }
+.budget-item-row--clickable {
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s;
+  padding: 6px;
+  margin: 0 -6px;
+}
+.budget-item-row--clickable:hover {
+  background: rgba(6,193,103,0.06);
+}
 .budget-item-name {
   flex: 1; color: var(--c-ink1); font-weight: 500;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;

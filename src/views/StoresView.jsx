@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import $ from "../config/theme";
 import { FX_SYMBOLS, DEFAULT_STORES } from "../config/defaults";
-import { convertAmt, parseDate, receiptSavings, sumReceiptItems } from "../utils/helpers";
+import { convertAmt, parseDate, receiptSavings, sumReceiptItems, buildReceiptNumberMap } from "../utils/helpers";
+import ReceiptDetailPopup from "../components/modals/ReceiptDetailPopup";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import Zl from "../components/primitives/Zl";
@@ -82,7 +83,10 @@ export default function StoresView() {
   // Store database state
   const [editIdx,    setEditIdx]    = useState(null);  // index or "new"
   const [delConfirm, setDelConfirm] = useState(null);  // index
+  const [popupReceiptId, setPopupReceiptId] = useState(null);
+  const [popupNavList,   setPopupNavList]   = useState([]);
   const existingStores = useMemo(() => [...new Set(storeLocations.map(l => l.store))], [storeLocations]);
+  const receiptNumberMap = useMemo(() => buildReceiptNumberMap(receipts), [receipts]);
 
   const toggleExpand = (key) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -335,18 +339,28 @@ export default function StoresView() {
                                 <span className="store-hierarchy-count">{recs.length} wizyt</span>
                               </div>
                               <div className="store-hierarchy-visits">
-                                {recs.map((r, j) => (
-                                  <div key={r.id || j} className="store-hierarchy-visit">
-                                    <span className="store-hierarchy-vdash">—</span>
-                                    <span className="store-hierarchy-date">{r.date || "—"}</span>
-                                    <span className="store-hierarchy-info">
-                                      {r.itemCount > 0 && `${r.itemCount} prod.`}
-                                    </span>
-                                    <span className="mono store-hierarchy-total" style={{ color: col }}>
-                                      {convertAmt(r.total, currency)} {sym}
-                                    </span>
-                                  </div>
-                                ))}
+                                {recs.map((r, j) => {
+                                  const rNum = receiptNumberMap.get(r.id);
+                                  return (
+                                    <div key={r.id || j}
+                                      className="store-hierarchy-visit store-hierarchy-visit--clickable"
+                                      onClick={() => {
+                                        setPopupNavList(recs.map(rec => rec.id));
+                                        setPopupReceiptId(r.id);
+                                      }}
+                                    >
+                                      <span className="store-hierarchy-vdash">—</span>
+                                      {rNum && <span className="receipt-num">#{String(rNum).padStart(3, '0')}</span>}
+                                      <span className="store-hierarchy-date">{r.date || "—"}</span>
+                                      <span className="store-hierarchy-info">
+                                        {r.itemCount > 0 && `${r.itemCount} prod.`}
+                                      </span>
+                                      <span className="mono store-hierarchy-total" style={{ color: col }}>
+                                        {convertAmt(r.total, currency)} {sym}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           ));
@@ -533,6 +547,15 @@ export default function StoresView() {
 
         </div>
       </div>
+
+      {popupReceiptId && (
+        <ReceiptDetailPopup
+          receiptId={popupReceiptId}
+          navList={popupNavList}
+          onClose={() => setPopupReceiptId(null)}
+          onNavigate={(newId) => setPopupReceiptId(newId)}
+        />
+      )}
     </>
   );
 }

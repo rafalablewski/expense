@@ -3,6 +3,7 @@ import $ from "../config/theme";
 import { CATS, FX_SYMBOLS } from "../config/defaults";
 import { convertAmt, parseDate } from "../utils/helpers";
 import { useAppData } from "../contexts/AppDataContext";
+import ReceiptDetailPopup from "../components/modals/ReceiptDetailPopup";
 
 export default function BudgetsView() {
   const { receipts, allItems, budgets, setBudgets, currency } = useAppData();
@@ -10,6 +11,8 @@ export default function BudgetsView() {
   const [editing, setEditing] = useState(null); // cat being edited
   const [editVal, setEditVal] = useState("");
   const [expanded, setExpanded] = useState({}); // { cat: true/false }
+  const [popupReceiptId, setPopupReceiptId] = useState(null);
+  const [popupNavList,   setPopupNavList]   = useState([]);
 
   const toggleExpand = (cat) => setExpanded(prev => ({ ...prev, [cat]: !prev[cat] }));
 
@@ -19,7 +22,7 @@ export default function BudgetsView() {
     receipts.flatMap(r => {
       const d = parseDate(r.date);
       if (!d || d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return [];
-      return (r.items || []).map(it => ({ ...it, store: r.store, date: r.date }));
+      return (r.items || []).map(it => ({ ...it, store: r.store, date: r.date, receiptId: r.id }));
     }),
     [receipts]
   );
@@ -198,7 +201,17 @@ export default function BudgetsView() {
                   {isExpanded && hasItems && (
                     <div className="budget-items-list">
                       {items.map((item, j) => (
-                        <div key={j} className="budget-item-row">
+                        <div
+                          key={j}
+                          className={`budget-item-row${item.receiptId ? " budget-item-row--clickable" : ""}`}
+                          onClick={() => {
+                            if (!item.receiptId) return;
+                            const seen = new Set();
+                            const navIds = items.filter(it => it.receiptId && !seen.has(it.receiptId) && seen.add(it.receiptId)).map(it => it.receiptId);
+                            setPopupNavList(navIds);
+                            setPopupReceiptId(item.receiptId);
+                          }}
+                        >
                           <span className="budget-item-name">{item.name || "—"}</span>
                           {item.store && <span className="budget-item-store">{item.store}</span>}
                           <span className="budget-item-price mono">
@@ -218,6 +231,15 @@ export default function BudgetsView() {
           </p>
         </div>
       </div>
+
+      {popupReceiptId && (
+        <ReceiptDetailPopup
+          receiptId={popupReceiptId}
+          navList={popupNavList}
+          onClose={() => setPopupReceiptId(null)}
+          onNavigate={(newId) => setPopupReceiptId(newId)}
+        />
+      )}
     </>
   );
 }

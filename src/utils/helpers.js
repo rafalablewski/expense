@@ -39,6 +39,16 @@ export function toMonthly(item) {
   return ({ "Miesięcznie": a, "Tygodniowo": a * 4.33, "Rocznie": a / 12, "Kwartalnie": a / 3 })[item.cycle] || a;
 }
 
+export function buildReceiptNumberMap(receipts) {
+  const sorted = [...receipts].sort((a, b) => {
+    const cmp = (a.date || "").localeCompare(b.date || "");
+    return cmp !== 0 ? cmp : (a.id || 0) - (b.id || 0);
+  });
+  const map = new Map();
+  sorted.forEach((r, i) => map.set(r.id, i + 1));
+  return map;
+}
+
 export const isRecurringPaused = (item) => {
   if (!item.paused) return false;
   if (item.pauseUntil) {
