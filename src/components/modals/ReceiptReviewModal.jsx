@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import StorePickerInput from '../primitives/StorePickerInput';
-import { CATS, ALL_CATS, CAT_ICONS, CAT_GROUPS } from '../../config/defaults';
+import { CATS, ALL_CATS, CAT_ICONS } from '../../config/defaults';
+import { FX_SYMBOLS } from '../../config/defaults';
 import { haptic } from '../../utils/helpers';
 import { useAppData } from '../../contexts/AppDataContext';
 
@@ -12,9 +13,16 @@ const fmtDate = (d) => {
 };
 
 const TOP_CATS = ["Nabiał","Mięso","Warzywa","Owoce","Napoje","Pieczywo","Zboża","Słodycze","Chemia","Kosmetyki","Inne"];
+const UNITS = [
+  { value: "szt", label: "szt" },
+  { value: "kg",  label: "kg" },
+  { value: "l",   label: "l" },
+];
 
 export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
-  const { customStores, addCustomStore: onAddCustomStore } = useAppData();
+  const { customStores, addCustomStore: onAddCustomStore, currency } = useAppData();
+  const sym = FX_SYMBOLS[currency] || "zł";
+
   const [data, setData] = useState(() => ({
     store: receipt.store || "",
     address: receipt.address || "",
@@ -25,11 +33,17 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     total_discounts: receipt.total_discounts ?? 0,
     delivery_cost: receipt.delivery_cost ?? "",
     delivery_free: receipt.delivery_free || false,
-    items: (receipt.items || []).map((it, i) => ({ ...it, _key: i })),
+    items: (receipt.items || []).map((it, i) => ({
+      ...it,
+      _key: i,
+      unit: it.unit || "szt",
+    })),
   }));
   const [editingItem, setEditingItem] = useState(null);
   const [headerOpen, setHeaderOpen] = useState(false);
   const [showAllCats, setShowAllCats] = useState(false);
+  const [totalOverride, setTotalOverride] = useState(false);
+  const [manualTotal, setManualTotal] = useState(receipt.total ?? 0);
   const overlayRef = useRef();
   const drawerRef = useRef();
 
@@ -75,7 +89,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     const key = Date.now();
     setData(d => ({
       ...d,
-      items: [...d.items, { _key: key, name: "", quantity: 1, unit: null, unit_price: 0, total_price: 0, discount: null, discount_label: null, category: "Inne" }],
+      items: [...d.items, { _key: key, name: "", quantity: 1, unit: "szt", unit_price: 0, total_price: 0, discount: null, discount_label: null, category: "Inne" }],
     }));
     setEditingItem(data.items.length);
   };
@@ -91,13 +105,17 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     data.items.reduce((s, it) => s + (parseFloat(it.discount) || 0), 0),
   [data.items]);
 
+  const finalTotal = totalOverride ? (parseFloat(manualTotal) || 0) : computedTotal;
+
   const warnings = useMemo(() => {
     const w = [];
-    const total = parseFloat(data.total) || 0;
-    if (total > 0 && Math.abs(total - computedTotal) > 0.01) {
-      w.push(`Suma z paragonu (${total.toFixed(2)}) \u2260 suma pozycji (${computedTotal.toFixed(2)})`);
+    if (totalOverride) {
+      const manual = parseFloat(manualTotal) || 0;
+      if (manual > 0 && Math.abs(manual - computedTotal) > 0.01) {
+        w.push(`Ręczna suma (${manual.toFixed(2)}) różni się od sumy pozycji (${computedTotal.toFixed(2)})`);
+      }
     }
-    data.items.forEach((it, idx) => {
+    data.items.forEach((it) => {
       const up = parseFloat(it.unit_price);
       const qty = parseFloat(it.quantity);
       const tp = parseFloat(it.total_price) || 0;
@@ -110,19 +128,20 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
       }
     });
     return w;
-  }, [data, computedTotal]);
+  }, [data, computedTotal, totalOverride, manualTotal]);
 
   const handleConfirm = () => {
     haptic(20);
     const cleaned = {
       ...data,
-      total: computedTotal,
+      total: finalTotal,
       total_discounts: computedDiscounts,
       delivery_cost: parseFloat(data.delivery_cost) || null,
       delivery_free: data.delivery_free || false,
       items: data.items.map(({ _key, _suggestions, ...it }) => ({
         ...it,
         quantity: parseFloat(it.quantity) || 1,
+        unit: it.unit || "szt",
         unit_price: parseFloat(it.unit_price) || null,
         total_price: parseFloat(it.total_price) || 0,
         discount: it.discount ? parseFloat(it.discount) : null,
@@ -137,7 +156,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     const up = parseFloat(item.unit_price);
     const unit = item.unit || "szt";
     if (up && qty !== 1) {
-      return `${qty}${unit === "kg" ? "kg" : ""} \u00d7 ${up.toFixed(2)}`;
+      return `${qty} ${unit} \u00d7 ${up.toFixed(2)} ${sym}`;
     }
     if (qty !== 1) return `${qty} ${unit}`;
     return null;
@@ -151,6 +170,15 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     else if (data.city) parts.push(data.city);
     return parts.join(" \u00b7 ");
   };
+
+  // Number input with currency suffix
+  const CurrencyInput = ({ value, onChange, placeholder = "0.00", min = "0", step = "0.01", ...rest }) => (
+    <div className="rv2-currency-wrap">
+      <input className="field field--text-right field--currency" type="number" min={min} step={step}
+        value={value} onChange={onChange} placeholder={placeholder} {...rest} />
+      <span className="rv2-currency-suffix">{sym}</span>
+    </div>
+  );
 
   return (
     <div className="rv-overlay" ref={overlayRef}
@@ -205,8 +233,8 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                 <div className="rv2-form-row">
                   <div className="rv2-form-group">
                     <label className="rv2-label">Dostawa</label>
-                    <input className="field field--text-right" type="number" min="0" step="0.01" value={data.delivery_cost}
-                      onChange={e => updateField("delivery_cost", e.target.value)} placeholder="0.00" />
+                    <CurrencyInput value={data.delivery_cost}
+                      onChange={e => updateField("delivery_cost", e.target.value)} />
                   </div>
                   <div className="rv2-form-group" style={{ alignSelf: "flex-end" }}>
                     <label className="rv-checkbox-row">
@@ -240,6 +268,8 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
               return (
                 <div key={item._key} className="rv2-item rv2-item--editing" role="group"
                   aria-label={`Edytuj: ${item.name || "nowy produkt"}`}>
+
+                  {/* ─ Name + delete ─ */}
                   <div className="rv2-edit-name-row">
                     <input className="field field--bold" value={item.name || ""} onChange={e => updateItem(idx, "name", e.target.value)}
                       placeholder="Nazwa produktu" autoFocus />
@@ -259,69 +289,83 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                     </div>
                   )}
 
-                  {/* Category pills */}
-                  <div className="rv2-label">Kategoria</div>
-                  <div className="rv2-cat-pills">
-                    {(showAllCats ? ALL_CATS : TOP_CATS).map(c => (
-                      <button key={c}
-                        className={`rv2-cat-pill${item.category === c ? " rv2-cat-pill--on" : ""}`}
-                        style={item.category === c ? { borderColor: CATS[c], background: CATS[c] + "18", color: CATS[c] } : {}}
-                        onClick={() => { haptic(8); updateItem(idx, "category", c); }}>
-                        <span>{CAT_ICONS[c]}</span> {c}
+                  {/* ─ Section: Cena ─ */}
+                  <div className="rv2-edit-section">
+                    <div className="rv2-form-row">
+                      <div className="rv2-form-group rv2-form-grow">
+                        <label className="rv2-label">Cena całkowita</label>
+                        <CurrencyInput value={item.total_price ?? 0}
+                          onChange={e => updateItem(idx, "total_price", e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ─ Section: Ilość & jednostka ─ */}
+                  <div className="rv2-edit-section">
+                    <div className="rv2-form-row">
+                      <div className="rv2-form-group">
+                        <label className="rv2-label">Ilość</label>
+                        <input className="field field--text-right" type="number" min="0" step="0.001" value={item.quantity ?? 1}
+                          onChange={e => updateItem(idx, "quantity", e.target.value)} />
+                      </div>
+                      <div className="rv2-form-group">
+                        <label className="rv2-label">Jednostka</label>
+                        <div className="rv2-unit-pills">
+                          {UNITS.map(u => (
+                            <button key={u.value}
+                              className={`rv2-unit-pill${(item.unit || "szt") === u.value ? " rv2-unit-pill--on" : ""}`}
+                              onClick={() => { haptic(8); updateItem(idx, "unit", u.value); }}>
+                              {u.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="rv2-form-group">
+                        <label className="rv2-label">Cena jedn.</label>
+                        <CurrencyInput value={item.unit_price ?? ""}
+                          onChange={e => updateItem(idx, "unit_price", e.target.value)} placeholder="auto" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ─ Section: Zniżka ─ */}
+                  <div className="rv2-edit-section">
+                    <div className="rv2-form-row">
+                      <div className="rv2-form-group">
+                        <label className="rv2-label">Zniżka</label>
+                        <CurrencyInput value={item.discount ?? ""}
+                          onChange={e => updateItem(idx, "discount", e.target.value)} />
+                      </div>
+                      <div className="rv2-form-group rv2-form-grow">
+                        <label className="rv2-label">Etykieta zniżki</label>
+                        <input className="field" value={item.discount_label || ""}
+                          onChange={e => updateItem(idx, "discount_label", e.target.value)} placeholder="np. -20%, PROMO" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ─ Section: Kategoria ─ */}
+                  <div className="rv2-edit-section">
+                    <div className="rv2-label">Kategoria</div>
+                    <div className="rv2-cat-pills">
+                      {(showAllCats ? ALL_CATS : TOP_CATS).map(c => (
+                        <button key={c}
+                          className={`rv2-cat-pill${item.category === c ? " rv2-cat-pill--on" : ""}`}
+                          style={item.category === c ? { borderColor: CATS[c], background: CATS[c] + "18", color: CATS[c] } : {}}
+                          onClick={() => { haptic(8); updateItem(idx, "category", c); }}>
+                          <span>{CAT_ICONS[c]}</span> {c}
+                        </button>
+                      ))}
+                    </div>
+                    {!showAllCats ? (
+                      <button className="rv2-show-all-cats" onClick={() => setShowAllCats(true)}>
+                        Więcej ({ALL_CATS.length - TOP_CATS.length})
                       </button>
-                    ))}
-                  </div>
-                  {!showAllCats && (
-                    <button className="rv2-show-all-cats" onClick={() => setShowAllCats(true)}>
-                      Wszystkie kategorie ({ALL_CATS.length})
-                    </button>
-                  )}
-                  {showAllCats && (
-                    <button className="rv2-show-all-cats" onClick={() => setShowAllCats(false)}>
-                      Mniej kategorii
-                    </button>
-                  )}
-
-                  {/* Price & quantity row */}
-                  <div className="rv2-form-row" style={{ marginTop: 10 }}>
-                    <div className="rv2-form-group rv2-form-grow">
-                      <label className="rv2-label">Cena</label>
-                      <input className="field field--text-right" type="number" min="0" step="0.01" value={item.total_price ?? 0}
-                        onChange={e => updateItem(idx, "total_price", e.target.value)} placeholder="0.00" />
-                    </div>
-                    <div className="rv2-form-group">
-                      <label className="rv2-label">Ilość</label>
-                      <input className="field field--text-right" type="number" min="0" step="0.001" value={item.quantity ?? 1}
-                        onChange={e => updateItem(idx, "quantity", e.target.value)} />
-                    </div>
-                    <div className="rv2-form-group">
-                      <label className="rv2-label">Jedn.</label>
-                      <input className="field" value={item.unit || ""} onChange={e => updateItem(idx, "unit", e.target.value)}
-                        placeholder="szt" />
-                    </div>
-                  </div>
-
-                  {/* Unit price */}
-                  <div className="rv2-form-row">
-                    <div className="rv2-form-group rv2-form-grow">
-                      <label className="rv2-label">Cena jedn.</label>
-                      <input className="field field--text-right" type="number" min="0" step="0.01" value={item.unit_price ?? ""}
-                        onChange={e => updateItem(idx, "unit_price", e.target.value)} placeholder="auto" />
-                    </div>
-                  </div>
-
-                  {/* Discount row */}
-                  <div className="rv2-form-row">
-                    <div className="rv2-form-group">
-                      <label className="rv2-label">Zniżka</label>
-                      <input className="field field--text-right" type="number" min="0" step="0.01" value={item.discount ?? ""}
-                        onChange={e => updateItem(idx, "discount", e.target.value)} placeholder="0.00" />
-                    </div>
-                    <div className="rv2-form-group rv2-form-grow">
-                      <label className="rv2-label">Etykieta</label>
-                      <input className="field" value={item.discount_label || ""}
-                        onChange={e => updateItem(idx, "discount_label", e.target.value)} placeholder="np. -20%, PROMO" />
-                    </div>
+                    ) : (
+                      <button className="rv2-show-all-cats" onClick={() => setShowAllCats(false)}>
+                        Mniej
+                      </button>
+                    )}
                   </div>
 
                   <button className="rv2-done-btn" onClick={() => { setEditingItem(null); setShowAllCats(false); }}>
@@ -339,7 +383,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                 aria-label={`${item.name || "Produkt"} — kliknij aby edytować`}>
                 <div className="rv2-item-top">
                   <div className="rv2-item-name">{item.name || "Bez nazwy"}</div>
-                  <div className="rv2-item-price">{totalPrice.toFixed(2)}</div>
+                  <div className="rv2-item-price">{totalPrice.toFixed(2)} {sym}</div>
                 </div>
                 <div className="rv2-item-bottom">
                   <span className="rv2-item-cat" style={{ color: catColor }}>
@@ -348,7 +392,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                   {qtyLine && <span className="rv2-item-qty">{qtyLine}</span>}
                   {discount > 0 && (
                     <span className="rv2-item-discount">
-                      -{discount.toFixed(2)}{item.discount_label ? ` ${item.discount_label}` : ""}
+                      -{discount.toFixed(2)} {sym}{item.discount_label ? ` ${item.discount_label}` : ""}
                     </span>
                   )}
                 </div>
@@ -360,24 +404,33 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
           <div className="rv2-totals">
             <div className="rv2-total-row">
               <span>Razem</span>
-              <span className="rv2-total-val">{computedTotal.toFixed(2)} zł</span>
+              {totalOverride ? (
+                <CurrencyInput value={manualTotal}
+                  onChange={e => setManualTotal(e.target.value)}
+                  style={{ maxWidth: 140 }} />
+              ) : (
+                <span className="rv2-total-val">{computedTotal.toFixed(2)} {sym}</span>
+              )}
             </div>
+            <button className="rv2-total-toggle" onClick={() => { haptic(8); setTotalOverride(o => !o); }}>
+              {totalOverride ? "Użyj sumy z pozycji" : "Popraw ręcznie"}
+            </button>
             {computedDiscounts > 0 && (
               <div className="rv2-total-row rv2-total-row--discount">
                 <span>Zniżki</span>
-                <span>-{computedDiscounts.toFixed(2)} zł</span>
+                <span>-{computedDiscounts.toFixed(2)} {sym}</span>
               </div>
             )}
             {!data.delivery_free && parseFloat(data.delivery_cost) > 0 && (
               <div className="rv2-total-row rv2-total-row--sub">
                 <span>w tym dostawa</span>
-                <span>{parseFloat(data.delivery_cost).toFixed(2)} zł</span>
+                <span>{parseFloat(data.delivery_cost).toFixed(2)} {sym}</span>
               </div>
             )}
             {data.delivery_free && parseFloat(data.delivery_cost) > 0 && (
               <div className="rv2-total-row rv2-total-row--sub">
                 <span>Dostawa (darmowa)</span>
-                <span style={{ textDecoration: "line-through" }}>{parseFloat(data.delivery_cost).toFixed(2)} zł</span>
+                <span style={{ textDecoration: "line-through" }}>{parseFloat(data.delivery_cost).toFixed(2)} {sym}</span>
               </div>
             )}
           </div>

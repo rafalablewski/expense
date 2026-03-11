@@ -135,6 +135,32 @@
 [data-dark="1"] .rv2-total-row--sub { color: rgba(255,255,255,0.35); }
 [data-dark="1"] .rv2-cancel-link { color: rgba(255,255,255,0.40); }
 [data-dark="1"] .rv2-cancel-link:hover { color: #FF6B6B; background: rgba(217,48,37,0.10); }
+[data-dark="1"] .rv2-edit-section { border-top-color: rgba(255,255,255,0.08); }
+[data-dark="1"] .rv2-currency-suffix { color: rgba(255,255,255,0.35); }
+[data-dark="1"] .rv2-unit-pill {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.60);
+}
+[data-dark="1"] .rv2-unit-pill:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.25);
+}
+[data-dark="1"] .rv2-unit-pill--on {
+  border-color: var(--c-green);
+  background: rgba(6,193,103,0.12);
+  color: #3DDC84;
+}
+[data-dark="1"] .rv2-cat-pill {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.70);
+}
+[data-dark="1"] .rv2-cat-pill:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.25);
+}
+[data-dark="1"] .rv2-total-toggle { color: #3DDC84; }
 
 /* ReceiptsView input cards dark */
 [data-dark="1"] .rv-input-card {

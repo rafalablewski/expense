@@ -617,6 +617,72 @@
 }
 .rv2-show-all-cats:hover { text-decoration: underline; }
 
+/* ── v2: Edit sections (visual grouping) ── */
+.rv2-edit-section {
+  padding-top: 10px;
+  margin-top: 8px;
+  border-top: 1px solid rgba(0,0,0,0.04);
+}
+
+/* ── v2: Currency input wrapper ── */
+.rv2-currency-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.rv2-currency-wrap .field--currency {
+  padding-right: 32px;
+}
+.rv2-currency-suffix {
+  position: absolute;
+  right: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-ink3);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── v2: Unit picker pills ── */
+.rv2-unit-pills {
+  display: flex;
+  gap: 4px;
+}
+.rv2-unit-pill {
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1.5px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.50);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-ink2);
+  cursor: pointer;
+  transition: all .12s;
+  white-space: nowrap;
+}
+.rv2-unit-pill:hover {
+  border-color: rgba(0,0,0,0.15);
+  background: rgba(255,255,255,0.70);
+}
+.rv2-unit-pill--on {
+  border-color: var(--c-green);
+  background: var(--c-green-bg);
+  color: var(--c-green);
+  font-weight: 700;
+}
+
+/* ── v2: Total override toggle ── */
+.rv2-total-toggle {
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-green);
+  cursor: pointer;
+  padding: 2px 0 6px;
+}
+.rv2-total-toggle:hover { text-decoration: underline; }
+
 /* ── v2: Totals ── */
 .rv2-totals {
   margin-top: 14px;
