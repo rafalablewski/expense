@@ -20,7 +20,7 @@ const UNITS = [
 ];
 
 export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
-  const { customStores, addCustomStore: onAddCustomStore, currency } = useAppData();
+  const { customStores, addCustomStore: onAddCustomStore, storeLocations, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
 
   const [data, setData] = useState(() => ({
@@ -206,6 +206,10 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                 <div className="rv2-form-group rv2-form-grow">
                   <label className="rv2-label">Sklep</label>
                   <StorePickerInput value={data.store} onChange={v => updateField("store", v)}
+                    storeLocations={storeLocations}
+                    onSelectLocation={(loc) => {
+                      setData(d => ({ ...d, store: loc.store, address: loc.address, zip_code: loc.zip_code, city: loc.city }));
+                    }}
                     customStores={customStores} onAddCustomStore={onAddCustomStore} placeholder="Nazwa sklepu" />
                 </div>
                 <div className="rv2-form-group">

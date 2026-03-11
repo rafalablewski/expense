@@ -183,6 +183,19 @@
   border-color: var(--c-green);
 }
 
+/* Store picker dark */
+[data-dark="1"] .store-picker-dropdown {
+  background: #1a1f1c;
+  border-color: rgba(255,255,255,0.15);
+}
+[data-dark="1"] .store-picker-option {
+  color: rgba(255,255,255,0.85);
+  border-bottom-color: rgba(255,255,255,0.06);
+}
+[data-dark="1"] .store-picker-option:hover { background: rgba(6,193,103,0.10); }
+[data-dark="1"] .store-picker-option-sub { color: rgba(255,255,255,0.40); }
+[data-dark="1"] .store-picker-add { color: #3DDC84; }
+
 /* QA method cards / sources dark */
 [data-dark="1"] .qa-method-card,
 [data-dark="1"] .qa-source-btn {

@@ -29,6 +29,7 @@ export function AppDataProvider({ uid, children }) {
   const [budgets,   setBudgets]   = useState({});
   const [recurring, setRecurring] = useState([]);
   const [customStores, setCustomStores] = useState([]);
+  const [storeLocations, setStoreLocations] = useState([]);
   const [currency,  setCurrency]  = useState("PLN");
   const [darkMode,  setDarkMode]  = useState(() => lsGet(LS_KEYS.darkMode, false));
   const [onboarded, setOnboarded] = useState(false);
@@ -166,6 +167,7 @@ export function AppDataProvider({ uid, children }) {
     setBudgets(prev => deepEqual(prev, d.budgets || {}) ? prev : (d.budgets || {}));
     setRecurring(prev => deepEqual(prev, rec) ? prev : rec);
     setCustomStores(prev => deepEqual(prev, d.customStores || []) ? prev : (d.customStores || []));
+    setStoreLocations(prev => deepEqual(prev, d.storeLocations || []) ? prev : (d.storeLocations || []));
     setCurrency(prev => prev === (d.currency || "PLN") ? prev : (d.currency || "PLN"));
     setDarkMode(prev => prev === (d.darkMode || false) ? prev : (d.darkMode || false));
     setOnboarded(prev => prev === (d.onboarded || false) ? prev : (d.onboarded || false));
@@ -231,6 +233,13 @@ export function AppDataProvider({ uid, children }) {
     prevCustomStores.current = customStores;
     guardedWrite("customStores", customStores);
   }, [customStores]);
+  const prevStoreLocations = useRef(null);
+  useEffect(() => {
+    if (!initialLoadDone.current) return;
+    if (prevStoreLocations.current === null) { prevStoreLocations.current = storeLocations; return; }
+    prevStoreLocations.current = storeLocations;
+    guardedWrite("storeLocations", storeLocations);
+  }, [storeLocations]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevCurrency.current === null) { prevCurrency.current = currency; return; }
@@ -420,6 +429,21 @@ export function AppDataProvider({ uid, children }) {
     }
   }, [apiKey]);
 
+  const learnStoreLocation = useCallback((receipt) => {
+    const { store, address, city, zip_code } = receipt;
+    if (!store || (!address && !city)) return;
+    // Build a label like "Lidl Bazantowo" from store + city/address
+    const shortAddr = city || (address ? address.split(",")[0].trim() : "");
+    const label = shortAddr ? `${store} ${shortAddr}` : store;
+    setStoreLocations(prev => {
+      const exists = prev.some(loc =>
+        loc.store === store && loc.address === (address || "") && loc.city === (city || "")
+      );
+      if (exists) return prev;
+      return [...prev, { store, label, address: address || "", zip_code: zip_code || "", city: city || "" }];
+    });
+  }, []);
+
   const confirmReceipt = useCallback((reviewed) => {
     const current = reviewQueueRef.current[0];
     if (current) {
@@ -432,10 +456,12 @@ export function AppDataProvider({ uid, children }) {
       if (current.source) saved.source = current.source;
       saved.total = sumReceiptItems(saved);
       setReceipts(p => [saved, ...p]);
+      // Auto-learn store location
+      learnStoreLocation(saved);
     }
     setReviewQueue(q => q.slice(1));
     haptic(30);
-  }, []);
+  }, [learnStoreLocation]);
 
   const cancelReceipt = useCallback(() => {
     setReviewQueue(q => q.slice(1));
@@ -461,6 +487,7 @@ export function AppDataProvider({ uid, children }) {
     budgets, setBudgets,
     recurring, setRecurring,
     customStores,
+    storeLocations,
     currency, setCurrency,
     darkMode, setDarkMode,
     onboarded, setOnboarded,
@@ -484,7 +511,7 @@ export function AppDataProvider({ uid, children }) {
     confirmReceipt,
     cancelReceipt,
   }), [
-    receipts, expenses, budgets, recurring, customStores,
+    receipts, expenses, budgets, recurring, customStores, storeLocations,
     currency, darkMode, onboarded, apiKey,
     processing, errors, reviewQueue,
     dataLoaded, loadFailed, allItems,
