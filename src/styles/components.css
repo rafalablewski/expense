@@ -1154,6 +1154,14 @@
   color: #3B82F6;
   border: 1px solid rgba(59,130,246,0.25);
 }
+.source-badge--clickable {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.source-badge--clickable:hover {
+  background: rgba(59,130,246,0.20);
+  border-color: rgba(59,130,246,0.45);
+}
 
 /* ── Pause badge ── */
 .pause-badge {

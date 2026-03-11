@@ -304,7 +304,7 @@ export function AppDataProvider({ uid, children }) {
   const allItems = useMemo(() => {
     // Receipt items (scanned + manual) are the single source of truth
     const receiptItems = receipts.flatMap(r => {
-      const items = (r.items || []).map(it => ({ ...it, store: r.store, address: r.address, zip_code: r.zip_code, date: r.date, source: r.source || "receipt" }));
+      const items = (r.items || []).map(it => ({ ...it, store: r.store, address: r.address, zip_code: r.zip_code, date: r.date, source: r.source || "receipt", receiptId: r.id }));
       // Inject delivery cost as a synthetic "Dostawa" category item for stats
       const deliveryCost = !r.delivery_free ? (parseFloat(r.delivery_cost) || 0) : 0;
       if (deliveryCost > 0) {

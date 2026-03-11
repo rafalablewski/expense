@@ -5,6 +5,7 @@ import { convertAmt, haptic, isRecurringPaused, sumReceiptItems, toMonthly } fro
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import { useAppData } from "../contexts/AppDataContext";
+import ReceiptDetailPopup from "../components/modals/ReceiptDetailPopup";
 
 export default function ExpensesView() {
   const { receipts, setReceipts, recurring, allItems: contextItems, currency } = useAppData();
@@ -16,6 +17,8 @@ export default function ExpensesView() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [expanded, setExpanded] = useState(null);
+  const [popupReceiptId, setPopupReceiptId] = useState(null);
+  const [popupNavList,   setPopupNavList]   = useState([]);
 
   // Use merged items from context (receipt items + recurring)
   const allItems = useMemo(() =>
@@ -159,9 +162,23 @@ export default function ExpensesView() {
                         <div><span className="detail-label">Kategoria:</span> <CatChip cat={item.category} /></div>
                         <div>
                           <span className="detail-label">Źródło: </span>
-                          <span className={`source-badge source-badge-${item.source}`}>
-                            {item.source==="recurring" ? "🔄 Cykliczny" : item.source==="manual" ? "✏️ Ręczny" : "🧾 Paragon"}
-                          </span>
+                          {item.source === "receipt" && item.receiptId ? (
+                            <span
+                              className="source-badge source-badge-receipt source-badge--clickable"
+                              onClick={() => {
+                                const seen = new Set();
+                                const navIds = list.filter(it => it.receiptId && !seen.has(it.receiptId) && seen.add(it.receiptId)).map(it => it.receiptId);
+                                setPopupNavList(navIds);
+                                setPopupReceiptId(item.receiptId);
+                              }}
+                            >
+                              🧾 Paragon
+                            </span>
+                          ) : (
+                            <span className={`source-badge source-badge-${item.source}`}>
+                              {item.source==="recurring" ? "🔄 Cykliczny" : item.source==="manual" ? "✏️ Ręczny" : "🧾 Paragon"}
+                            </span>
+                          )}
                         </div>
                         {item.store && <div><span className="detail-label">Sklep:</span> {item.store}</div>}
                         {item.quantity && <div><span className="detail-label">Ilość:</span> {item.quantity}{item.unit ? ` ${item.unit}` : ""}</div>}
@@ -185,6 +202,15 @@ export default function ExpensesView() {
           )}
         </div>
       </div>
+
+      {popupReceiptId && (
+        <ReceiptDetailPopup
+          receiptId={popupReceiptId}
+          navList={popupNavList}
+          onClose={() => setPopupReceiptId(null)}
+          onNavigate={(newId) => setPopupReceiptId(newId)}
+        />
+      )}
     </>
   );
 }
