@@ -108,7 +108,7 @@ export default function StoresView() {
       map[key].visits++;
       map[key].total  += sumReceiptItems(r);
       map[key].saved  += receiptSavings(r);
-      (r.items || []).forEach(it => map[key].items.push({ ...it, date: r.date }));
+      (r.items || []).forEach(it => map[key].items.push({ ...it, date: r.date, _address: r.address, _zip_code: r.zip_code, _city: r.city }));
       map[key].receipts.push({ id: r.id, date: r.date, total: sumReceiptItems(r), itemCount: (r.items || []).length, address: r.address, zip_code: r.zip_code, city: r.city });
       if (r.city) map[key].cities[r.city] = (map[key].cities[r.city] || 0) + 1;
       const d = parseDate(r.date);
@@ -312,9 +312,19 @@ export default function StoresView() {
                     {isExpanded && (
                       <div className="store-hierarchy">
                         {(() => {
+                          const locs = storeLocations.filter(l => l.store.toLowerCase() === key);
+                          const findLocLabel = (r) => {
+                            const rAddr = (r.address || "").toLowerCase();
+                            const rZip = (r.zip_code || "").toLowerCase();
+                            const match = locs.find(l =>
+                              (l.address && rAddr && l.address.toLowerCase() === rAddr) ||
+                              (l.zip_code && rZip && l.zip_code.toLowerCase() === rZip)
+                            );
+                            return match ? match.label : [r.address, r.zip_code, r.city].filter(Boolean).join(", ") || "Nieznana lokalizacja";
+                          };
                           const byLoc = {};
                           sortedReceipts.forEach(r => {
-                            const loc = r.city || [r.address, r.zip_code].filter(Boolean).join(", ") || "Nieznana lokalizacja";
+                            const loc = findLocLabel(r);
                             if (!byLoc[loc]) byLoc[loc] = [];
                             byLoc[loc].push(r);
                           });
@@ -373,17 +383,25 @@ export default function StoresView() {
                 <div className="section-heading-sm">
                   Lokalizacje · {Object.keys(drillStore.locations).length}
                 </div>
-                {Object.values(drillStore.locations).map((loc, i) => (
-                  <div key={i} className="location-card">
-                    <span className="location-icon">📍</span>
-                    <div className="flex-1">
-                      <div className="location-name">
-                        {[loc.address, loc.zip_code, loc.city].filter(Boolean).join(", ")}
+                {Object.values(drillStore.locations).map((loc, i) => {
+                  const dbLocs = storeLocations.filter(l => l.store.toLowerCase() === activeStore.toLowerCase());
+                  const match = dbLocs.find(l =>
+                    (l.address && loc.address && l.address.toLowerCase() === loc.address.toLowerCase()) ||
+                    (l.zip_code && loc.zip_code && l.zip_code.toLowerCase() === loc.zip_code.toLowerCase())
+                  );
+                  return (
+                    <div key={i} className="location-card">
+                      <span className="location-icon">📍</span>
+                      <div className="flex-1">
+                        <div className="location-name">
+                          {match ? match.label : [loc.address, loc.zip_code, loc.city].filter(Boolean).join(", ")}
+                        </div>
+                        {match && <div className="item-sub color-ink3">{[loc.address, loc.zip_code, loc.city].filter(Boolean).join(", ")}</div>}
+                        <div className="item-sub">{loc.visits} wizyt · {convertAmt(loc.total, currency)} {sym}</div>
                       </div>
-                      <div className="item-sub">{loc.visits} wizyt · {convertAmt(loc.total, currency)} {sym}</div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -405,18 +423,26 @@ export default function StoresView() {
               <table className="tbl" aria-label={`Produkty z ${activeStore}`}>
                 <thead>
                   <tr>
-                    {["Produkt", "Kategoria", "Data", "Ilość", "Cena jedn.", "Opust", "Razem"].map((h, i) => (
-                      <th key={h} scope="col" className={i >= 3 ? "text-right" : "text-left"}>{h}</th>
+                    {["Produkt", "Kategoria", "Lokalizacja", "Data", "Ilość", "Cena jedn.", "Opust", "Razem"].map((h, i) => (
+                      <th key={h} scope="col" className={i >= 4 ? "text-right" : "text-left"}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {drillItems.length === 0 ? (
-                    <tr><td colSpan={7} className="td-no-results">Brak wyników</td></tr>
-                  ) : drillItems.map((item, i) => (
+                    <tr><td colSpan={8} className="td-no-results">Brak wyników</td></tr>
+                  ) : drillItems.map((item, i) => {
+                    const dbLocs = storeLocations.filter(l => l.store.toLowerCase() === activeStore.toLowerCase());
+                    const locMatch = dbLocs.find(l =>
+                      (l.address && item._address && l.address.toLowerCase() === item._address.toLowerCase()) ||
+                      (l.zip_code && item._zip_code && l.zip_code.toLowerCase() === item._zip_code.toLowerCase())
+                    );
+                    const locLabel = locMatch ? locMatch.label : [item._address, item._city].filter(Boolean).join(", ") || "—";
+                    return (
                     <tr key={i}>
                       <td className="td-name">{item.name}</td>
                       <td><CatChip cat={item.category} /></td>
+                      <td className="fs-12 color-ink3">{locLabel}</td>
                       <td className="mono color-ink3 fs-12">{item.date || "—"}</td>
                       <td className="mono text-right color-ink2 fs-12">{item.quantity || 1}{item.unit ? ` ${item.unit}` : ""}</td>
                       <td className="text-right"><Zl v={item.unit_price} /></td>
@@ -427,7 +453,8 @@ export default function StoresView() {
                       </td>
                       <td className="text-right"><Zl v={item.total_price} /></td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
