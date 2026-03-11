@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import Zl from '../primitives/Zl';
 import CatChip from '../primitives/CatChip';
 import { useAppData } from '../../contexts/AppDataContext';
@@ -14,8 +14,8 @@ export default function ReceiptDetailPopup({ receiptId, navList, onClose, onNavi
   const currentIndex = navList.indexOf(receiptId);
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < navList.length - 1;
-  const goPrev = () => hasPrev && onNavigate(navList[currentIndex - 1]);
-  const goNext = () => hasNext && onNavigate(navList[currentIndex + 1]);
+  const goPrev = useCallback(() => hasPrev && onNavigate(navList[currentIndex - 1]), [hasPrev, onNavigate, navList, currentIndex]);
+  const goNext = useCallback(() => hasNext && onNavigate(navList[currentIndex + 1]), [hasNext, onNavigate, navList, currentIndex]);
 
   const numberMap = buildReceiptNumberMap(receipts);
   const receiptNumber = numberMap.get(receiptId);
@@ -28,7 +28,7 @@ export default function ReceiptDetailPopup({ receiptId, navList, onClose, onNavi
     };
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
-  });
+  }, [onClose, goPrev, goNext]);
 
   if (!receipt) return null;
 
