@@ -738,6 +738,21 @@
 .source-badge-manual { background: rgba(6,193,103,0.10); color: var(--c-green); border: 1px solid rgba(6,193,103,0.25); }
 .source-badge-receipt { background: rgba(59,130,246,0.10); color: #3B82F6; border: 1px solid rgba(59,130,246,0.25); }
 
+/* ── RENAME INLINE ── */
+.rename-inline { display: flex; align-items: center; gap: 6px; }
+.rename-input {
+  font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 600;
+  color: var(--c-ink0); background: var(--c-glass-bg, rgba(255,255,255,0.7));
+  border: 1.5px solid var(--c-accent, #3B82F6); border-radius: 8px;
+  padding: 4px 10px; width: 100%; outline: none;
+}
+.rename-input:focus { box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+.btn-rename {
+  background: none; border: 1.5px solid var(--c-accent, #3B82F6); border-radius: 8px;
+  padding: 5px 14px; font-size: 12px; cursor: pointer; color: var(--c-accent, #3B82F6);
+  font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
 /* ── DELETE BUTTON ── */
 .btn-delete {
   background: none; border: 1.5px solid var(--c-red); border-radius: 8px;
