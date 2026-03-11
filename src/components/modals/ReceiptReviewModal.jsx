@@ -20,7 +20,7 @@ const UNITS = [
 ];
 
 export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
-  const { customStores, addCustomStore: onAddCustomStore, storeLocations, currency } = useAppData();
+  const { storeLocations, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
 
   const [data, setData] = useState(() => ({
@@ -210,29 +210,20 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                     onSelectLocation={(loc) => {
                       setData(d => ({ ...d, store: loc.store, address: loc.address, zip_code: loc.zip_code, city: loc.city }));
                     }}
-                    customStores={customStores} onAddCustomStore={onAddCustomStore} placeholder="Nazwa sklepu" />
+                    placeholder="Wybierz sklep" />
                 </div>
                 <div className="rv2-form-group">
                   <label className="rv2-label">Data</label>
                   <input className="field" type="date" value={data.date} onChange={e => updateField("date", e.target.value)} />
                 </div>
               </div>
-              <div className="rv2-form-row">
-                <div className="rv2-form-group rv2-form-grow">
-                  <label className="rv2-label">Adres</label>
-                  <input className="field" value={data.address} onChange={e => updateField("address", e.target.value)} placeholder="ul. Przykładowa 1" />
+              {/* Show selected location as read-only info */}
+              {(data.address || data.city) && (
+                <div className="rv2-loc-info">
+                  <span className="rv2-loc-icon">📍</span>
+                  <span className="rv2-loc-text">{[data.address, data.zip_code, data.city].filter(Boolean).join(", ")}</span>
                 </div>
-              </div>
-              <div className="rv2-form-row">
-                <div className="rv2-form-group rv2-form-grow">
-                  <label className="rv2-label">Miasto</label>
-                  <input className="field" value={data.city} onChange={e => updateField("city", e.target.value)} placeholder="np. Katowice" />
-                </div>
-                <div className="rv2-form-group">
-                  <label className="rv2-label">Kod</label>
-                  <input className="field" value={data.zip_code} onChange={e => updateField("zip_code", e.target.value)} placeholder="00-000" />
-                </div>
-              </div>
+              )}
               {(parseFloat(data.delivery_cost) > 0 || data.delivery_free) && (
                 <div className="rv2-form-row">
                   <div className="rv2-form-group">

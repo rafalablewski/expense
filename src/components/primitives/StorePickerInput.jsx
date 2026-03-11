@@ -1,18 +1,16 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { DEFAULT_STORES } from '../../config/defaults';
 
 /**
  * StorePickerInput — shows store locations (name + address) as dropdown options.
+ * Only shows locations from the store database (Baza sklepów).
  *
  * Props:
  *  - value: current store name string
  *  - onChange: called with store name string
- *  - onSelectLocation: called with { store, address, zip_code, city } when a saved location is picked
+ *  - onSelectLocation: called with { store, address, zip_code, city } when a location is picked
  *  - storeLocations: array of { store, label, address, zip_code, city }
- *  - customStores: array of store name strings (legacy)
- *  - onAddCustomStore: called with new store name string
  */
-export default function StorePickerInput({ value, onChange, onSelectLocation, storeLocations = [], customStores = [], onAddCustomStore, id, placeholder }) {
+export default function StorePickerInput({ value, onChange, onSelectLocation, storeLocations = [], id, placeholder }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(value || "");
   const ref = useRef(null);
@@ -25,18 +23,16 @@ export default function StorePickerInput({ value, onChange, onSelectLocation, st
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Build combined list: saved locations first, then plain store names
+  // Build list from store locations only — dedup by store+zip
   const entries = useMemo(() => {
     const result = [];
     const seen = new Set();
 
-    // Store locations (with address data) — dedup by store+zip
     for (const loc of storeLocations) {
       const key = loc.zip_code ? `${loc.store}|${loc.zip_code}` : `${loc.store}|${loc.address || ""}|${loc.city || ""}`;
       if (seen.has(key)) continue;
       seen.add(key);
       result.push({
-        type: "location",
         store: loc.store,
         label: loc.label || loc.store,
         address: loc.address || "",
@@ -46,21 +42,8 @@ export default function StorePickerInput({ value, onChange, onSelectLocation, st
       });
     }
 
-    // Plain store names (defaults + custom) without a location entry
-    const allNames = [...new Set([...DEFAULT_STORES, ...(customStores || [])])];
-    for (const name of allNames) {
-      if (!result.some(e => e.store === name)) {
-        result.push({
-          type: "name",
-          store: name,
-          label: name,
-          searchText: name.toLowerCase(),
-        });
-      }
-    }
-
     return result;
-  }, [storeLocations, customStores]);
+  }, [storeLocations]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -70,9 +53,9 @@ export default function StorePickerInput({ value, onChange, onSelectLocation, st
 
   const selectEntry = (entry) => {
     onChange(entry.store);
-    setSearch(entry.type === "location" ? entry.label : entry.store);
+    setSearch(entry.label);
     setOpen(false);
-    if (entry.type === "location" && onSelectLocation) {
+    if (onSelectLocation) {
       onSelectLocation({
         store: entry.store,
         address: entry.address,
@@ -82,46 +65,33 @@ export default function StorePickerInput({ value, onChange, onSelectLocation, st
     }
   };
 
-  const selectNew = () => {
-    if (onAddCustomStore) onAddCustomStore(search);
-    onChange(search);
-    setOpen(false);
-  };
-
   return (
     <div ref={ref} className="store-picker">
       <input id={id} className="field" value={search}
-        onChange={e => { setSearch(e.target.value); onChange(e.target.value); setOpen(true); }}
+        onChange={e => { setSearch(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
-        placeholder={placeholder || "Wybierz lub wpisz sklep"}
+        placeholder={placeholder || "Wybierz sklep"}
         autoComplete="off" />
       {open && (
         <div className="store-picker-dropdown">
           {filtered.map((entry, i) => {
-            const sub = entry.type === "location"
-              ? [entry.address, entry.city].filter(Boolean).join(", ")
-              : null;
+            const sub = [entry.address, entry.city].filter(Boolean).join(", ");
             return (
-              <div key={`${entry.type}-${entry.store}-${entry.address || i}`}
+              <div key={`${entry.store}-${entry.zip_code || i}`}
                 onClick={() => selectEntry(entry)}
-                className={`store-picker-option${entry.type === "location" ? " store-picker-option--loc" : ""}`}>
+                className="store-picker-option store-picker-option--loc">
                 <div className="store-picker-option-main">
-                  <span className="store-picker-option-icon">
-                    {entry.type === "location" ? "📍" : "🏪"}
-                  </span>
+                  <span className="store-picker-option-icon">📍</span>
                   <span className="store-picker-option-name">{entry.label}</span>
                 </div>
                 {sub && <div className="store-picker-option-sub">{sub}</div>}
               </div>
             );
           })}
-          {search && !entries.some(e => e.store.toLowerCase() === search.toLowerCase() || e.label.toLowerCase() === search.toLowerCase()) && (
-            <div onClick={selectNew} className="store-picker-add">
-              + Dodaj "{search}" jako nowy sklep
+          {filtered.length === 0 && (
+            <div className="store-picker-empty">
+              {search ? "Nie znaleziono sklepu" : "Brak sklepów — dodaj w Baza sklepów"}
             </div>
-          )}
-          {!search && filtered.length === 0 && (
-            <div className="store-picker-empty">Brak sklepów</div>
           )}
         </div>
       )}
