@@ -49,7 +49,7 @@ const appConfig = {
     "Rachunki":    ["Paliwo","Subskrypcje","Transport","Rozrywka","Restauracje"],
     "Jednorazowe": ["Elektronika","Odzież","Zdrowie","Narzędzia","Meble","AGD","Ogród","Zwierzęta","Podróże","Sport","Kosmetyki","Edukacja","Prezenty","Dom","Inne"],
   },
-  defaultStores: ["Biedronka","Auchan","Lidl","Netto","InterMarche","Kaufland","Leroy Merlin","Circle K","Shell","BP","Orlen","OBI"],
+  defaultStores: ["Biedronka","Auchan","Lidl","Netto"],
   defaultStoreLocations: [
     { store: "Lidl",      label: "Lidl Bazantowo",      address: "Szarych Szeregów 3A",   zip_code: "40-750", city: "Katowice" },
     { store: "Biedronka", label: "Biedronka Bazantowo",  address: "ul. Radockiego 150",    zip_code: "40-645", city: "Katowice" },

@@ -169,21 +169,24 @@ export function AppDataProvider({ uid, children }) {
     setCustomStores(prev => deepEqual(prev, d.customStores || []) ? prev : (d.customStores || []));
 
     // Seed store locations from defaults + existing receipts + any already saved
+    // Use store|zip_code as dedup key (address text varies between receipts)
+    const locKey = (l) => l.zip_code ? `${l.store}|${l.zip_code}` : `${l.store}|${l.address || ""}|${l.city || ""}`;
     const savedLocs = d.storeLocations || [];
-    const seenKeys = new Set(savedLocs.map(l => `${l.store}|${l.address || ""}|${l.city || ""}`));
+    const seenKeys = new Set(savedLocs.map(locKey));
     const newLocs = [];
     // Merge default store locations
     for (const loc of DEFAULT_STORE_LOCATIONS) {
-      const key = `${loc.store}|${loc.address || ""}|${loc.city || ""}`;
+      const key = locKey(loc);
       if (seenKeys.has(key)) continue;
       seenKeys.add(key);
       newLocs.push(loc);
     }
-    // Merge locations discovered from receipts
+    // Merge locations discovered from receipts (skip if already in defaults)
+    const defaultKeys = new Set(DEFAULT_STORE_LOCATIONS.map(locKey));
     for (const r of finalReceipts) {
-      if (!r.store || (!r.address && !r.city)) continue;
-      const key = `${r.store}|${r.address || ""}|${r.city || ""}`;
-      if (seenKeys.has(key)) continue;
+      if (!r.store || (!r.address && !r.city && !r.zip_code)) continue;
+      const key = locKey(r);
+      if (seenKeys.has(key) || defaultKeys.has(key)) continue;
       seenKeys.add(key);
       const shortAddr = r.city || (r.address ? r.address.split(",")[0].trim() : "");
       newLocs.push({
@@ -463,14 +466,21 @@ export function AppDataProvider({ uid, children }) {
 
   const learnStoreLocation = useCallback((receipt) => {
     const { store, address, city, zip_code } = receipt;
-    if (!store || (!address && !city)) return;
-    // Build a label like "Lidl Bazantowo" from store + city/address
+    if (!store || (!address && !city && !zip_code)) return;
+    // Skip if this location already exists in defaults
+    const inDefaults = DEFAULT_STORE_LOCATIONS.some(d =>
+      d.store === store && (zip_code ? d.zip_code === zip_code : d.city === (city || "") && d.address === (address || ""))
+    );
+    if (inDefaults) return;
+    // Dedup by store + zip_code (address text varies between receipts, zip won't)
+    const key = zip_code ? `${store}|${zip_code}` : `${store}|${address || ""}|${city || ""}`;
     const shortAddr = city || (address ? address.split(",")[0].trim() : "");
     const label = shortAddr ? `${store} ${shortAddr}` : store;
     setStoreLocations(prev => {
-      const exists = prev.some(loc =>
-        loc.store === store && loc.address === (address || "") && loc.city === (city || "")
-      );
+      const exists = prev.some(loc => {
+        const locKey = loc.zip_code ? `${loc.store}|${loc.zip_code}` : `${loc.store}|${loc.address || ""}|${loc.city || ""}`;
+        return locKey === key;
+      });
       if (exists) return prev;
       return [...prev, { store, label, address: address || "", zip_code: zip_code || "", city: city || "" }];
     });

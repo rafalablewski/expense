@@ -54,7 +54,7 @@ export const CAT_ICONS = {
   "Ogród":"🌿","Zwierzęta":"🐾","Podróże":"✈️","Sport":"🏃","Kosmetyki":"💄","Edukacja":"📚","Prezenty":"🎁","Dom":"🏠","Inne":"📦",
 };
 
-export const DEFAULT_STORES = ["Biedronka","Auchan","Lidl","Netto","InterMarche","Kaufland","Leroy Merlin","Circle K","Shell","BP","Orlen","OBI"];
+export const DEFAULT_STORES = ["Biedronka","Auchan","Lidl","Netto"];
 
 export const DEFAULT_STORE_LOCATIONS = [
   { store: "Lidl",      label: "Lidl Bazantowo",      address: "Szarych Szeregów 3A",   zip_code: "40-750", city: "Katowice" },

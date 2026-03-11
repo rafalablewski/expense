@@ -30,9 +30,9 @@ export default function StorePickerInput({ value, onChange, onSelectLocation, st
     const result = [];
     const seen = new Set();
 
-    // Store locations (with address data)
+    // Store locations (with address data) — dedup by store+zip
     for (const loc of storeLocations) {
-      const key = `${loc.store}|${loc.address || ""}|${loc.city || ""}`;
+      const key = loc.zip_code ? `${loc.store}|${loc.zip_code}` : `${loc.store}|${loc.address || ""}|${loc.city || ""}`;
       if (seen.has(key)) continue;
       seen.add(key);
       result.push({
