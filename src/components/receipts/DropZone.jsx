@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 
-export default function DropZone({ onFiles }) {
+export default function DropZone({ onFiles, title, subtitle, icon }) {
   const [drag, setDrag] = useState(false);
   const ref = useRef();
   const pick = useCallback(files => {
@@ -10,7 +10,7 @@ export default function DropZone({ onFiles }) {
   return (
     <div
       role="button" tabIndex={0}
-      aria-label="Dodaj zdjęcia paragonów — kliknij lub przeciągnij i upuść"
+      aria-label={`${title || "Skanuj paragon"} — kliknij lub przeciągnij i upuść`}
       className={`dropzone${drag ? " drag" : ""}`}
       onClick={() => ref.current.click()}
       onKeyDown={e => (e.key === "Enter" || e.key === " ") && ref.current.click()}
@@ -20,10 +20,10 @@ export default function DropZone({ onFiles }) {
     >
       <input ref={ref} type="file" accept="image/*" multiple className="hidden" onChange={e => pick(e.target.files)} />
       <div className="dropzone-content">
-        <div className="dropzone-icon" aria-hidden="true">📸</div>
-        <div className="dropzone-title">Skanuj paragon</div>
+        <div className="dropzone-icon" aria-hidden="true">{icon || "📸"}</div>
+        <div className="dropzone-title">{title || "Skanuj paragon"}</div>
         <div className="dropzone-sub">
-          Przeciągnij zdjęcie tutaj<br />
+          {subtitle || "Przeciągnij zdjęcie tutaj"}<br />
           <span className="dropzone-sub-hint">JPG · PNG · WEBP — Claude automatycznie odczyta dane</span>
         </div>
         <div className="dropzone-hint" aria-hidden="true">

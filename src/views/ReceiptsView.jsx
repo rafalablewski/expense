@@ -327,7 +327,7 @@ export default function ReceiptsView({ onFiles, onManualEntry, onTextReceipt, on
           {/* ── INVOICES TAB ── */}
           {tab === "invoices" && (
             <>
-              <div className="au1"><DropZone onFiles={onFiles} /></div>
+              <div className="au1"><DropZone onFiles={onFiles} title="Skanuj fakturę" subtitle="Przeciągnij zdjęcie faktury tutaj" icon="📄" /></div>
 
               <div className="flex-col gap-8">
                 {processing.map(p => (
