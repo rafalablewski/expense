@@ -280,7 +280,12 @@ export default function StoresView() {
                           <span className="store-pct">{pct.toFixed(0)}%</span>
                         </div>
                         <div className="store-meta">
-                          {Object.keys(st.cities).length > 0 && <span>📍 {Object.keys(st.cities).join(", ")}</span>}
+                          {(() => {
+                            const locs = storeLocations.filter(l => l.store.toLowerCase() === key);
+                            return locs.length > 0
+                              ? locs.map((l, li) => <span key={li}>📍 {l.label}</span>)
+                              : Object.keys(st.cities).length > 0 && <span>📍 {Object.keys(st.cities).join(", ")}</span>;
+                          })()}
                           <span>{st.visits} wizyt</span>
                           <span>śr. {convertAmt(avg, currency)} {sym}/wizyta</span>
                           {st.saved > 0 && <span className="color-red">−{convertAmt(st.saved, currency)} {sym} saved</span>}
