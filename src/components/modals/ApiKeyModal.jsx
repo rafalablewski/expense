@@ -25,7 +25,7 @@ export default function ApiKeyModal({ onClose }) {
         <div className="apikey-actions">
           <button onClick={onClose} className="apikey-save">Zapisz</button>
         </div>
-        {apiKey && <div className="apikey-status">Klucz ustawiony ({apiKey.slice(0,10)}...)</div>}
+        {apiKey && <div className="apikey-status">Klucz ustawiony (sk-ant-***)</div>}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import Spinner from "../components/primitives/Spinner";
 import DropZone from "../components/receipts/DropZone";
 import ReceiptCard from "../components/receipts/ReceiptCard";
@@ -7,6 +7,7 @@ import Empty from "../components/primitives/Empty";
 import { useAppData } from "../contexts/AppDataContext";
 import { CATS, FX, FX_SYMBOLS, REC_CYCLES } from "../config/defaults";
 import { isRecurringPaused, toMonthly } from "../utils/helpers";
+import { haptic } from "../utils/helpers";
 
 const TABS = [
   { id: "receipts",      label: "Paragony",    icon: "\uD83E\uDDFE" },
@@ -16,16 +17,20 @@ const TABS = [
 
 const REC_CATS = ["Subskrypcje","Zdrowie","Dom","Rozrywka","Transport","Inne"];
 
-export default function ReceiptsView({ onFiles }) {
+export default function ReceiptsView({ onFiles, onManualEntry, onTextReceipt, onJsonImport, onSourceImport, onNeedKey }) {
   const {
     receipts, setReceipts, updateReceipt,
     recurring, setRecurring,
     processing, errors, setErrors,
-    currency,
+    currency, apiKey,
   } = useAppData();
 
   const [tab, setTab] = useState("receipts");
   const [editingRecurring, setEditingRecurring] = useState(null);
+  const [showText, setShowText] = useState(false);
+  const [textVal, setTextVal] = useState("");
+  const [jsonDrag, setJsonDrag] = useState(false);
+  const jsonFileRef = useRef();
   const sym = FX_SYMBOLS[currency] || "z\u0142";
 
   // All receipts (scanned + manual) shown together in Paragony
@@ -47,7 +52,7 @@ export default function ReceiptsView({ onFiles }) {
     invoices: invoiceReceipts.length,
   };
 
-  // \u2500\u2500 Edit handlers for subscriptions \u2500\u2500
+  // Edit handlers for subscriptions
   const startEditRecurring = (item) => setEditingRecurring({ ...item });
   const saveRecurring = () => {
     if (!editingRecurring.name?.trim() || !parseFloat(editingRecurring.amount)) return;
@@ -58,6 +63,16 @@ export default function ReceiptsView({ onFiles }) {
     setEditingRecurring(null);
   };
   const cancelEditRecurring = () => setEditingRecurring(null);
+
+  const handleJsonFiles = (files) => {
+    const jsonFiles = Array.from(files).filter(f =>
+      f.name.endsWith(".json") || f.type === "application/json"
+    );
+    if (jsonFiles.length && onJsonImport) {
+      haptic(20);
+      onJsonImport(jsonFiles);
+    }
+  };
 
   return (
     <>
@@ -90,10 +105,71 @@ export default function ReceiptsView({ onFiles }) {
             ))}
           </div>
 
-          {/* \u2500\u2500 RECEIPTS TAB \u2500\u2500 */}
+          {/* ── RECEIPTS TAB ── */}
           {tab === "receipts" && (
             <>
-              <div className="au1"><DropZone onFiles={onFiles} /></div>
+              {/* Input methods grid */}
+              <div className="rv-input-grid au1">
+                <div className="rv-input-main">
+                  <DropZone onFiles={onFiles} />
+                </div>
+                <div className="rv-input-side">
+                  <button className="rv-input-card" onClick={() => { haptic(15); onManualEntry(); }}>
+                    <span className="rv-input-card-icon">✏️</span>
+                    <span className="rv-input-card-label">Ręcznie</span>
+                  </button>
+                  <button className="rv-input-card" onClick={() => { haptic(15); setShowText(t => !t); }}>
+                    <span className="rv-input-card-icon">💬</span>
+                    <span className="rv-input-card-label">Tekst</span>
+                  </button>
+                  <button className="rv-input-card" onClick={() => { haptic(15); jsonFileRef.current?.click(); }}>
+                    <span className="rv-input-card-icon">📂</span>
+                    <span className="rv-input-card-label">JSON</span>
+                    <input ref={jsonFileRef} type="file" accept=".json,application/json" multiple className="hidden"
+                      onChange={e => handleJsonFiles(e.target.files)} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Text input area (expandable) */}
+              {showText && (
+                <div className="rv-text-input au">
+                  <textarea className="field text-receipt-area" value={textVal} onChange={e => setTextVal(e.target.value)}
+                    placeholder={"Wklej tekst paragonu lub wpisz listę:\nmleko 2zł\nchleb razowy 5.50"}
+                    autoFocus />
+                  <button className="btn-primary" onClick={() => {
+                      if (!textVal.trim()) return;
+                      if (!apiKey) { onNeedKey(); return; }
+                      haptic(20);
+                      onTextReceipt(textVal.trim());
+                      setTextVal("");
+                      setShowText(false);
+                    }}
+                    disabled={!textVal.trim()}
+                    style={{ width: "100%", justifyContent: "center", minHeight: 44, fontSize: 14, marginTop: 10, opacity: textVal.trim() ? 1 : 0.4 }}>
+                    Analizuj z AI
+                  </button>
+                </div>
+              )}
+
+              {/* Source buttons */}
+              <div className="rv-source-row au1">
+                <span className="rv-source-row-label">Źródła:</span>
+                <button className="rv-source-chip" onClick={() => {
+                  haptic(15);
+                  jsonFileRef.current?.setAttribute("data-source", "lidl");
+                  jsonFileRef.current?.click();
+                }}>
+                  🟡 Lidl Plus
+                </button>
+                <button className="rv-source-chip" onClick={() => {
+                  haptic(15);
+                  jsonFileRef.current?.setAttribute("data-source", "biedronka");
+                  jsonFileRef.current?.click();
+                }}>
+                  🐞 Biedronka
+                </button>
+              </div>
 
               <div className="flex-col gap-8">
                 {processing.map(p => (
@@ -126,12 +202,12 @@ export default function ReceiptsView({ onFiles }) {
               )}
 
               {!allReceipts.length && !processing.length && (
-                <Empty icon="\uD83E\uDDFE" title="Brak paragon\u00F3w" sub="Dodaj pierwszy paragon \u2014 przeci\u0105gnij zdj\u0119cie lub kliknij powy\u017Cej" />
+                <Empty icon="\uD83E\uDDFE" title="Brak paragon\u00F3w" sub="Dodaj pierwszy paragon \u2014 przeci\u0105gnij zdj\u0119cie, wklej tekst lub importuj JSON" />
               )}
             </>
           )}
 
-          {/* \u2500\u2500 SUBSCRIPTIONS TAB \u2500\u2500 */}
+          {/* ── SUBSCRIPTIONS TAB ── */}
           {tab === "subscriptions" && (
             <>
               {recurring.length > 0 ? (
@@ -248,10 +324,10 @@ export default function ReceiptsView({ onFiles }) {
             </>
           )}
 
-          {/* \u2500\u2500 INVOICES TAB \u2500\u2500 */}
+          {/* ── INVOICES TAB ── */}
           {tab === "invoices" && (
             <>
-              <div className="au1"><DropZone onFiles={onFiles} /></div>
+              <div className="au1"><DropZone onFiles={onFiles} title="Skanuj fakturę" subtitle="Przeciągnij zdjęcie faktury tutaj" icon="📄" /></div>
 
               <div className="flex-col gap-8">
                 {processing.map(p => (

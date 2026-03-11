@@ -1,8 +1,8 @@
 import { createContext, useContext, useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { loadUserData, saveAllUserData, updateField, subscribeUserData } from "../firestore";
-import { DEFAULT_STORES } from "../config/defaults";
+import { DEFAULT_STORES, DEFAULT_STORE_LOCATIONS } from "../config/defaults";
 import { LS_KEYS, lsGet, lsSet } from "../services/localStorage";
-import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, getCorrectionsHint } from "../services/claude";
+import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, parseJsonReceipt as parseJsonReceiptAPI, getCorrectionsHint } from "../services/claude";
 import { initCorrections, getCorrections, learnFromCorrections, applyLearnedCorrections } from "../hooks/useCorrections";
 import { haptic, sumReceiptItems, toMonthly } from "../utils/helpers";
 
@@ -29,6 +29,7 @@ export function AppDataProvider({ uid, children }) {
   const [budgets,   setBudgets]   = useState({});
   const [recurring, setRecurring] = useState([]);
   const [customStores, setCustomStores] = useState([]);
+  const [storeLocations, setStoreLocations] = useState([]);
   const [currency,  setCurrency]  = useState("PLN");
   const [darkMode,  setDarkMode]  = useState(() => lsGet(LS_KEYS.darkMode, false));
   const [onboarded, setOnboarded] = useState(false);
@@ -166,6 +167,42 @@ export function AppDataProvider({ uid, children }) {
     setBudgets(prev => deepEqual(prev, d.budgets || {}) ? prev : (d.budgets || {}));
     setRecurring(prev => deepEqual(prev, rec) ? prev : rec);
     setCustomStores(prev => deepEqual(prev, d.customStores || []) ? prev : (d.customStores || []));
+
+    // Seed store locations from defaults + existing receipts + any already saved
+    // Use store|zip_code as dedup key (address text varies between receipts)
+    const locKey = (l) => l.zip_code ? `${l.store}|${l.zip_code}` : `${l.store}|${l.address || ""}|${l.city || ""}`;
+    const savedLocs = d.storeLocations || [];
+    const seenKeys = new Set(savedLocs.map(locKey));
+    const newLocs = [];
+    // Merge default store locations
+    for (const loc of DEFAULT_STORE_LOCATIONS) {
+      const key = locKey(loc);
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      newLocs.push(loc);
+    }
+    // Merge locations discovered from receipts (skip if already in defaults)
+    const defaultKeys = new Set(DEFAULT_STORE_LOCATIONS.map(locKey));
+    for (const r of finalReceipts) {
+      if (!r.store || (!r.address && !r.city && !r.zip_code)) continue;
+      const key = locKey(r);
+      if (seenKeys.has(key) || defaultKeys.has(key)) continue;
+      seenKeys.add(key);
+      const shortAddr = r.city || (r.address ? r.address.split(",")[0].trim() : "");
+      newLocs.push({
+        store: r.store,
+        label: shortAddr ? `${r.store} ${shortAddr}` : r.store,
+        address: r.address || "",
+        zip_code: r.zip_code || "",
+        city: r.city || "",
+      });
+    }
+    const mergedLocs = [...savedLocs, ...newLocs];
+    setStoreLocations(prev => deepEqual(prev, mergedLocs) ? prev : mergedLocs);
+    // Persist if we discovered new locations
+    if (newLocs.length > 0) {
+      updateField(uid, "storeLocations", mergedLocs);
+    }
     setCurrency(prev => prev === (d.currency || "PLN") ? prev : (d.currency || "PLN"));
     setDarkMode(prev => prev === (d.darkMode || false) ? prev : (d.darkMode || false));
     setOnboarded(prev => prev === (d.onboarded || false) ? prev : (d.onboarded || false));
@@ -231,6 +268,13 @@ export function AppDataProvider({ uid, children }) {
     prevCustomStores.current = customStores;
     guardedWrite("customStores", customStores);
   }, [customStores]);
+  const prevStoreLocations = useRef(null);
+  useEffect(() => {
+    if (!initialLoadDone.current) return;
+    if (prevStoreLocations.current === null) { prevStoreLocations.current = storeLocations; return; }
+    prevStoreLocations.current = storeLocations;
+    guardedWrite("storeLocations", storeLocations);
+  }, [storeLocations]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevCurrency.current === null) { prevCurrency.current = currency; return; }
@@ -359,6 +403,89 @@ export function AppDataProvider({ uid, children }) {
     }
   }, [apiKey]);
 
+  const processJsonFiles = useCallback(async (files, onNeedKey, source = null) => {
+    if (!apiKey) {
+      if (onNeedKey) onNeedKey();
+      else setErrors(p => [...p, "Brak klucza API — ustaw go w ustawieniach (ikona klucza)"]);
+      return;
+    }
+    for (const file of files) {
+      const id = Date.now() + Math.random();
+      setProcessing(p => [...p, { id, name: file.name }]);
+      try {
+        const text = await file.text();
+        const parsed = await parseJsonReceiptAPI(text, apiKey, source, getCorrectionsHint(getCorrections()));
+        const receiptsArray = Array.isArray(parsed) ? parsed : [parsed];
+        const batchId = receiptsArray.length > 1 ? Date.now() + "_batch" : null;
+        for (let i = 0; i < receiptsArray.length; i++) {
+          const receiptId = Date.now() + Math.random() + i;
+          const corrected = applyLearnedCorrections(receiptsArray[i]);
+          const sourceTag = source ? `import-${source}` : "import-json";
+          setReviewQueue(q => [...q, { ...corrected, id: receiptId, source: sourceTag, _original: receiptsArray[i], ...(batchId ? { _batchId: batchId } : {}) }]);
+        }
+        haptic(30);
+      } catch (e) {
+        setErrors(p => [...p, `${file.name}: ${e.message}`]);
+      } finally {
+        setProcessing(p => p.filter(x => x.id !== id));
+      }
+    }
+  }, [apiKey]);
+
+  const processSourceText = useCallback(async (source, text, onNeedKey) => {
+    if (!apiKey) {
+      if (onNeedKey) onNeedKey();
+      else setErrors(p => [...p, "Brak klucza API — ustaw go w ustawieniach (ikona klucza)"]);
+      return;
+    }
+    const id = Date.now() + Math.random();
+    setProcessing(p => [...p, { id, name: `${source} — analiza...` }]);
+    try {
+      // Try parsing as JSON first, fall back to text parsing with source hint
+      let parsed;
+      try {
+        JSON.parse(text);
+        parsed = await parseJsonReceiptAPI(text, apiKey, source, getCorrectionsHint(getCorrections()));
+      } catch {
+        parsed = await parseTextReceiptAPI(text, apiKey, getCorrectionsHint(getCorrections()));
+      }
+      const receiptsArray = Array.isArray(parsed) ? parsed : [parsed];
+      const batchId = receiptsArray.length > 1 ? Date.now() + "_batch" : null;
+      for (let i = 0; i < receiptsArray.length; i++) {
+        const receiptId = Date.now() + Math.random() + i;
+        const corrected = applyLearnedCorrections(receiptsArray[i]);
+        setReviewQueue(q => [...q, { ...corrected, id: receiptId, source: `import-${source}`, _original: receiptsArray[i], ...(batchId ? { _batchId: batchId } : {}) }]);
+      }
+      haptic(30);
+    } catch (e) {
+      setErrors(p => [...p, `${source}: ${e.message}`]);
+    } finally {
+      setProcessing(p => p.filter(x => x.id !== id));
+    }
+  }, [apiKey]);
+
+  const learnStoreLocation = useCallback((receipt) => {
+    const { store, address, city, zip_code } = receipt;
+    if (!store || (!address && !city && !zip_code)) return;
+    // Skip if this location already exists in defaults
+    const inDefaults = DEFAULT_STORE_LOCATIONS.some(d =>
+      d.store === store && (zip_code ? d.zip_code === zip_code : d.city === (city || "") && d.address === (address || ""))
+    );
+    if (inDefaults) return;
+    // Dedup by store + zip_code (address text varies between receipts, zip won't)
+    const key = zip_code ? `${store}|${zip_code}` : `${store}|${address || ""}|${city || ""}`;
+    const shortAddr = city || (address ? address.split(",")[0].trim() : "");
+    const label = shortAddr ? `${store} ${shortAddr}` : store;
+    setStoreLocations(prev => {
+      const exists = prev.some(loc => {
+        const locKey = loc.zip_code ? `${loc.store}|${loc.zip_code}` : `${loc.store}|${loc.address || ""}|${loc.city || ""}`;
+        return locKey === key;
+      });
+      if (exists) return prev;
+      return [...prev, { store, label, address: address || "", zip_code: zip_code || "", city: city || "" }];
+    });
+  }, []);
+
   const confirmReceipt = useCallback((reviewed) => {
     const current = reviewQueueRef.current[0];
     if (current) {
@@ -371,13 +498,27 @@ export function AppDataProvider({ uid, children }) {
       if (current.source) saved.source = current.source;
       saved.total = sumReceiptItems(saved);
       setReceipts(p => [saved, ...p]);
+      // Auto-learn store location
+      learnStoreLocation(saved);
     }
     setReviewQueue(q => q.slice(1));
     haptic(30);
-  }, []);
+  }, [learnStoreLocation]);
 
   const cancelReceipt = useCallback(() => {
     setReviewQueue(q => q.slice(1));
+  }, []);
+
+  const addStoreLocation = useCallback((loc) => {
+    setStoreLocations(prev => [...prev, loc]);
+  }, []);
+
+  const updateStoreLocation = useCallback((idx, loc) => {
+    setStoreLocations(prev => prev.map((l, i) => i === idx ? loc : l));
+  }, []);
+
+  const deleteStoreLocation = useCallback((idx) => {
+    setStoreLocations(prev => prev.filter((_, i) => i !== idx));
   }, []);
 
   const updateReceipt = useCallback((updated) => {
@@ -400,6 +541,7 @@ export function AppDataProvider({ uid, children }) {
     budgets, setBudgets,
     recurring, setRecurring,
     customStores,
+    storeLocations,
     currency, setCurrency,
     darkMode, setDarkMode,
     onboarded, setOnboarded,
@@ -418,15 +560,21 @@ export function AppDataProvider({ uid, children }) {
     updateReceipt,
     handleFiles,
     processTextReceipt,
+    processJsonFiles,
+    processSourceText,
     confirmReceipt,
     cancelReceipt,
+    addStoreLocation,
+    updateStoreLocation,
+    deleteStoreLocation,
   }), [
-    receipts, expenses, budgets, recurring, customStores,
+    receipts, expenses, budgets, recurring, customStores, storeLocations,
     currency, darkMode, onboarded, apiKey,
     processing, errors, reviewQueue,
     dataLoaded, loadFailed, allItems,
     addExpense, addCustomStore, updateExpense, deleteExpense, updateReceipt,
-    handleFiles, processTextReceipt, confirmReceipt, cancelReceipt,
+    handleFiles, processTextReceipt, processJsonFiles, processSourceText,
+    confirmReceipt, cancelReceipt,
   ]);
 
   return (
