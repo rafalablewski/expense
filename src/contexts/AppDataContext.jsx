@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback, useRef, useMemo, useE
 import { loadUserData, saveAllUserData, updateField, subscribeUserData } from "../firestore";
 import { DEFAULT_STORES } from "../config/defaults";
 import { LS_KEYS, lsGet, lsSet } from "../services/localStorage";
-import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, getCorrectionsHint } from "../services/claude";
+import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, parseJsonReceipt as parseJsonReceiptAPI, getCorrectionsHint } from "../services/claude";
 import { initCorrections, getCorrections, learnFromCorrections, applyLearnedCorrections } from "../hooks/useCorrections";
 import { haptic, sumReceiptItems, toMonthly } from "../utils/helpers";
 
@@ -359,6 +359,67 @@ export function AppDataProvider({ uid, children }) {
     }
   }, [apiKey]);
 
+  const processJsonFiles = useCallback(async (files, onNeedKey, source = null) => {
+    if (!apiKey) {
+      if (onNeedKey) onNeedKey();
+      else setErrors(p => [...p, "Brak klucza API — ustaw go w ustawieniach (ikona klucza)"]);
+      return;
+    }
+    for (const file of files) {
+      const id = Date.now() + Math.random();
+      setProcessing(p => [...p, { id, name: file.name }]);
+      try {
+        const text = await file.text();
+        const parsed = await parseJsonReceiptAPI(text, apiKey, source, getCorrectionsHint(getCorrections()));
+        const receiptsArray = Array.isArray(parsed) ? parsed : [parsed];
+        const batchId = receiptsArray.length > 1 ? Date.now() + "_batch" : null;
+        for (let i = 0; i < receiptsArray.length; i++) {
+          const receiptId = Date.now() + Math.random() + i;
+          const corrected = applyLearnedCorrections(receiptsArray[i]);
+          const sourceTag = source ? `import-${source}` : "import-json";
+          setReviewQueue(q => [...q, { ...corrected, id: receiptId, source: sourceTag, _original: receiptsArray[i], ...(batchId ? { _batchId: batchId } : {}) }]);
+        }
+        haptic(30);
+      } catch (e) {
+        setErrors(p => [...p, `${file.name}: ${e.message}`]);
+      } finally {
+        setProcessing(p => p.filter(x => x.id !== id));
+      }
+    }
+  }, [apiKey]);
+
+  const processSourceText = useCallback(async (source, text, onNeedKey) => {
+    if (!apiKey) {
+      if (onNeedKey) onNeedKey();
+      else setErrors(p => [...p, "Brak klucza API — ustaw go w ustawieniach (ikona klucza)"]);
+      return;
+    }
+    const id = Date.now() + Math.random();
+    setProcessing(p => [...p, { id, name: `${source} — analiza...` }]);
+    try {
+      // Try parsing as JSON first, fall back to text parsing with source hint
+      let parsed;
+      try {
+        JSON.parse(text);
+        parsed = await parseJsonReceiptAPI(text, apiKey, source, getCorrectionsHint(getCorrections()));
+      } catch {
+        parsed = await parseTextReceiptAPI(text, apiKey, getCorrectionsHint(getCorrections()));
+      }
+      const receiptsArray = Array.isArray(parsed) ? parsed : [parsed];
+      const batchId = receiptsArray.length > 1 ? Date.now() + "_batch" : null;
+      for (let i = 0; i < receiptsArray.length; i++) {
+        const receiptId = Date.now() + Math.random() + i;
+        const corrected = applyLearnedCorrections(receiptsArray[i]);
+        setReviewQueue(q => [...q, { ...corrected, id: receiptId, source: `import-${source}`, _original: receiptsArray[i], ...(batchId ? { _batchId: batchId } : {}) }]);
+      }
+      haptic(30);
+    } catch (e) {
+      setErrors(p => [...p, `${source}: ${e.message}`]);
+    } finally {
+      setProcessing(p => p.filter(x => x.id !== id));
+    }
+  }, [apiKey]);
+
   const confirmReceipt = useCallback((reviewed) => {
     const current = reviewQueueRef.current[0];
     if (current) {
@@ -418,6 +479,8 @@ export function AppDataProvider({ uid, children }) {
     updateReceipt,
     handleFiles,
     processTextReceipt,
+    processJsonFiles,
+    processSourceText,
     confirmReceipt,
     cancelReceipt,
   }), [
@@ -426,7 +489,8 @@ export function AppDataProvider({ uid, children }) {
     processing, errors, reviewQueue,
     dataLoaded, loadFailed, allItems,
     addExpense, addCustomStore, updateExpense, deleteExpense, updateReceipt,
-    handleFiles, processTextReceipt, confirmReceipt, cancelReceipt,
+    handleFiles, processTextReceipt, processJsonFiles, processSourceText,
+    confirmReceipt, cancelReceipt,
   ]);
 
   return (

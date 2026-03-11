@@ -98,6 +98,63 @@
 [data-dark="1"] .rv-footer { border-color: rgba(255,255,255,0.10); }
 [data-dark="1"] .rv-info { color: rgba(255,255,255,0.45); }
 
+/* QA method cards / sources dark */
+[data-dark="1"] .qa-method-card,
+[data-dark="1"] .qa-source-btn {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.12);
+}
+[data-dark="1"] .qa-method-card:hover,
+[data-dark="1"] .qa-source-btn:hover {
+  background: rgba(6,193,103,0.12);
+  border-color: var(--c-green);
+}
+[data-dark="1"] .qa-method-icon {
+  background: rgba(255,255,255,0.08);
+}
+[data-dark="1"] .qa-method-card:hover .qa-method-icon {
+  background: rgba(6,193,103,0.15);
+}
+[data-dark="1"] .qa-method-title,
+[data-dark="1"] .qa-source-label {
+  color: #F5F5F7;
+}
+[data-dark="1"] .qa-method-desc {
+  color: rgba(255,255,255,0.50);
+}
+[data-dark="1"] .qa-sources-divider::before,
+[data-dark="1"] .qa-sources-divider::after {
+  background: rgba(255,255,255,0.10);
+}
+[data-dark="1"] .qa-sources-divider span {
+  color: rgba(255,255,255,0.40);
+}
+[data-dark="1"] .qa-json-drop {
+  border-color: rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.04);
+}
+[data-dark="1"] .qa-json-drop:hover,
+[data-dark="1"] .qa-json-drop.drag {
+  border-color: var(--c-green);
+  background: rgba(6,193,103,0.08);
+}
+[data-dark="1"] .qa-json-drop-title {
+  color: #F5F5F7;
+}
+[data-dark="1"] .qa-json-drop-sub {
+  color: rgba(255,255,255,0.45);
+}
+[data-dark="1"] .qa-json-drop-hint {
+  background: rgba(6,193,103,0.12);
+  border-color: rgba(6,193,103,0.25);
+}
+[data-dark="1"] .qa-source-instr-title {
+  color: #F5F5F7;
+}
+[data-dark="1"] .qa-source-instr-step {
+  color: rgba(255,255,255,0.50);
+}
+
 /* Onboarding dark */
 [data-dark="1"] .onboard-card {
   background: rgba(20,30,22,0.92);

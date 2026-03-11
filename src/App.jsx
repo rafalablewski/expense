@@ -28,7 +28,7 @@ export default function App() {
   const {
     onboarded, setOnboarded,
     reviewQueue, setReviewQueue, dataLoaded,
-    handleFiles, processTextReceipt,
+    handleFiles, processTextReceipt, processJsonFiles, processSourceText,
     confirmReceipt, cancelReceipt,
   } = useAppData();
 
@@ -80,6 +80,11 @@ export default function App() {
           onManualEntry={() => openManualEntry()}
           onNeedKey={() => setShowKeyModal(true)}
           onTextReceipt={(text) => { setShowQA(false); processTextReceipt(text, () => setShowKeyModal(true)); }}
+          onJsonImport={(files) => { processJsonFiles(files, () => setShowKeyModal(true)); }}
+          onSourceImport={(source, files, text) => {
+            if (files) processJsonFiles(files, () => setShowKeyModal(true), source);
+            else if (text) processSourceText(source, text, () => setShowKeyModal(true));
+          }}
         />
       )}
 

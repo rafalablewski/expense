@@ -200,6 +200,75 @@ ${text}`
   return parseJsonResponse(data);
 }
 
+export async function parseJsonReceipt(jsonContent, apiKey, source = null, correctionsHint = "") {
+  if (!apiKey) throw new Error("Brak klucza API — ustaw go w ustawieniach (ikona klucza)");
+
+  const sourceHint = source
+    ? `\nThis JSON comes from the "${source}" loyalty app/source. Use this context to better interpret field names, product abbreviations, and receipt structure specific to this store chain.`
+    : "";
+
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: apiHeaders(apiKey),
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 8192,
+      messages: [{
+        role: "user",
+        content: `You are given a JSON file containing receipt/purchase data. Map it to the structured schema below. The JSON may be from any store, loyalty app, or e-receipt system — detect the format automatically and extract all relevant data.${sourceHint}
+
+Respond with ONLY raw JSON — no markdown, no backticks, no commentary.
+
+If the JSON contains MULTIPLE receipts/transactions, return a JSON ARRAY of receipt objects.
+If it contains a SINGLE receipt, return a single JSON object (NOT wrapped in an array).
+
+Each receipt object must follow this schema:
+{
+  "store": string | null,
+  "address": string | null,
+  "zip_code": string | null,
+  "city": string | null,
+  "date": "YYYY-MM-DD",
+  "items": [
+    {
+      "name": string,
+      "quantity": number | null,
+      "unit": string | null,
+      "unit_price": number | null,
+      "total_price": number,
+      "discount": number | null,
+      "discount_label": string | null,
+      "category": "Nabiał"|"Mięso"|"Warzywa"|"Owoce"|"Napoje"|"Pieczywo"|"Zboża"|"Słodycze"|"Przyprawy"|"Oleje"|"Chemia"|"Paliwo"|"Subskrypcje"|"Restauracje"|"Transport"|"Dostawa"|"Rozrywka"|"Elektronika"|"Odzież"|"Zdrowie"|"Narzędzia"|"Meble"|"AGD"|"Ogród"|"Zwierzęta"|"Podróże"|"Sport"|"Kosmetyki"|"Edukacja"|"Prezenty"|"Dom"|"Inne"
+    }
+  ],
+  "total": number | null,
+  "total_discounts": number | null,
+  "delivery_cost": number | null,
+  "delivery_free": boolean
+}
+
+Rules:
+- Detect the JSON structure automatically. Common formats include: Polish fiscal e-paragon JSON, Lidl Plus receipt export, Biedronka e-receipt, generic POS data, etc.
+- Map whatever fields exist (e.g. "produkty", "items", "lineItems", "positions", "articles") to the items array.
+- Product names: expand abbreviations into readable Polish names. Clean up codes, SKUs, and internal identifiers.
+- date MUST be in YYYY-MM-DD format. Extract from any date/timestamp field. NEVER return null for date.
+- Prices = plain numbers (4.99). Use dot as decimal separator. Discounts = positive numbers. Missing qty = 1.
+- Categorize products into the correct Polish category using the same rules as receipt scanning.
+- Grains, cereals, pasta, flour, rice → "Zboża". Bread, rolls → "Pieczywo". Spices → "Przyprawy". Oils → "Oleje".
+- If the JSON has VAT/tax information, ignore it — only extract product-level data.
+- If delivery/shipping cost exists, use delivery_cost field, NOT as an item.${correctionsHint}
+
+JSON content to parse:
+${jsonContent}`
+      }]
+    })
+  });
+  await handleApiResponse(res);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message || "API error");
+  return parseJsonResponse(data);
+}
+
 export function getCorrectionsHint(corrections) {
   const nameEntries = Object.entries(corrections.names || {});
   const catEntries = Object.entries(corrections.categories || {});
