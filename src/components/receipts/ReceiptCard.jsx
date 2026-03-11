@@ -6,7 +6,7 @@ import { useAppData } from '../../contexts/AppDataContext';
 import { FX_SYMBOLS } from '../../config/defaults';
 import { convertAmt, receiptSavings, sumReceiptItems } from '../../utils/helpers';
 
-export default function ReceiptCard({ r, onDelete, onUpdate, delay = 0 }) {
+export default function ReceiptCard({ r, onDelete, onUpdate, delay = 0, receiptNumber }) {
   const { currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
   const [open, setOpen] = useState(false);
@@ -30,6 +30,7 @@ export default function ReceiptCard({ r, onDelete, onUpdate, delay = 0 }) {
 
           <div className="flex-1-min0">
             <div id={`${bid}-name`} className="receipt-name text-ellipsis">
+              {receiptNumber && <span className="receipt-num">#{String(receiptNumber).padStart(3, '0')} </span>}
               {r.store || "Paragon"}
             </div>
             <div className="receipt-meta">

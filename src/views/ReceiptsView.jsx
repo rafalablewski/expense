@@ -6,7 +6,7 @@ import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import { useAppData } from "../contexts/AppDataContext";
 import { CATS, FX, FX_SYMBOLS, REC_CYCLES } from "../config/defaults";
-import { isRecurringPaused, toMonthly } from "../utils/helpers";
+import { isRecurringPaused, toMonthly, buildReceiptNumberMap } from "../utils/helpers";
 import { haptic } from "../utils/helpers";
 
 const TABS = [
@@ -32,6 +32,8 @@ export default function ReceiptsView({ onFiles, onManualEntry, onTextReceipt, on
   const [jsonDrag, setJsonDrag] = useState(false);
   const jsonFileRef = useRef();
   const sym = FX_SYMBOLS[currency] || "z\u0142";
+
+  const receiptNumberMap = useMemo(() => buildReceiptNumberMap(receipts), [receipts]);
 
   // All receipts (scanned + manual) shown together in Paragony
   const allReceipts = useMemo(
@@ -193,6 +195,7 @@ export default function ReceiptsView({ onFiles, onManualEntry, onTextReceipt, on
                     {allReceipts.map((r, i) => (
                       <ReceiptCard
                         key={r.id} r={r} delay={i * 0.05}
+                        receiptNumber={receiptNumberMap.get(r.id)}
                         onDelete={() => setReceipts(p => p.filter(x => x.id !== r.id))}
                         onUpdate={updateReceipt}
                       />
@@ -345,6 +348,7 @@ export default function ReceiptsView({ onFiles, onManualEntry, onTextReceipt, on
                     {invoiceReceipts.map((r, i) => (
                       <ReceiptCard
                         key={r.id} r={r} delay={i * 0.05}
+                        receiptNumber={receiptNumberMap.get(r.id)}
                         onDelete={() => setReceipts(p => p.filter(x => x.id !== r.id))}
                         onUpdate={updateReceipt}
                       />
