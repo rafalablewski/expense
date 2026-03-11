@@ -205,7 +205,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                 <div className="rv2-form-row">
                   <div className="rv2-form-group">
                     <label className="rv2-label">Dostawa</label>
-                    <input className="field field--text-right" type="number" step="0.01" value={data.delivery_cost}
+                    <input className="field field--text-right" type="number" min="0" step="0.01" value={data.delivery_cost}
                       onChange={e => updateField("delivery_cost", e.target.value)} placeholder="0.00" />
                   </div>
                   <div className="rv2-form-group" style={{ alignSelf: "flex-end" }}>
@@ -286,12 +286,12 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                   <div className="rv2-form-row" style={{ marginTop: 10 }}>
                     <div className="rv2-form-group rv2-form-grow">
                       <label className="rv2-label">Cena</label>
-                      <input className="field field--text-right" type="number" step="0.01" value={item.total_price ?? 0}
+                      <input className="field field--text-right" type="number" min="0" step="0.01" value={item.total_price ?? 0}
                         onChange={e => updateItem(idx, "total_price", e.target.value)} placeholder="0.00" />
                     </div>
                     <div className="rv2-form-group">
                       <label className="rv2-label">Ilość</label>
-                      <input className="field field--text-right" type="number" step="0.001" value={item.quantity ?? 1}
+                      <input className="field field--text-right" type="number" min="0" step="0.001" value={item.quantity ?? 1}
                         onChange={e => updateItem(idx, "quantity", e.target.value)} />
                     </div>
                     <div className="rv2-form-group">
@@ -305,7 +305,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                   <div className="rv2-form-row">
                     <div className="rv2-form-group rv2-form-grow">
                       <label className="rv2-label">Cena jedn.</label>
-                      <input className="field field--text-right" type="number" step="0.01" value={item.unit_price ?? ""}
+                      <input className="field field--text-right" type="number" min="0" step="0.01" value={item.unit_price ?? ""}
                         onChange={e => updateItem(idx, "unit_price", e.target.value)} placeholder="auto" />
                     </div>
                   </div>
@@ -314,7 +314,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                   <div className="rv2-form-row">
                     <div className="rv2-form-group">
                       <label className="rv2-label">Zniżka</label>
-                      <input className="field field--text-right" type="number" step="0.01" value={item.discount ?? ""}
+                      <input className="field field--text-right" type="number" min="0" step="0.01" value={item.discount ?? ""}
                         onChange={e => updateItem(idx, "discount", e.target.value)} placeholder="0.00" />
                     </div>
                     <div className="rv2-form-group rv2-form-grow">

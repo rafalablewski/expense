@@ -24,7 +24,12 @@ function extractText(data) {
 
 function parseJsonResponse(data) {
   const raw = extractText(data);
-  return JSON.parse(raw.replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\`\`\`\s*$/i, "").trim());
+  const cleaned = raw.replace(/^\`\`\`(?:json)?\s*/i, "").replace(/\`\`\`\s*$/i, "").trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    throw new Error("AI zwróciło nieprawidłowy format odpowiedzi. Spróbuj ponownie.");
+  }
 }
 
 export async function claudeChat(prompt, apiKey, maxTokens = 1024) {

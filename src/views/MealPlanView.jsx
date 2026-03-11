@@ -27,7 +27,10 @@ export default function MealPlanView() {
     )].slice(0, 40);
   }, [receipts]);
 
-  const callClaude = (prompt) => claudeChat(prompt, apiKey);
+  const callClaude = (prompt) => {
+    if (!apiKey) throw new Error("Brak klucza API");
+    return claudeChat(prompt, apiKey);
+  };
 
   const generateCell = async (day, meal) => {
     const key = `${day}-${meal}`;
