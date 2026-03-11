@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import $ from "../config/theme";
-import { FX_SYMBOLS } from "../config/defaults";
+import { FX_SYMBOLS, DEFAULT_STORES } from "../config/defaults";
 import { convertAmt, parseDate, receiptSavings, sumReceiptItems } from "../utils/helpers";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
@@ -14,15 +14,75 @@ const TIME_RANGES = [
   { id: "all", label: "Wszystko" },
 ];
 
+const TABS = [
+  { id: "analytics", label: "Analiza" },
+  { id: "database",  label: "Baza sklepów" },
+];
+
+const EMPTY_LOC = { store: "", label: "", address: "", zip_code: "", city: "" };
+
+function StoreForm({ loc, onSave, onCancel, existingStores }) {
+  const [form, setForm] = useState({ ...loc });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const valid = form.store.trim() && form.label.trim();
+  return (
+    <div className="sdb-form">
+      <div className="sdb-form-row">
+        <div className="sdb-form-group sdb-form-grow">
+          <label className="sdb-form-label">Sieć</label>
+          <input className="field" value={form.store} onChange={e => set("store", e.target.value)}
+            placeholder="np. Lidl" list="sdb-store-list" />
+          <datalist id="sdb-store-list">
+            {[...new Set([...DEFAULT_STORES, ...existingStores])].map(s => <option key={s} value={s} />)}
+          </datalist>
+        </div>
+        <div className="sdb-form-group sdb-form-grow">
+          <label className="sdb-form-label">Nazwa sklepu</label>
+          <input className="field" value={form.label} onChange={e => set("label", e.target.value)}
+            placeholder="np. Lidl Bazantowo" />
+        </div>
+      </div>
+      <div className="sdb-form-row">
+        <div className="sdb-form-group sdb-form-grow">
+          <label className="sdb-form-label">Adres</label>
+          <input className="field" value={form.address} onChange={e => set("address", e.target.value)}
+            placeholder="np. Szarych Szeregów 3A" />
+        </div>
+      </div>
+      <div className="sdb-form-row">
+        <div className="sdb-form-group sdb-form-grow">
+          <label className="sdb-form-label">Miasto</label>
+          <input className="field" value={form.city} onChange={e => set("city", e.target.value)}
+            placeholder="np. Katowice" />
+        </div>
+        <div className="sdb-form-group">
+          <label className="sdb-form-label">Kod pocztowy</label>
+          <input className="field sdb-zip" value={form.zip_code} onChange={e => set("zip_code", e.target.value)}
+            placeholder="00-000" />
+        </div>
+      </div>
+      <div className="sdb-form-actions">
+        <button className="sdb-btn sdb-btn--save" disabled={!valid} onClick={() => onSave(form)}>Zapisz</button>
+        <button className="sdb-btn sdb-btn--cancel" onClick={onCancel}>Anuluj</button>
+      </div>
+    </div>
+  );
+}
+
 export default function StoresView() {
-  const { receipts, currency } = useAppData();
+  const { receipts, currency, storeLocations, addStoreLocation, updateStoreLocation, deleteStoreLocation } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
+  const [tab,        setTab]        = useState("analytics");
   const [range,      setRange]      = useState("all");
   const [storeQ,     setStoreQ]     = useState("");
   const [activeStore,setActiveStore] = useState(null); // drilldown
   const [drillQ,     setDrillQ]     = useState("");
   const [drillCat,   setDrillCat]   = useState("All");
   const [expanded,   setExpanded]   = useState({});    // { storeKey: true }
+  // Store database state
+  const [editIdx,    setEditIdx]    = useState(null);  // index or "new"
+  const [delConfirm, setDelConfirm] = useState(null);  // index
+  const existingStores = useMemo(() => [...new Set(storeLocations.map(l => l.store))], [storeLocations]);
 
   const toggleExpand = (key) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -96,24 +156,12 @@ export default function StoresView() {
 
   const fmtDate = d => d ? d.toLocaleDateString("pl-PL", { day: "2-digit", month: "short" }) : "—";
 
-  if (!receipts.length) return (
-    <>
-      <div className="page-hero"><div className="page-hero-inner">
-        <h1 className="page-title au">Sklepy</h1>
-        <p className="page-subtitle">Dodaj paragony, aby zobaczyć analizę sklepów</p>
-      </div></div>
-      <div className="container">
-        <Empty icon="🏪" title="Brak sklepów" sub="Dodaj paragony — każdy sklep otrzyma własną kartę z historią zakupów" />
-      </div>
-    </>
-  );
-
   return (
     <>
       <div className="page-hero">
         <div className="page-hero-inner page-hero-flex">
           <div>
-            {activeStore ? (
+            {activeStore && tab === "analytics" ? (
               <>
                 <button
                   onClick={() => { setActiveStore(null); setDrillQ(""); setDrillCat("All"); }}
@@ -130,12 +178,16 @@ export default function StoresView() {
             ) : (
               <>
                 <h1 className="page-title au">Moje <span>sklepy</span></h1>
-                <p className="page-subtitle au1">{stores.length} sklepów · {filtered.length} paragonów</p>
+                <p className="page-subtitle au1">
+                  {tab === "analytics"
+                    ? `${stores.length} sklepów · ${filtered.length} paragonów`
+                    : `${storeLocations.length} zapisanych lokalizacji`}
+                </p>
               </>
             )}
           </div>
-          {/* Time range pills */}
-          {!activeStore && (
+          {/* Time range pills (analytics only) */}
+          {!activeStore && tab === "analytics" && (
             <div className="pills-row flex-shrink-0" role="group" aria-label="Zakres czasowy">
               {TIME_RANGES.map(tr => (
                 <button key={tr.id} className={`pill${range === tr.id ? " on" : ""}`}
@@ -146,13 +198,24 @@ export default function StoresView() {
             </div>
           )}
         </div>
+        {/* Tab switcher */}
+        {!activeStore && (
+          <div className="sdb-tabs">
+            {TABS.map(t => (
+              <button key={t.id} className={`sdb-tab${tab === t.id ? " sdb-tab--active" : ""}`}
+                onClick={() => setTab(t.id)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="container">
         <div className="section flex-col gap-20">
 
-          {/* ── LIST MODE ── */}
-          {!activeStore && (<>
+          {/* ── LIST MODE (Analytics) ── */}
+          {!activeStore && tab === "analytics" && (<>
             {/* Search */}
             <div className="au">
               <label htmlFor="sq" className="sr-only">Szukaj sklepu</label>
@@ -351,6 +414,77 @@ export default function StoresView() {
               </table>
             </div>
           </>)}
+
+          {/* ── STORE DATABASE ── */}
+          {!activeStore && tab === "database" && (
+            <div className="sdb-section">
+              <div className="sdb-header">
+                <div className="section-heading-sm">Zapisane lokalizacje</div>
+                <button className="sdb-btn sdb-btn--add" onClick={() => setEditIdx("new")}>
+                  + Dodaj sklep
+                </button>
+              </div>
+
+              {editIdx === "new" && (
+                <StoreForm
+                  loc={EMPTY_LOC}
+                  existingStores={existingStores}
+                  onSave={(loc) => { addStoreLocation(loc); setEditIdx(null); }}
+                  onCancel={() => setEditIdx(null)}
+                />
+              )}
+
+              {storeLocations.length === 0 && editIdx !== "new" && (
+                <Empty icon="📍" title="Brak lokalizacji" sub="Dodaj swoje ulubione sklepy, aby szybko je wybierać na paragonach" />
+              )}
+
+              <div className="flex-col gap-8">
+                {storeLocations.map((loc, i) => (
+                  <div key={`${loc.store}-${loc.zip_code}-${i}`} className="sdb-card">
+                    {editIdx === i ? (
+                      <StoreForm
+                        loc={loc}
+                        existingStores={existingStores}
+                        onSave={(updated) => { updateStoreLocation(i, updated); setEditIdx(null); }}
+                        onCancel={() => setEditIdx(null)}
+                      />
+                    ) : (
+                      <>
+                        <div className="sdb-card-info">
+                          <div className="sdb-card-name">{loc.label || loc.store}</div>
+                          <div className="sdb-card-addr">
+                            {[loc.address, loc.zip_code, loc.city].filter(Boolean).join(", ")}
+                          </div>
+                          <div className="sdb-card-chain">{loc.store}</div>
+                        </div>
+                        <div className="sdb-card-actions">
+                          <button className="sdb-action-btn" onClick={() => { setEditIdx(i); setDelConfirm(null); }}
+                            title="Edytuj">
+                            Edytuj
+                          </button>
+                          {delConfirm === i ? (
+                            <>
+                              <button className="sdb-action-btn sdb-action-btn--danger" onClick={() => { deleteStoreLocation(i); setDelConfirm(null); }}>
+                                Na pewno?
+                              </button>
+                              <button className="sdb-action-btn" onClick={() => setDelConfirm(null)}>
+                                Nie
+                              </button>
+                            </>
+                          ) : (
+                            <button className="sdb-action-btn sdb-action-btn--danger" onClick={() => setDelConfirm(i)}
+                              title="Usuń">
+                              Usuń
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
         </div>
       </div>

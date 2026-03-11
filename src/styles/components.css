@@ -2213,3 +2213,151 @@
   .doc-tab-label { display: none; }
   .doc-tab-badge { font-size: 9px; padding: 1px 6px; }
 }
+
+/* ── STORE DATABASE (Baza sklepów) ── */
+.sdb-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 var(--page-px);
+  max-width: var(--max-w);
+  margin: 0 auto;
+}
+.sdb-tab {
+  flex: 1;
+  padding: 10px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-ink3);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color .2s, border-color .2s;
+}
+.sdb-tab:hover { color: var(--c-ink1); }
+.sdb-tab--active {
+  color: var(--c-ink0);
+  border-bottom-color: #06C167;
+}
+
+.sdb-section { display: flex; flex-direction: column; gap: 12px; }
+
+.sdb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sdb-card {
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.80);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: box-shadow .2s;
+}
+.sdb-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.sdb-card-info { flex: 1; min-width: 0; }
+.sdb-card-name {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--c-ink0);
+  letter-spacing: -.02em;
+}
+.sdb-card-addr {
+  font-size: 12px;
+  color: var(--c-ink2);
+  margin-top: 2px;
+}
+.sdb-card-chain {
+  font-size: 11px;
+  color: var(--c-ink3);
+  margin-top: 2px;
+}
+.sdb-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sdb-action-btn {
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.7);
+  color: var(--c-ink1);
+  cursor: pointer;
+  transition: background .15s;
+}
+.sdb-action-btn:hover { background: rgba(0,0,0,0.04); }
+.sdb-action-btn--danger { color: #D93025; }
+.sdb-action-btn--danger:hover { background: rgba(217,48,37,0.06); }
+
+.sdb-btn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+.sdb-btn:disabled { opacity: 0.4; cursor: default; }
+.sdb-btn--add {
+  background: #06C167;
+  color: #fff;
+}
+.sdb-btn--add:hover { opacity: 0.9; }
+.sdb-btn--save {
+  background: #06C167;
+  color: #fff;
+}
+.sdb-btn--save:hover { opacity: 0.9; }
+.sdb-btn--cancel {
+  background: rgba(0,0,0,0.05);
+  color: var(--c-ink2);
+}
+.sdb-btn--cancel:hover { background: rgba(0,0,0,0.08); }
+
+.sdb-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+.sdb-form-row {
+  display: flex;
+  gap: 10px;
+}
+.sdb-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sdb-form-grow { flex: 1; min-width: 0; }
+.sdb-form-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-ink3);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.sdb-form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.sdb-zip { max-width: 120px; }
+
+@media (max-width: 500px) {
+  .sdb-form-row { flex-direction: column; gap: 8px; }
+  .sdb-zip { max-width: 100%; }
+  .sdb-card { flex-direction: column; align-items: stretch; }
+  .sdb-card-actions { justify-content: flex-end; }
+}

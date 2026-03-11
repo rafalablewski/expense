@@ -509,6 +509,18 @@ export function AppDataProvider({ uid, children }) {
     setReviewQueue(q => q.slice(1));
   }, []);
 
+  const addStoreLocation = useCallback((loc) => {
+    setStoreLocations(prev => [...prev, loc]);
+  }, []);
+
+  const updateStoreLocation = useCallback((idx, loc) => {
+    setStoreLocations(prev => prev.map((l, i) => i === idx ? loc : l));
+  }, []);
+
+  const deleteStoreLocation = useCallback((idx) => {
+    setStoreLocations(prev => prev.filter((_, i) => i !== idx));
+  }, []);
+
   const updateReceipt = useCallback((updated) => {
     const synced = ensureCity({ ...updated, total: sumReceiptItems(updated) });
     setReceipts(p => p.map(r => r.id === synced.id ? synced : r));
@@ -552,6 +564,9 @@ export function AppDataProvider({ uid, children }) {
     processSourceText,
     confirmReceipt,
     cancelReceipt,
+    addStoreLocation,
+    updateStoreLocation,
+    deleteStoreLocation,
   }), [
     receipts, expenses, budgets, recurring, customStores, storeLocations,
     currency, darkMode, onboarded, apiKey,

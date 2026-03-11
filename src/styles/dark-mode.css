@@ -276,3 +276,24 @@
   background: rgba(255,255,255,0.10);
   color: rgba(255,255,255,0.50);
 }
+
+/* Store database dark mode */
+[data-dark="1"] .sdb-tab { color: rgba(255,255,255,0.40); }
+[data-dark="1"] .sdb-tab:hover { color: rgba(255,255,255,0.70); }
+[data-dark="1"] .sdb-tab--active { color: #F5F5F7; border-bottom-color: #3DDC84; }
+[data-dark="1"] .sdb-card {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.08);
+}
+[data-dark="1"] .sdb-card-name { color: #F5F5F7; }
+[data-dark="1"] .sdb-card-addr { color: rgba(255,255,255,0.50); }
+[data-dark="1"] .sdb-card-chain { color: rgba(255,255,255,0.35); }
+[data-dark="1"] .sdb-action-btn {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.10);
+  color: rgba(255,255,255,0.70);
+}
+[data-dark="1"] .sdb-action-btn:hover { background: rgba(255,255,255,0.10); }
+[data-dark="1"] .sdb-action-btn--danger { color: #FF6B6B; }
+[data-dark="1"] .sdb-btn--cancel { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.50); }
+[data-dark="1"] .sdb-form-label { color: rgba(255,255,255,0.40); }
