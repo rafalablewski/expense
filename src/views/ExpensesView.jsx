@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import $ from "../config/theme";
 import { CAT_ICONS, FX_SYMBOLS } from "../config/defaults";
 import { convertAmt, haptic, isRecurringPaused, sumReceiptItems, toMonthly } from "../utils/helpers";
@@ -8,7 +8,7 @@ import { useAppData } from "../contexts/AppDataContext";
 import ReceiptDetailPopup from "../components/modals/ReceiptDetailPopup";
 
 export default function ExpensesView() {
-  const { receipts, setReceipts, recurring, allItems: contextItems, currency } = useAppData();
+  const { receipts, setReceipts, recurring, setRecurring, updateReceipt, allItems: contextItems, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
   const [q,   setQ]   = useState("");
   const [cat, setCat] = useState("All");
@@ -19,6 +19,9 @@ export default function ExpensesView() {
   const [expanded, setExpanded] = useState(null);
   const [popupReceiptId, setPopupReceiptId] = useState(null);
   const [popupNavList,   setPopupNavList]   = useState([]);
+  const [editingIdx, setEditingIdx] = useState(null);
+  const [editName, setEditName] = useState("");
+  const renameInputRef = useRef(null);
 
   // Use merged items from context (receipt items + recurring)
   const allItems = useMemo(() =>
@@ -50,6 +53,41 @@ export default function ExpensesView() {
   const totalReceipt   = receipts.reduce((s,r) => s + sumReceiptItems(r), 0);
   const totalRecurring = recurring.filter(r => !isRecurringPaused(r)).reduce((s,r) => s + toMonthly(r), 0);
   const totalAll       = totalReceipt + totalRecurring;
+
+  useEffect(() => {
+    if (editingIdx !== null && renameInputRef.current) {
+      renameInputRef.current.focus();
+      renameInputRef.current.select();
+    }
+  }, [editingIdx]);
+
+  const startRename = (idx, name) => {
+    setEditingIdx(idx);
+    setEditName(name || "");
+  };
+
+  const commitRename = (item) => {
+    const trimmed = editName.trim();
+    if (!trimmed || trimmed === (item.name || "")) {
+      setEditingIdx(null);
+      return;
+    }
+    if (item.source === "recurring" && item.id) {
+      setRecurring(prev => prev.map(r => r.id === item.id ? { ...r, name: trimmed } : r));
+    } else if (item.receiptId) {
+      const receipt = receipts.find(r => r.id === item.receiptId);
+      if (receipt) {
+        const updatedItems = receipt.items.map(it =>
+          it.name === item.name && it.category === item.category && parseFloat(it.total_price) === parseFloat(item.total_price)
+            ? { ...it, name: trimmed }
+            : it
+        );
+        updateReceipt({ ...receipt, items: updatedItems });
+      }
+    }
+    setEditingIdx(null);
+    haptic(10);
+  };
 
   return (
     <>
@@ -137,7 +175,23 @@ export default function ExpensesView() {
                     <div className="expense-row">
                       <span className="expense-icon">{CAT_ICONS[item.category]||"📦"}</span>
                       <div className="flex-1">
-                        <div className="expense-name">{item.name}</div>
+                        {editingIdx === i ? (
+                          <div className="rename-inline" onClick={e => e.stopPropagation()}>
+                            <input
+                              ref={renameInputRef}
+                              className="rename-input"
+                              value={editName}
+                              onChange={e => setEditName(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === "Enter") commitRename(item);
+                                if (e.key === "Escape") setEditingIdx(null);
+                              }}
+                              onBlur={() => commitRename(item)}
+                            />
+                          </div>
+                        ) : (
+                          <div className="expense-name">{item.name}</div>
+                        )}
                         <div className="item-sub-sm">
                           {item.source==="recurring" ? "cykliczny" : (item.date||"—")}
                           {" · "}
@@ -185,14 +239,18 @@ export default function ExpensesView() {
                         {item.unit_price && <div><span className="detail-label">Cena jedn.:</span> {convertAmt(item.unit_price, currency)} {sym}</div>}
                         {item.discount > 0 && <div className="color-red"><span>Zniżka:</span> −{convertAmt(item.discount, currency)} {sym}</div>}
                         {item.note && <div className="detail-full" style={{ color:$.ink2 }}><span className="detail-label">Notatka:</span> {item.note}</div>}
-                        {item.source==="manual" && item.id && (
-                          <div className="detail-full" style={{ marginTop: 4 }}>
+                        <div className="detail-full" style={{ marginTop: 4, display: "flex", gap: 8 }}>
+                          <button onClick={() => { haptic(10); startRename(i, item.name); }}
+                            className="btn-rename">
+                            ✏️ Zmień nazwę
+                          </button>
+                          {item.source==="manual" && item.id && (
                             <button onClick={() => { haptic(10); setReceipts(p => p.filter(x => x.id !== item.id)); }}
                               className="btn-delete">
                               🗑️ Usuń
                             </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
