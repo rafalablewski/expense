@@ -167,7 +167,31 @@ export function AppDataProvider({ uid, children }) {
     setBudgets(prev => deepEqual(prev, d.budgets || {}) ? prev : (d.budgets || {}));
     setRecurring(prev => deepEqual(prev, rec) ? prev : rec);
     setCustomStores(prev => deepEqual(prev, d.customStores || []) ? prev : (d.customStores || []));
-    setStoreLocations(prev => deepEqual(prev, d.storeLocations || []) ? prev : (d.storeLocations || []));
+
+    // Seed store locations from existing receipts + any already saved
+    const savedLocs = d.storeLocations || [];
+    const seenKeys = new Set(savedLocs.map(l => `${l.store}|${l.address || ""}|${l.city || ""}`));
+    const fromReceipts = [];
+    for (const r of finalReceipts) {
+      if (!r.store || (!r.address && !r.city)) continue;
+      const key = `${r.store}|${r.address || ""}|${r.city || ""}`;
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      const shortAddr = r.city || (r.address ? r.address.split(",")[0].trim() : "");
+      fromReceipts.push({
+        store: r.store,
+        label: shortAddr ? `${r.store} ${shortAddr}` : r.store,
+        address: r.address || "",
+        zip_code: r.zip_code || "",
+        city: r.city || "",
+      });
+    }
+    const mergedLocs = [...savedLocs, ...fromReceipts];
+    setStoreLocations(prev => deepEqual(prev, mergedLocs) ? prev : mergedLocs);
+    // Persist if we discovered new locations from receipts
+    if (fromReceipts.length > 0) {
+      updateField(uid, "storeLocations", mergedLocs);
+    }
     setCurrency(prev => prev === (d.currency || "PLN") ? prev : (d.currency || "PLN"));
     setDarkMode(prev => prev === (d.darkMode || false) ? prev : (d.darkMode || false));
     setOnboarded(prev => prev === (d.onboarded || false) ? prev : (d.onboarded || false));
