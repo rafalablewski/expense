@@ -1868,6 +1868,16 @@
   font-size: 13px;
 }
 .budget-item-row:last-child { border-bottom: none; }
+.budget-item-row--clickable {
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s;
+  padding: 6px;
+  margin: 0 -6px;
+}
+.budget-item-row--clickable:hover {
+  background: rgba(6,193,103,0.06);
+}
 .budget-item-name {
   flex: 1; color: var(--c-ink1); font-weight: 500;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
