@@ -29,11 +29,12 @@ export function receiptSavings(receipt) {
 }
 
 export function sumReceiptItems(receipt) {
-  if (!receipt?.items?.length) return parseFloat(receipt?.total) || 0;
-  const itemsSum = receipt.items.reduce((s, it) => s + (parseFloat(it.total_price) || 0), 0);
-  const delivery = receipt.delivery_free ? 0 : (parseFloat(receipt.delivery_cost) || 0);
+  const subtotal = receipt?.items?.length
+    ? receipt.items.reduce((s, it) => s + (parseFloat(it.total_price) || 0), 0)
+    : (parseFloat(receipt?.total) || 0);
+  const delivery = receipt?.delivery_free ? 0 : (parseFloat(receipt?.delivery_cost) || 0);
   const voucher = parseFloat(receipt?.voucher) || 0;
-  return itemsSum + delivery - voucher;
+  return subtotal + delivery - voucher;
 }
 
 export function toMonthly(item) {
