@@ -110,6 +110,11 @@ export default function ReceiptDetailPopup({ receiptId, navList, onClose, onNavi
               }
             </div>
           )}
+          {parseFloat(receipt.voucher) > 0 && (
+            <div className="receipt-delivery">
+              🎟 Bon/kupon: −{convertAmt(receipt.voucher, currency)} {sym}
+            </div>
+          )}
 
           {/* Totals */}
           <div className="rdp-totals">

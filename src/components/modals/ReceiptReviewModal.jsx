@@ -33,6 +33,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     total_discounts: receipt.total_discounts ?? 0,
     delivery_cost: receipt.delivery_cost ?? "",
     delivery_free: receipt.delivery_free || false,
+    voucher: receipt.voucher ?? "",
     items: (receipt.items || []).map((it, i) => ({
       ...it,
       _key: i,
@@ -98,8 +99,9 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
   const computedTotal = useMemo(() => {
     const itemsSum = data.items.reduce((s, it) => s + (parseFloat(it.total_price) || 0), 0);
     const delivery = data.delivery_free ? 0 : (parseFloat(data.delivery_cost) || 0);
-    return itemsSum + delivery;
-  }, [data.items, data.delivery_cost, data.delivery_free]);
+    const voucher = parseFloat(data.voucher) || 0;
+    return itemsSum + delivery - voucher;
+  }, [data.items, data.delivery_cost, data.delivery_free, data.voucher]);
 
   const computedDiscounts = useMemo(() =>
     data.items.reduce((s, it) => s + (parseFloat(it.discount) || 0), 0),
@@ -138,6 +140,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
       total_discounts: computedDiscounts,
       delivery_cost: parseFloat(data.delivery_cost) || null,
       delivery_free: data.delivery_free || false,
+      voucher: parseFloat(data.voucher) || null,
       items: data.items.map(({ _key, _suggestions, ...it }) => ({
         ...it,
         quantity: parseFloat(it.quantity) || 1,
@@ -416,6 +419,12 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                 <span>-{computedDiscounts.toFixed(2)} {sym}</span>
               </div>
             )}
+            <div className="rv2-total-row rv2-total-row--sub">
+              <span>Bon / kupon</span>
+              <CurrencyInput value={data.voucher}
+                onChange={e => updateField("voucher", e.target.value)}
+                placeholder="0.00" style={{ maxWidth: 140 }} />
+            </div>
             {!data.delivery_free && parseFloat(data.delivery_cost) > 0 && (
               <div className="rv2-total-row rv2-total-row--sub">
                 <span>w tym dostawa</span>

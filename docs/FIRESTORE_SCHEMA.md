@@ -13,6 +13,7 @@
       date: string,              // "YYYY-MM-DD" or "DD.MM.YYYY"
       total: number,
       total_discounts: number,
+      voucher: number | null,     // Coupon/voucher/bon deducted from total
       address: string,
       zip_code: string,
       items: [
