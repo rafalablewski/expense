@@ -101,6 +101,11 @@ export default function ReceiptCard({ r, onDelete, onUpdate, delay = 0, receiptN
                 }
               </div>
             )}
+            {parseFloat(r.voucher) > 0 && (
+              <div className="receipt-delivery">
+                🎟 Bon/kupon: −{convertAmt(r.voucher, currency)} {sym}
+              </div>
+            )}
             <div className="receipt-footer">
               <button className="btn-secondary" onClick={() => setEditing(true)} aria-label={`Edytuj paragon ${r.store || "Paragon"}`}>
                 Edytuj

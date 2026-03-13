@@ -86,10 +86,12 @@ export async function scanReceipt(b64, mt, apiKey, correctionsHint = "") {
   "total": number | null,
   "total_discounts": number | null,
   "delivery_cost": number | null,
-  "delivery_free": boolean
+  "delivery_free": boolean,
+  "voucher": number | null
 }
 
 Rules:
+- voucher: If there is a coupon, voucher, or bon applied to the entire receipt (not a per-item discount), extract the deducted amount as a positive number. Look for keywords like "bon", "kupon", "voucher", "rabat z kuponu", "kod rabatowy". Return null if none found. This is different from per-item discounts — it applies to the whole receipt total.
 - date MUST be in YYYY-MM-DD format. Extract from receipt header/footer. NEVER return null for date.
 - address: Extract the store's street address from the receipt header (e.g. "ul. Warszawska 15"). Return null if not found.
 - zip_code: Extract the postal/zip code (e.g. "00-001"). Return null if not found.
@@ -151,10 +153,12 @@ Each receipt object has this schema:
   "total": number | null,
   "total_discounts": number | null,
   "delivery_cost": number | null,
-  "delivery_free": boolean
+  "delivery_free": boolean,
+  "voucher": number | null
 }
 
 Rules:
+- voucher: If there is a coupon, voucher, or bon applied to the entire receipt (not a per-item discount), extract the deducted amount as a positive number. Look for keywords like "bon", "kupon", "voucher", "rabat z kuponu", "kod rabatowy". Return null if none found.
 - The text can be a FULL RECEIPT (paragon fiskalny), a simple shopping list, or MULTIPLE orders/receipts. Detect the format automatically.
 - If there are multiple separate orders (different shops, different order numbers, different confirmation emails), split them into separate receipt objects and return as a JSON array.
 - For FULL RECEIPTS (containing store headers, NIP, product codes, tax summaries, payment info):
@@ -249,10 +253,12 @@ Each receipt object must follow this schema:
   "total": number | null,
   "total_discounts": number | null,
   "delivery_cost": number | null,
-  "delivery_free": boolean
+  "delivery_free": boolean,
+  "voucher": number | null
 }
 
 Rules:
+- voucher: If there is a coupon, voucher, or bon applied to the entire receipt (not a per-item discount), extract the deducted amount as a positive number. Look for keywords like "bon", "kupon", "voucher", "rabat z kuponu", "kod rabatowy". Return null if none found.
 - Detect the JSON structure automatically. Common formats include: Polish fiscal e-paragon JSON, Lidl Plus receipt export, Biedronka e-receipt, generic POS data, etc.
 - Map whatever fields exist (e.g. "produkty", "items", "lineItems", "positions", "articles") to the items array.
 - Product names: expand abbreviations into readable Polish names. Clean up codes, SKUs, and internal identifiers.
