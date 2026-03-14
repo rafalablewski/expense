@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import $ from "../config/theme";
 import { CATS, CAT_GROUPS, FX_SYMBOLS, MONTH_NAMES } from "../config/defaults";
-import { parseDate, convertAmt, isRecurringPaused, receiptSavings, toMonthly } from "../utils/helpers";
+import { parseDate, convertAmt, isRecurringPaused, receiptSavings, sumReceiptItems, toMonthly } from "../utils/helpers";
 import BarChart from "../components/charts/BarChart";
 import DonutChart from "../components/charts/DonutChart";
 import InsightCard from "../components/charts/InsightCard";
@@ -115,7 +115,7 @@ export default function StatsView() {
       .sort((a, b) => b.value - a.value);
   }, [all, includeRecurring, activeRecurring]);
 
-  // ── Monthly aggregation (from items — consistent with totals) ──
+  // ── Monthly aggregation (receipt-level via sumReceiptItems — consistent with Dashboard) ──
   const monthData = useMemo(() => {
     const map = {};
     const addToMap = (date, amount) => {
@@ -128,7 +128,7 @@ export default function StatsView() {
       if (!key) return;
       map[key] = (map[key] || 0) + (parseFloat(amount) || 0);
     };
-    all.forEach(item => addToMap(item.date, item.total_price));
+    filteredReceipts.forEach(r => addToMap(r.date, sumReceiptItems(r)));
     const months = MONTH_NAMES;
     return Object.entries(map)
       .sort(([a], [b]) => a.localeCompare(b))
@@ -137,14 +137,14 @@ export default function StatsView() {
         const [, mStr] = key.split("-");
         return { label: months[parseInt(mStr, 10) - 1] || mStr, total };
       });
-  }, [all]);
+  }, [filteredReceipts]);
 
-  // ── Summary numbers (item-level — single source of truth, consistent with category breakdown) ──
-  const itemsTotal = all.reduce((s, item) => s + (parseFloat(item.total_price) || 0), 0);
-  const totalSpent  = itemsTotal + (includeRecurring ? recurringMonthly : 0);
+  // ── Summary numbers (receipt-level via sumReceiptItems — consistent with Dashboard) ──
+  const receiptBasedTotal = filteredReceipts.reduce((s, r) => s + sumReceiptItems(r), 0);
+  const totalSpent  = receiptBasedTotal + (includeRecurring ? recurringMonthly : 0);
   const totalSaved  = filteredReceipts.reduce((s, r) => s + receiptSavings(r), 0);
   const totalCount  = filteredReceipts.length;
-  const avgReceipt  = totalCount ? itemsTotal / totalCount : 0;
+  const avgReceipt  = totalCount ? receiptBasedTotal / totalCount : 0;
   const maxMonth    = Math.max(...monthData.map(m => m.total), 1);
 
   // ── Insights ──
