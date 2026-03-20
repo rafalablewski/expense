@@ -110,10 +110,19 @@ export default function StatsView() {
         map[cat] = (map[cat] || 0) + toMonthly(r);
       });
     }
+    // Subtract voucher discounts proportionally so chart total matches sumReceiptItems
+    const totalVouchers = filteredReceipts.reduce((s, r) => s + (parseFloat(r.voucher) || 0), 0);
+    if (totalVouchers > 0) {
+      const gross = Object.values(map).reduce((s, v) => s + v, 0);
+      if (gross > 0) {
+        const ratio = totalVouchers / gross;
+        Object.keys(map).forEach(cat => { map[cat] -= map[cat] * ratio; });
+      }
+    }
     return Object.entries(map)
       .map(([cat, value]) => ({ cat, value, color: CATS[cat] || "#9CA3AF" }))
       .sort((a, b) => b.value - a.value);
-  }, [all, includeRecurring, activeRecurring]);
+  }, [all, includeRecurring, activeRecurring, filteredReceipts]);
 
   // ── Monthly aggregation (receipt-level via sumReceiptItems — consistent with Dashboard) ──
   const monthData = useMemo(() => {
