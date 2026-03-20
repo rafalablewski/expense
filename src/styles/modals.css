@@ -1136,3 +1136,275 @@
   min-width: 48px;
   text-align: center;
 }
+
+/* ── BULK RECEIPTS MODAL ── */
+.bulk-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  background: rgba(0,0,0,0.40);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: fadeIn .2s ease both;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.bulk-panel {
+  width: 100%;
+  max-width: 640px;
+  background: rgba(248,255,252,0.96);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border-radius: 24px 24px 0 0;
+  border: 1px solid rgba(255,255,255,0.90);
+  border-bottom: none;
+  padding: 0 0 env(safe-area-inset-bottom, 16px);
+  box-shadow: 0 -12px 60px rgba(0,0,0,0.18);
+  animation: slideUp .38s cubic-bezier(.16,1,.3,1) both;
+  max-height: 92dvh;
+  display: flex;
+  flex-direction: column;
+}
+.bulk-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px 12px;
+  flex-shrink: 0;
+}
+.bulk-body {
+  padding: 0 24px 16px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Empty state */
+.bulk-empty {
+  text-align: center;
+  padding: 32px 16px;
+}
+.bulk-empty-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+.bulk-empty-text {
+  font-size: 14px;
+  color: var(--c-ink2);
+  line-height: 1.5;
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+/* Staged receipt list */
+.bulk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.bulk-receipt-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.50);
+  border: 1px solid rgba(255,255,255,0.65);
+  animation: slideDown .2s ease both;
+}
+.bulk-receipt-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--c-green-bg);
+  color: var(--c-green);
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.bulk-receipt-info {
+  flex: 1;
+  min-width: 0;
+}
+.bulk-receipt-store {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-ink0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bulk-receipt-meta {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--c-ink3);
+  margin-top: 2px;
+}
+.bulk-receipt-total {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-green);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.bulk-receipt-remove {
+  background: none;
+  border: none;
+  color: var(--c-ink3);
+  font-size: 14px;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  flex-shrink: 0;
+  transition: color .15s, background .15s;
+}
+.bulk-receipt-remove:hover {
+  color: #DC2626;
+  background: rgba(220,38,38,0.08);
+}
+
+/* Add button */
+.bulk-add-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  border: 2px dashed rgba(6,193,103,0.30);
+  background: rgba(6,193,103,0.04);
+  color: var(--c-green);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .18s;
+}
+.bulk-add-btn:hover {
+  border-color: var(--c-green);
+  background: rgba(6,193,103,0.08);
+}
+
+/* Picker area */
+.bulk-picker {
+  animation: slideDown .2s ease both;
+}
+.bulk-picker-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-ink1);
+  margin-bottom: 10px;
+}
+.bulk-picker-cancel {
+  display: block;
+  margin: 12px auto 0;
+  background: none;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-ink3);
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 10px;
+  transition: color .15s, background .15s;
+}
+.bulk-picker-cancel:hover {
+  color: var(--c-ink1);
+  background: rgba(0,0,0,0.04);
+}
+
+/* Input sections */
+.bulk-input-section {
+  animation: slideDown .2s ease both;
+}
+.bulk-input-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+/* Processing */
+.bulk-processing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-green);
+}
+.bulk-processing-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(6,193,103,0.20);
+  border-top-color: var(--c-green);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Error */
+.bulk-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(220,38,38,0.08);
+  border: 1px solid rgba(220,38,38,0.20);
+  color: #DC2626;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.bulk-error-close {
+  background: none;
+  border: none;
+  color: #DC2626;
+  font-size: 14px;
+  cursor: pointer;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Footer */
+.bulk-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px 8px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  flex-shrink: 0;
+}
+.bulk-footer-count {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-ink2);
+}
+.bulk-submit-btn {
+  min-height: 44px;
+  padding: 10px 24px;
+  border-radius: 12px;
+  font-size: 15px;
+}
+
+/* Accent style for bulk add card in QA menu */
+.qa-method-card--accent {
+  border-color: rgba(6,193,103,0.25);
+  background: rgba(6,193,103,0.06);
+}
+.qa-method-card--accent:hover {
+  border-color: var(--c-green);
+  background: rgba(6,193,103,0.12);
+}

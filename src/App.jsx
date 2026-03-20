@@ -5,6 +5,7 @@ import ReceiptReviewModal from "./components/modals/ReceiptReviewModal";
 import BatchSelectModal from "./components/modals/BatchSelectModal";
 import OnboardingOverlay from "./components/modals/OnboardingOverlay";
 import QuickAddExpense from "./components/modals/QuickAddExpense";
+import BulkReceiptsModal from "./components/modals/BulkReceiptsModal";
 import ApiKeyModal from "./components/modals/ApiKeyModal";
 import ReceiptsView from "./views/ReceiptsView";
 import ProductsView from "./views/ProductsView";
@@ -34,6 +35,7 @@ export default function App() {
 
   const [view,    setView]    = useState("home");
   const [showQA,  setShowQA]  = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
   const [showKeyModal, setShowKeyModal] = useState(false);
   const pageRef = useRef();
 
@@ -85,6 +87,27 @@ export default function App() {
             if (files) processJsonFiles(files, () => setShowKeyModal(true), source);
             else if (text) processSourceText(source, text, () => setShowKeyModal(true));
           }}
+          onBulkAdd={() => setShowBulk(true)}
+        />
+      )}
+
+      {showBulk && (
+        <BulkReceiptsModal
+          onClose={(stagedReceipts) => {
+            setShowBulk(false);
+            if (stagedReceipts && stagedReceipts.length > 0) {
+              // Add all staged receipts to review queue for individual confirmation
+              const batchId = Date.now() + "_bulk";
+              setReviewQueue(q => [
+                ...q,
+                ...stagedReceipts.map(r => ({
+                  ...r,
+                  _batchId: stagedReceipts.length > 1 ? batchId : null,
+                })),
+              ]);
+            }
+          }}
+          onNeedKey={() => setShowKeyModal(true)}
         />
       )}
 
