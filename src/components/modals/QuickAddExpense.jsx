@@ -11,7 +11,7 @@ const SOURCES = [
     accepts: "json" },
 ];
 
-export default function QuickAddExpense({ onClose, onManualEntry, onTextReceipt, onJsonImport, onSourceImport, onNeedKey }) {
+export default function QuickAddExpense({ onClose, onManualEntry, onTextReceipt, onJsonImport, onSourceImport, onNeedKey, onBulkAdd }) {
   const { apiKey } = useAppData();
   const [mode, setMode] = useState(null); // null = menu, "text", "json", "source:lidl", "source:biedronka"
   const [textVal, setTextVal] = useState("");
@@ -128,6 +128,14 @@ export default function QuickAddExpense({ onClose, onManualEntry, onTextReceipt,
                   <div className="qa-method-info">
                     <div className="qa-method-title">Importuj JSON</div>
                     <div className="qa-method-desc">Wczytaj plik JSON z e-paragonu lub eksportu</div>
+                  </div>
+                </button>
+
+                <button className="qa-method-card qa-method-card--accent" onClick={() => { haptic(20); onBulkAdd(); onClose(); }}>
+                  <div className="qa-method-icon">📋</div>
+                  <div className="qa-method-info">
+                    <div className="qa-method-title">Dodaj wiele paragonów</div>
+                    <div className="qa-method-desc">Dodaj kilka paragonów naraz — różnymi metodami</div>
                   </div>
                 </button>
               </div>

@@ -309,3 +309,39 @@
 [data-dark="1"] .sdb-action-btn--danger { color: #FF6B6B; }
 [data-dark="1"] .sdb-btn--cancel { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.50); }
 [data-dark="1"] .sdb-form-label { color: rgba(255,255,255,0.40); }
+
+/* Bulk receipts dark */
+[data-dark="1"] .bulk-panel {
+  background: rgba(12,22,15,0.95);
+  border-color: rgba(255,255,255,0.12);
+}
+[data-dark="1"] .bulk-empty-text { color: rgba(255,255,255,0.50); }
+[data-dark="1"] .bulk-receipt-card {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.08);
+}
+[data-dark="1"] .bulk-receipt-store { color: #F5F5F7; }
+[data-dark="1"] .bulk-receipt-meta { color: rgba(255,255,255,0.40); }
+[data-dark="1"] .bulk-receipt-remove { color: rgba(255,255,255,0.40); }
+[data-dark="1"] .bulk-receipt-remove:hover { color: #FF6B6B; background: rgba(217,48,37,0.15); }
+[data-dark="1"] .bulk-add-btn {
+  border-color: rgba(6,193,103,0.25);
+  background: rgba(6,193,103,0.06);
+}
+[data-dark="1"] .bulk-add-btn:hover {
+  border-color: rgba(6,193,103,0.45);
+  background: rgba(6,193,103,0.10);
+}
+[data-dark="1"] .bulk-picker-title { color: rgba(255,255,255,0.70); }
+[data-dark="1"] .bulk-picker-cancel { color: rgba(255,255,255,0.40); }
+[data-dark="1"] .bulk-picker-cancel:hover { color: rgba(255,255,255,0.70); background: rgba(255,255,255,0.06); }
+[data-dark="1"] .bulk-footer { border-top-color: rgba(255,255,255,0.08); }
+[data-dark="1"] .bulk-footer-count { color: rgba(255,255,255,0.50); }
+[data-dark="1"] .bulk-error { background: rgba(217,48,37,0.12); border-color: rgba(217,48,37,0.25); }
+[data-dark="1"] .qa-method-card--accent {
+  border-color: rgba(6,193,103,0.20);
+  background: rgba(6,193,103,0.08);
+}
+[data-dark="1"] .qa-method-card--accent:hover {
+  background: rgba(6,193,103,0.15);
+}
