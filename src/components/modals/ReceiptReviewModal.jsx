@@ -19,6 +19,14 @@ const UNITS = [
   { value: "l",   label: "l" },
 ];
 
+const CurrencyInput = ({ value, onChange, placeholder = "0.00", min = "0", step = "0.01", suffix, ...rest }) => (
+  <div className="rv2-currency-wrap">
+    <input className="field field--text-right field--currency" type="text" inputMode="decimal" min={min} step={step}
+      value={value} onChange={onChange} placeholder={placeholder} {...rest} />
+    <span className="rv2-currency-suffix">{suffix}</span>
+  </div>
+);
+
 export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
   const { storeLocations, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
@@ -176,15 +184,6 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     return parts.join(" \u00b7 ");
   };
 
-  // Number input with currency suffix
-  const CurrencyInput = ({ value, onChange, placeholder = "0.00", min = "0", step = "0.01", ...rest }) => (
-    <div className="rv2-currency-wrap">
-      <input className="field field--text-right field--currency" type="number" inputMode="decimal" min={min} step={step}
-        value={value} onChange={onChange} placeholder={placeholder} {...rest} />
-      <span className="rv2-currency-suffix">{sym}</span>
-    </div>
-  );
-
   return (
     <div className="rv-overlay" ref={overlayRef}
       onClick={e => e.target === overlayRef.current && onCancel()}
@@ -233,7 +232,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                 <div className="rv2-form-row">
                   <div className="rv2-form-group">
                     <label className="rv2-label">Dostawa</label>
-                    <CurrencyInput value={data.delivery_cost}
+                    <CurrencyInput suffix={sym} value={data.delivery_cost}
                       onChange={e => updateField("delivery_cost", e.target.value)} />
                   </div>
                   <div className="rv2-form-group" style={{ alignSelf: "flex-end" }}>
@@ -294,7 +293,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                     <div className="rv2-form-row">
                       <div className="rv2-form-group rv2-form-grow">
                         <label className="rv2-label">Cena całkowita</label>
-                        <CurrencyInput value={item.total_price ?? 0}
+                        <CurrencyInput suffix={sym} value={item.total_price ?? 0}
                           onChange={e => updateItem(idx, "total_price", e.target.value)} />
                       </div>
                     </div>
@@ -305,7 +304,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                     <div className="rv2-form-row">
                       <div className="rv2-form-group">
                         <label className="rv2-label">Ilość</label>
-                        <input className="field field--text-right" type="number" inputMode="decimal" min="0" step="0.001" value={item.quantity ?? 1}
+                        <input className="field field--text-right" type="text" inputMode="decimal" min="0" step="0.001" value={item.quantity ?? 1}
                           onChange={e => updateItem(idx, "quantity", e.target.value)} />
                       </div>
                       <div className="rv2-form-group">
@@ -322,7 +321,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                       </div>
                       <div className="rv2-form-group">
                         <label className="rv2-label">Cena jedn.</label>
-                        <CurrencyInput value={item.unit_price ?? ""}
+                        <CurrencyInput suffix={sym} value={item.unit_price ?? ""}
                           onChange={e => updateItem(idx, "unit_price", e.target.value)} placeholder="auto" />
                       </div>
                     </div>
@@ -333,7 +332,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                     <div className="rv2-form-row">
                       <div className="rv2-form-group">
                         <label className="rv2-label">Zniżka</label>
-                        <CurrencyInput value={item.discount ?? ""}
+                        <CurrencyInput suffix={sym} value={item.discount ?? ""}
                           onChange={e => updateItem(idx, "discount", e.target.value)} />
                       </div>
                       <div className="rv2-form-group rv2-form-grow">
@@ -350,19 +349,15 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                       <div className="rv2-form-row">
                         <div className="rv2-form-group">
                           <label className="rv2-label">Cena za litr</label>
-                          <CurrencyInput value={item.fuel_price_per_liter ?? ""}
+                          <CurrencyInput suffix={sym} value={item.fuel_price_per_liter ?? ""}
                             onChange={e => updateItem(idx, "fuel_price_per_liter", e.target.value)}
                             placeholder="np. 6.50" />
                         </div>
                         <div className="rv2-form-group">
                           <label className="rv2-label">Ilość litrów</label>
-                          <div className="rv2-currency-wrap">
-                            <input className="field field--text-right field--currency" type="number" inputMode="decimal" min="0" step="0.01"
-                              value={item.fuel_amount_liters ?? ""}
+                          <CurrencyInput suffix="L" value={item.fuel_amount_liters ?? ""}
                               onChange={e => updateItem(idx, "fuel_amount_liters", e.target.value)}
                               placeholder="np. 45.00" />
-                            <span className="rv2-currency-suffix">L</span>
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -435,7 +430,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
             <div className="rv2-total-row">
               <span>Razem</span>
               {totalOverride ? (
-                <CurrencyInput value={manualTotal}
+                <CurrencyInput suffix={sym} value={manualTotal}
                   onChange={e => setManualTotal(e.target.value)}
                   style={{ maxWidth: 140 }} />
               ) : (
@@ -453,7 +448,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
             )}
             <div className="rv2-total-row rv2-total-row--sub">
               <span>Bon / kupon</span>
-              <CurrencyInput value={data.voucher}
+              <CurrencyInput suffix={sym} value={data.voucher}
                 onChange={e => updateField("voucher", e.target.value)}
                 placeholder="0.00" style={{ maxWidth: 140 }} />
             </div>
