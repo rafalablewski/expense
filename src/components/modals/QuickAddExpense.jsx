@@ -99,8 +99,14 @@ export default function QuickAddExpense({ onClose, onManualEntry, onTextReceipt,
                   onClose();
                   // Navigate to receipts view first so the DropZone is rendered
                   if (onNavigate) onNavigate("receipts");
-                  // Wait for view to render, then trigger file picker
-                  setTimeout(() => document.querySelector('.dropzone')?.click(), 100);
+                  // Wait for view to render, then trigger file picker via polling
+                  const maxAttempts = 20;
+                  let attempt = 0;
+                  const poll = setInterval(() => {
+                    const el = document.querySelector('.dropzone');
+                    if (el) { clearInterval(poll); el.click(); }
+                    else if (++attempt >= maxAttempts) clearInterval(poll);
+                  }, 50);
                 }}>
                   <div className="qa-method-icon">📸</div>
                   <div className="qa-method-info">

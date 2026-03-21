@@ -179,7 +179,7 @@ export default function BudgetsView() {
                           onChange={e => setEditVal(e.target.value)}
                           onKeyDown={e => { if (e.key === "Enter") saveEdit(cat); if (e.key === "Escape") { setEditing(null); setEditVal(""); }}}
                           placeholder="Limit zł"
-                          style={{ width: 100, padding: "7px 10px", minHeight: 36 }}
+                          style={{ width: 100, padding: "7px 10px", fontSize: 13, minHeight: 36 }}
                           inputMode="decimal"
                           aria-label={`Ustaw budżet dla ${cat}`}
                         />
