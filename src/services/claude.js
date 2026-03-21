@@ -70,6 +70,9 @@ export async function scanReceipt(b64, mt, apiKey, correctionsHint = "") {
   "address": string | null,
   "zip_code": string | null,
   "city": string | null,
+  "all_addresses": [
+    { "address": string | null, "zip_code": string | null, "city": string | null, "type": "store" | "company" | "unknown" }
+  ],
   "date": "YYYY-MM-DD",
   "items": [
     {
@@ -93,9 +96,9 @@ export async function scanReceipt(b64, mt, apiKey, correctionsHint = "") {
 Rules:
 - voucher: If there is a coupon, voucher, or bon applied to the entire receipt (not a per-item discount), extract the deducted amount as a positive number. Look for keywords like "bon", "kupon", "voucher", "rabat z kuponu", "kod rabatowy". Return null if none found. This is different from per-item discounts — it applies to the whole receipt total.
 - date MUST be in YYYY-MM-DD format. Extract from receipt header/footer. NEVER return null for date.
-- address: Extract the store's street address from the receipt header (e.g. "ul. Warszawska 15"). Return null if not found.
-- zip_code: Extract the postal/zip code (e.g. "00-001"). Return null if not found.
-- city: Extract the city name from the receipt header (e.g. "Katowice", "Mikołów"). For e-commerce stores return null. Return null if not found.
+- all_addresses: Extract ALL addresses found on the receipt. Receipts often have multiple addresses — the registered company/headquarters address and the actual physical store location address. For each address, classify its type: "store" for the physical store/branch location where the purchase was made, "company" for the registered business/headquarters address (often near NIP/tax ID), "unknown" if unclear. Include at least the main address fields (address, zip_code, city) for each.
+- address, zip_code, city: Set these to the PHYSICAL STORE location address (type "store"), NOT the registered company address. The store address is typically the branch/location where the purchase happened. If only one address is found, use that. Return null if not found.
+- city: Extract the city name (e.g. "Katowice", "Mikołów"). For e-commerce stores return null. Return null if not found.
 - delivery_cost: If there is a delivery/shipping fee (dostawa, przesyłka, kurier, wysyłka, shipping), extract the listed price as a number. Return null if no delivery fee.
 - delivery_free: Set to true if delivery is explicitly free or fully discounted (darmowa dostawa, free shipping, koszt 0 zł, delivery 0.00). When true, still set delivery_cost to the original listed fee if shown. Default false.
 - Product names: read carefully, expand abbreviations into readable Polish names (e.g. "PomidGustBel400g" → "Pomidory Gusto Bello 400g").
@@ -137,6 +140,9 @@ Each receipt object has this schema:
   "address": string | null,
   "zip_code": string | null,
   "city": string | null,
+  "all_addresses": [
+    { "address": string | null, "zip_code": string | null, "city": string | null, "type": "store" | "company" | "unknown" }
+  ],
   "date": "YYYY-MM-DD",
   "items": [
     {
@@ -159,10 +165,12 @@ Each receipt object has this schema:
 
 Rules:
 - voucher: If there is a coupon, voucher, or bon applied to the entire receipt (not a per-item discount), extract the deducted amount as a positive number. Look for keywords like "bon", "kupon", "voucher", "rabat z kuponu", "kod rabatowy". Return null if none found.
+- all_addresses: Extract ALL addresses found on the receipt/text. Receipts often have multiple addresses — the registered company/headquarters address and the actual physical store location. For each, classify type: "store" for the physical branch location, "company" for registered business address (often near NIP), "unknown" if unclear.
+- address, zip_code, city: Set these to the PHYSICAL STORE location address (type "store"), NOT the registered company address. If only one address is found, use that.
 - The text can be a FULL RECEIPT (paragon fiskalny), a simple shopping list, or MULTIPLE orders/receipts. Detect the format automatically.
 - If there are multiple separate orders (different shops, different order numbers, different confirmation emails), split them into separate receipt objects and return as a JSON array.
 - For FULL RECEIPTS (containing store headers, NIP, product codes, tax summaries, payment info):
-  * Extract store name, address, zip_code, city from the receipt header.
+  * Extract store name, address, zip_code, city from the receipt header. Prefer the physical store address over the registered company address.
   * date MUST be in YYYY-MM-DD format. Extract from receipt header/footer (e.g. "2026-03-04 14:15" → "2026-03-04"). NEVER return null for date.
   * Only extract product lines — IGNORE tax summaries (PTU, SPRZEDAZ OPODATKOWANA), payment lines (GOTOWKA, RESZTA), totals (SUMA PLN), NIP, separator lines (===, ---), transaction metadata, and other non-product lines.
   * Product lines typically look like: "PRODUCT_NAME CODE    QTY xPRICE    TOTAL_PRICETAX_LETTER" — extract name, quantity, unit_price, and total_price from these.
@@ -237,6 +245,9 @@ Each receipt object must follow this schema:
   "address": string | null,
   "zip_code": string | null,
   "city": string | null,
+  "all_addresses": [
+    { "address": string | null, "zip_code": string | null, "city": string | null, "type": "store" | "company" | "unknown" }
+  ],
   "date": "YYYY-MM-DD",
   "items": [
     {
@@ -259,6 +270,8 @@ Each receipt object must follow this schema:
 
 Rules:
 - voucher: If there is a coupon, voucher, or bon applied to the entire receipt (not a per-item discount), extract the deducted amount as a positive number. Look for keywords like "bon", "kupon", "voucher", "rabat z kuponu", "kod rabatowy". Return null if none found.
+- all_addresses: Extract ALL addresses found in the JSON data. Classify each: "store" for physical store/branch location, "company" for registered business address, "unknown" if unclear.
+- address, zip_code, city: Set these to the PHYSICAL STORE location address, NOT the registered company address.
 - Detect the JSON structure automatically. Common formats include: Polish fiscal e-paragon JSON, Lidl Plus receipt export, Biedronka e-receipt, generic POS data, etc.
 - Map whatever fields exist (e.g. "produkty", "items", "lineItems", "positions", "articles") to the items array.
 - Product names: expand abbreviations into readable Polish names. Clean up codes, SKUs, and internal identifiers.
