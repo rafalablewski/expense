@@ -174,14 +174,28 @@ export function AppDataProvider({ uid, children }) {
     // Seed store locations from defaults + existing receipts + any already saved
     // Use store|zip_code as dedup key (address text varies between receipts)
     const locKey = (l) => l.zip_code ? `${l.store}|${l.zip_code}` : `${l.store}|${l.address || ""}|${l.city || ""}`;
-    const savedLocs = d.storeLocations || [];
-    const seenKeys = new Set(savedLocs.map(locKey));
+    const labelKey = (l) => l.label ? l.label.toLowerCase().trim() : "";
+    // Deduplicate savedLocs themselves (merge entries with same key or same label)
+    const dedupedSaved = [];
+    const seenKeys = new Set();
+    const seenLabels = new Set();
+    for (const loc of (d.storeLocations || [])) {
+      const key = locKey(loc);
+      const lbl = labelKey(loc);
+      if (seenKeys.has(key) || (lbl && seenLabels.has(lbl))) continue;
+      seenKeys.add(key);
+      if (lbl) seenLabels.add(lbl);
+      dedupedSaved.push(loc);
+    }
+    const savedLocs = dedupedSaved;
     const newLocs = [];
     // Merge default store locations
     for (const loc of DEFAULT_STORE_LOCATIONS) {
       const key = locKey(loc);
-      if (seenKeys.has(key)) continue;
+      const lbl = labelKey(loc);
+      if (seenKeys.has(key) || (lbl && seenLabels.has(lbl))) continue;
       seenKeys.add(key);
+      if (lbl) seenLabels.add(lbl);
       newLocs.push(loc);
     }
     // Merge locations discovered from receipts (skip if already in defaults)
@@ -190,8 +204,11 @@ export function AppDataProvider({ uid, children }) {
       if (!r.store || (!r.address && !r.city && !r.zip_code)) continue;
       const key = locKey(r);
       if (seenKeys.has(key) || defaultKeys.has(key)) continue;
-      seenKeys.add(key);
       const shortAddr = r.city || (r.address ? r.address.split(",")[0].trim() : "");
+      const lbl = (shortAddr ? `${r.store} ${shortAddr}` : r.store).toLowerCase().trim();
+      if (seenLabels.has(lbl)) continue;
+      seenKeys.add(key);
+      seenLabels.add(lbl);
       newLocs.push({
         store: r.store,
         label: shortAddr ? `${r.store} ${shortAddr}` : r.store,
@@ -202,8 +219,9 @@ export function AppDataProvider({ uid, children }) {
     }
     const mergedLocs = [...savedLocs, ...newLocs];
     setStoreLocations(prev => deepEqual(prev, mergedLocs) ? prev : mergedLocs);
-    // Persist if we discovered new locations
-    if (newLocs.length > 0) {
+    // Persist if we discovered new locations or deduped existing ones
+    const rawSavedLen = (d.storeLocations || []).length;
+    if (newLocs.length > 0 || savedLocs.length < rawSavedLen) {
       updateField(uid, "storeLocations", mergedLocs);
     }
     setCurrency(prev => prev === (d.currency || "PLN") ? prev : (d.currency || "PLN"));
@@ -487,7 +505,10 @@ export function AppDataProvider({ uid, children }) {
     setStoreLocations(prev => {
       const exists = prev.some(loc => {
         const locKey = loc.zip_code ? `${loc.store}|${loc.zip_code}` : `${loc.store}|${loc.address || ""}|${loc.city || ""}`;
-        return locKey === key;
+        if (locKey === key) return true;
+        // Also deduplicate by label to prevent "Lidl Bazantowo" appearing twice
+        if (loc.label && label && loc.label.toLowerCase().trim() === label.toLowerCase().trim()) return true;
+        return false;
       });
       if (exists) return prev;
       return [...prev, { store, label, address: address || "", zip_code: zip_code || "", city: city || "" }];
