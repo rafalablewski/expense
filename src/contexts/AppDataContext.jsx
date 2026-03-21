@@ -173,7 +173,7 @@ export function AppDataProvider({ uid, children }) {
 
     // Seed store locations from defaults + existing receipts + any already saved
     // Use store|zip_code as dedup key (address text varies between receipts)
-    const locKey = (l) => l.zip_code ? `${l.store}|${l.zip_code}` : `${l.store}|${l.address || ""}|${l.city || ""}`;
+    const locKey = (l) => l.zip_code?.trim() ? `${l.store?.trim()}|${l.zip_code.trim()}` : `${l.store?.trim()}|${(l.address || "").trim()}|${(l.city || "").trim()}`;
     const labelKey = (l) => l.label ? l.label.toLowerCase().trim() : "";
     // Deduplicate savedLocs themselves (merge entries with same key or same label)
     const dedupedSaved = [];
@@ -493,18 +493,19 @@ export function AppDataProvider({ uid, children }) {
   const learnStoreLocation = useCallback((receipt) => {
     const { store, address, city, zip_code } = receipt;
     if (!store || (!address && !city && !zip_code)) return;
+    const s = store.trim(), a = (address || "").trim(), z = (zip_code || "").trim(), c = (city || "").trim();
     // Skip if this location already exists in defaults
     const inDefaults = DEFAULT_STORE_LOCATIONS.some(d =>
-      d.store === store && (zip_code ? d.zip_code === zip_code : d.city === (city || "") && d.address === (address || ""))
+      d.store.trim() === s && (z ? d.zip_code?.trim() === z : (d.city || "").trim() === c && (d.address || "").trim() === a)
     );
     if (inDefaults) return;
     // Dedup by store + zip_code (address text varies between receipts, zip won't)
-    const key = zip_code ? `${store}|${zip_code}` : `${store}|${address || ""}|${city || ""}`;
+    const key = z ? `${s}|${z}` : `${s}|${a}|${c}`;
     const shortAddr = city || (address ? address.split(",")[0].trim() : "");
     const label = shortAddr ? `${store} ${shortAddr}` : store;
     setStoreLocations(prev => {
       const exists = prev.some(loc => {
-        const locKey = loc.zip_code ? `${loc.store}|${loc.zip_code}` : `${loc.store}|${loc.address || ""}|${loc.city || ""}`;
+        const locKey = loc.zip_code?.trim() ? `${loc.store?.trim()}|${loc.zip_code.trim()}` : `${loc.store?.trim()}|${(loc.address || "").trim()}|${(loc.city || "").trim()}`;
         if (locKey === key) return true;
         // Also deduplicate by label to prevent "Lidl Bazantowo" appearing twice
         if (loc.label && label && loc.label.toLowerCase().trim() === label.toLowerCase().trim()) return true;

@@ -118,7 +118,7 @@ export default function StoresView() {
       const d = parseDate(r.date);
       if (d && (!map[key].lastDate || d > map[key].lastDate)) map[key].lastDate = d;
       // Track locations by address/zip
-      const locKey = [r.zip_code, r.address].filter(Boolean).join(" ").toLowerCase() || null;
+      const locKey = [r.zip_code, r.address].filter(Boolean).map(s => s.trim()).join(" ").toLowerCase() || null;
       if (locKey) {
         if (!map[key].locations[locKey]) map[key].locations[locKey] = { address: r.address || "", zip_code: r.zip_code || "", city: r.city || "", visits: 0, total: 0 };
         map[key].locations[locKey].visits++;

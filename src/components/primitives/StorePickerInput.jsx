@@ -29,7 +29,7 @@ export default function StorePickerInput({ value, onChange, onSelectLocation, st
     const seen = new Set();
 
     for (const loc of storeLocations) {
-      const key = loc.zip_code ? `${loc.store}|${loc.zip_code}` : `${loc.store}|${loc.address || ""}|${loc.city || ""}`;
+      const key = loc.zip_code?.trim() ? `${loc.store?.trim()}|${loc.zip_code.trim()}` : `${loc.store?.trim()}|${(loc.address || "").trim()}|${(loc.city || "").trim()}`;
       if (seen.has(key)) continue;
       seen.add(key);
       result.push({
