@@ -54,6 +54,41 @@ export async function claudeChat(prompt, apiKey, maxTokens = 1024) {
   return extractText(data);
 }
 
+const MAX_B64_BYTES = 4_800_000; // stay under 5 MB API limit
+
+export async function compressImageIfNeeded(b64, mediaType) {
+  if (b64.length <= MAX_B64_BYTES) return { b64, mediaType };
+  const img = await new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i);
+    i.onerror = rej;
+    i.src = `data:${mediaType};base64,${b64}`;
+  });
+  const canvas = document.createElement("canvas");
+  let { width, height } = img;
+  // Scale down proportionally until base64 fits
+  for (let quality = 0.85; quality >= 0.3; quality -= 0.15) {
+    const scale = Math.min(1, Math.sqrt(MAX_B64_BYTES / b64.length));
+    width = Math.round(img.width * scale);
+    height = Math.round(img.height * scale);
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+    const dataUrl = canvas.toDataURL("image/jpeg", quality);
+    const compressed = dataUrl.split(",")[1];
+    if (compressed.length <= MAX_B64_BYTES) {
+      return { b64: compressed, mediaType: "image/jpeg" };
+    }
+    b64 = compressed; // use as new baseline for next iteration's scale calc
+  }
+  // Last resort: aggressive resize
+  canvas.width = Math.round(width * 0.5);
+  canvas.height = Math.round(height * 0.5);
+  canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+  const last = canvas.toDataURL("image/jpeg", 0.5).split(",")[1];
+  return { b64: last, mediaType: "image/jpeg" };
+}
+
 export async function scanReceipt(b64, mt, apiKey, correctionsHint = "") {
   if (!apiKey) throw new Error("Brak klucza API — ustaw go w ustawieniach (ikona klucza)");
   const res = await fetch(API_URL, {
