@@ -80,7 +80,9 @@ export async function scanReceipt(b64, mt, apiKey, correctionsHint = "") {
       "total_price": number,
       "discount": number | null,
       "discount_label": string | null,
-      "category": "Nabiał"|"Mięso"|"Warzywa"|"Owoce"|"Napoje"|"Pieczywo"|"Zboża"|"Słodycze"|"Przyprawy"|"Oleje"|"Chemia"|"Paliwo"|"Subskrypcje"|"Restauracje"|"Transport"|"Dostawa"|"Rozrywka"|"Elektronika"|"Odzież"|"Zdrowie"|"Narzędzia"|"Meble"|"AGD"|"Ogród"|"Zwierzęta"|"Podróże"|"Sport"|"Kosmetyki"|"Edukacja"|"Prezenty"|"Dom"|"Inne"
+      "category": "Nabiał"|"Mięso"|"Warzywa"|"Owoce"|"Napoje"|"Pieczywo"|"Zboża"|"Słodycze"|"Przyprawy"|"Oleje"|"Chemia"|"Paliwo"|"Subskrypcje"|"Restauracje"|"Transport"|"Dostawa"|"Rozrywka"|"Elektronika"|"Odzież"|"Zdrowie"|"Narzędzia"|"Meble"|"AGD"|"Ogród"|"Zwierzęta"|"Podróże"|"Sport"|"Kosmetyki"|"Edukacja"|"Prezenty"|"Dom"|"Inne",
+      "fuel_price_per_liter": number | null,
+      "fuel_amount_liters": number | null
     }
   ],
   "total": number | null,
@@ -91,6 +93,7 @@ export async function scanReceipt(b64, mt, apiKey, correctionsHint = "") {
 }
 
 Rules:
+- fuel_price_per_liter and fuel_amount_liters: Only for items with category "Paliwo". Extract the per-liter fuel price and the number of liters refueled if visible on the receipt. Return null for non-fuel items or if not found.
 - voucher: If there is a coupon, voucher, or bon applied to the entire receipt (not a per-item discount), extract the deducted amount as a positive number. Look for keywords like "bon", "kupon", "voucher", "rabat z kuponu", "kod rabatowy". Return null if none found. This is different from per-item discounts — it applies to the whole receipt total.
 - date MUST be in YYYY-MM-DD format. Extract from receipt header/footer. NEVER return null for date.
 - address: Extract the store's street address from the receipt header (e.g. "ul. Warszawska 15"). Return null if not found.
@@ -147,7 +150,9 @@ Each receipt object has this schema:
       "total_price": number,
       "discount": number | null,
       "discount_label": string | null,
-      "category": "Nabiał"|"Mięso"|"Warzywa"|"Owoce"|"Napoje"|"Pieczywo"|"Zboża"|"Słodycze"|"Przyprawy"|"Oleje"|"Chemia"|"Paliwo"|"Subskrypcje"|"Restauracje"|"Transport"|"Dostawa"|"Rozrywka"|"Elektronika"|"Odzież"|"Zdrowie"|"Narzędzia"|"Meble"|"AGD"|"Ogród"|"Zwierzęta"|"Podróże"|"Sport"|"Kosmetyki"|"Edukacja"|"Prezenty"|"Dom"|"Inne"
+      "category": "Nabiał"|"Mięso"|"Warzywa"|"Owoce"|"Napoje"|"Pieczywo"|"Zboża"|"Słodycze"|"Przyprawy"|"Oleje"|"Chemia"|"Paliwo"|"Subskrypcje"|"Restauracje"|"Transport"|"Dostawa"|"Rozrywka"|"Elektronika"|"Odzież"|"Zdrowie"|"Narzędzia"|"Meble"|"AGD"|"Ogród"|"Zwierzęta"|"Podróże"|"Sport"|"Kosmetyki"|"Edukacja"|"Prezenty"|"Dom"|"Inne",
+      "fuel_price_per_liter": number | null,
+      "fuel_amount_liters": number | null
     }
   ],
   "total": number | null,
@@ -158,6 +163,7 @@ Each receipt object has this schema:
 }
 
 Rules:
+- fuel_price_per_liter and fuel_amount_liters: Only for items with category "Paliwo". Extract the per-liter fuel price and the number of liters refueled if found in the text. Return null for non-fuel items or if not found.
 - voucher: If there is a coupon, voucher, or bon applied to the entire receipt (not a per-item discount), extract the deducted amount as a positive number. Look for keywords like "bon", "kupon", "voucher", "rabat z kuponu", "kod rabatowy". Return null if none found.
 - The text can be a FULL RECEIPT (paragon fiskalny), a simple shopping list, or MULTIPLE orders/receipts. Detect the format automatically.
 - If there are multiple separate orders (different shops, different order numbers, different confirmation emails), split them into separate receipt objects and return as a JSON array.
@@ -247,7 +253,9 @@ Each receipt object must follow this schema:
       "total_price": number,
       "discount": number | null,
       "discount_label": string | null,
-      "category": "Nabiał"|"Mięso"|"Warzywa"|"Owoce"|"Napoje"|"Pieczywo"|"Zboża"|"Słodycze"|"Przyprawy"|"Oleje"|"Chemia"|"Paliwo"|"Subskrypcje"|"Restauracje"|"Transport"|"Dostawa"|"Rozrywka"|"Elektronika"|"Odzież"|"Zdrowie"|"Narzędzia"|"Meble"|"AGD"|"Ogród"|"Zwierzęta"|"Podróże"|"Sport"|"Kosmetyki"|"Edukacja"|"Prezenty"|"Dom"|"Inne"
+      "category": "Nabiał"|"Mięso"|"Warzywa"|"Owoce"|"Napoje"|"Pieczywo"|"Zboża"|"Słodycze"|"Przyprawy"|"Oleje"|"Chemia"|"Paliwo"|"Subskrypcje"|"Restauracje"|"Transport"|"Dostawa"|"Rozrywka"|"Elektronika"|"Odzież"|"Zdrowie"|"Narzędzia"|"Meble"|"AGD"|"Ogród"|"Zwierzęta"|"Podróże"|"Sport"|"Kosmetyki"|"Edukacja"|"Prezenty"|"Dom"|"Inne",
+      "fuel_price_per_liter": number | null,
+      "fuel_amount_liters": number | null
     }
   ],
   "total": number | null,
@@ -258,6 +266,7 @@ Each receipt object must follow this schema:
 }
 
 Rules:
+- fuel_price_per_liter and fuel_amount_liters: Only for items with category "Paliwo". Extract the per-liter fuel price and the number of liters refueled if found in the JSON data. Return null for non-fuel items or if not found.
 - voucher: If there is a coupon, voucher, or bon applied to the entire receipt (not a per-item discount), extract the deducted amount as a positive number. Look for keywords like "bon", "kupon", "voucher", "rabat z kuponu", "kod rabatowy". Return null if none found.
 - Detect the JSON structure automatically. Common formats include: Polish fiscal e-paragon JSON, Lidl Plus receipt export, Biedronka e-receipt, generic POS data, etc.
 - Map whatever fields exist (e.g. "produkty", "items", "lineItems", "positions", "articles") to the items array.

@@ -148,6 +148,8 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
         unit_price: parseFloat(it.unit_price) || null,
         total_price: parseFloat(it.total_price) || 0,
         discount: it.discount ? parseFloat(it.discount) : null,
+        fuel_price_per_liter: it.category === "Paliwo" && it.fuel_price_per_liter ? parseFloat(it.fuel_price_per_liter) : null,
+        fuel_amount_liters: it.category === "Paliwo" && it.fuel_amount_liters ? parseFloat(it.fuel_amount_liters) : null,
       })),
     };
     onConfirm(cleaned);
@@ -342,6 +344,30 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                     </div>
                   </div>
 
+                  {/* ─ Section: Paliwo (fuel-specific fields) ─ */}
+                  {item.category === "Paliwo" && (
+                    <div className="rv2-edit-section">
+                      <div className="rv2-form-row">
+                        <div className="rv2-form-group">
+                          <label className="rv2-label">Cena za litr</label>
+                          <CurrencyInput value={item.fuel_price_per_liter ?? ""}
+                            onChange={e => updateItem(idx, "fuel_price_per_liter", e.target.value)}
+                            placeholder="np. 6.50" />
+                        </div>
+                        <div className="rv2-form-group">
+                          <label className="rv2-label">Ilość litrów</label>
+                          <div className="rv2-currency-wrap">
+                            <input className="field field--text-right field--currency" type="number" min="0" step="0.01"
+                              value={item.fuel_amount_liters ?? ""}
+                              onChange={e => updateItem(idx, "fuel_amount_liters", e.target.value)}
+                              placeholder="np. 45.00" />
+                            <span className="rv2-currency-suffix">L</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* ─ Section: Kategoria ─ */}
                   <div className="rv2-edit-section">
                     <div className="rv2-label">Kategoria</div>
@@ -388,6 +414,12 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                     {catIcon} {item.category}
                   </span>
                   {qtyLine && <span className="rv2-item-qty">{qtyLine}</span>}
+                  {item.category === "Paliwo" && item.fuel_price_per_liter && (
+                    <span className="rv2-item-qty">{parseFloat(item.fuel_price_per_liter).toFixed(2)} {sym}/L</span>
+                  )}
+                  {item.category === "Paliwo" && item.fuel_amount_liters && (
+                    <span className="rv2-item-qty">{parseFloat(item.fuel_amount_liters).toFixed(2)} L</span>
+                  )}
                   {discount > 0 && (
                     <span className="rv2-item-discount">
                       -{discount.toFixed(2)} {sym}{item.discount_label ? ` ${item.discount_label}` : ""}
