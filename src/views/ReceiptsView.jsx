@@ -240,7 +240,7 @@ export default function ReceiptsView({ onFiles, onManualEntry, onTextReceipt, on
                                 </div>
                                 <div className="form-group min-w-100">
                                   <label className="field-label-sm">Kwota (PLN)</label>
-                                  <input className="field" type="number" min="0" step="0.01"
+                                  <input className="field" type="number" inputMode="decimal" min="0" step="0.01"
                                     value={editingRecurring.amount}
                                     onChange={e => setEditingRecurring(s => ({ ...s, amount: e.target.value }))} />
                                 </div>
