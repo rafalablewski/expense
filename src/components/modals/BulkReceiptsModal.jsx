@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { haptic } from '../../utils/helpers';
 import { useAppData } from '../../contexts/AppDataContext';
-import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, parseJsonReceipt as parseJsonReceiptAPI, getCorrectionsHint } from '../../services/claude';
+import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, parseJsonReceipt as parseJsonReceiptAPI, getCorrectionsHint, compressImageIfNeeded } from '../../services/claude';
 import { getCorrections, applyLearnedCorrections } from '../../hooks/useCorrections';
 import { FX_SYMBOLS } from '../../config/defaults';
 
@@ -114,13 +114,14 @@ export default function BulkReceiptsModal({ onClose, onNeedKey }) {
       if (!file.type.startsWith("image/")) continue;
       setProcessing(`${file.name}...`);
       try {
-        const b64 = await new Promise((res, rej) => {
+        const rawB64 = await new Promise((res, rej) => {
           const r = new FileReader();
           r.onload = () => res(r.result.split(",")[1]);
           r.onerror = rej;
           r.readAsDataURL(file);
         });
-        const parsed = await scanReceiptAPI(b64, file.type, apiKey, getCorrectionsHint(getCorrections()));
+        const { b64, mediaType } = await compressImageIfNeeded(rawB64, file.type);
+        const parsed = await scanReceiptAPI(b64, mediaType, apiKey, getCorrectionsHint(getCorrections()));
         const corrected = applyLearnedCorrections(parsed);
         setStaged(s => [...s, { ...corrected, id: Date.now() + Math.random(), source: "camera" }]);
         haptic(30);

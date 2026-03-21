@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback, useRef, useMemo, useE
 import { loadUserData, saveAllUserData, updateField, subscribeUserData } from "../firestore";
 import { DEFAULT_STORES, DEFAULT_STORE_LOCATIONS } from "../config/defaults";
 import { LS_KEYS, lsGet, lsSet } from "../services/localStorage";
-import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, parseJsonReceipt as parseJsonReceiptAPI, getCorrectionsHint } from "../services/claude";
+import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, parseJsonReceipt as parseJsonReceiptAPI, getCorrectionsHint, compressImageIfNeeded } from "../services/claude";
 import { initCorrections, getCorrections, learnFromCorrections, applyLearnedCorrections } from "../hooks/useCorrections";
 import { haptic, sumReceiptItems, toMonthly } from "../utils/helpers";
 import { matchStoreAddress } from "../utils/addressMatcher";
@@ -345,13 +345,14 @@ export function AppDataProvider({ uid, children }) {
       const id = Date.now() + Math.random();
       setProcessing(p => [...p, { id, name: file.name }]);
       try {
-        const b64 = await new Promise((res, rej) => {
+        const rawB64 = await new Promise((res, rej) => {
           const r = new FileReader();
           r.onload = () => res(r.result.split(",")[1]);
           r.onerror = rej;
           r.readAsDataURL(file);
         });
-        const parsed = await scanReceiptAPI(b64, file.type, key, getCorrectionsHint(getCorrections()));
+        const { b64, mediaType } = await compressImageIfNeeded(rawB64, file.type);
+        const parsed = await scanReceiptAPI(b64, mediaType, key, getCorrectionsHint(getCorrections()));
         const matched = matchStoreAddress(parsed, storeLocationsRef.current);
         const corrected = applyLearnedCorrections(matched);
         setReviewQueue(q => [...q, { ...corrected, id, _original: parsed }]);
