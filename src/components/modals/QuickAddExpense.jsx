@@ -11,7 +11,7 @@ const SOURCES = [
     accepts: "json" },
 ];
 
-export default function QuickAddExpense({ onClose, onManualEntry, onTextReceipt, onJsonImport, onSourceImport, onNeedKey, onBulkAdd }) {
+export default function QuickAddExpense({ onClose, onManualEntry, onTextReceipt, onJsonImport, onSourceImport, onNeedKey, onBulkAdd, onNavigate }) {
   const { apiKey } = useAppData();
   const [mode, setMode] = useState(null); // null = menu, "text", "json", "source:lidl", "source:biedronka"
   const [textVal, setTextVal] = useState("");
@@ -97,8 +97,10 @@ export default function QuickAddExpense({ onClose, onManualEntry, onTextReceipt,
                 <button className="qa-method-card" onClick={() => {
                   haptic(20);
                   onClose();
-                  // Trigger the file picker on ReceiptsView DropZone via parent
-                  document.querySelector('.dropzone')?.click();
+                  // Navigate to receipts view first so the DropZone is rendered
+                  if (onNavigate) onNavigate("receipts");
+                  // Wait for view to render, then trigger file picker
+                  setTimeout(() => document.querySelector('.dropzone')?.click(), 100);
                 }}>
                   <div className="qa-method-icon">📸</div>
                   <div className="qa-method-info">

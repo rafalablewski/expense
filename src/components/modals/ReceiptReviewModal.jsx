@@ -179,7 +179,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
   // Number input with currency suffix
   const CurrencyInput = ({ value, onChange, placeholder = "0.00", min = "0", step = "0.01", ...rest }) => (
     <div className="rv2-currency-wrap">
-      <input className="field field--text-right field--currency" type="number" min={min} step={step}
+      <input className="field field--text-right field--currency" type="number" inputMode="decimal" min={min} step={step}
         value={value} onChange={onChange} placeholder={placeholder} {...rest} />
       <span className="rv2-currency-suffix">{sym}</span>
     </div>
@@ -305,7 +305,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                     <div className="rv2-form-row">
                       <div className="rv2-form-group">
                         <label className="rv2-label">Ilość</label>
-                        <input className="field field--text-right" type="number" min="0" step="0.001" value={item.quantity ?? 1}
+                        <input className="field field--text-right" type="number" inputMode="decimal" min="0" step="0.001" value={item.quantity ?? 1}
                           onChange={e => updateItem(idx, "quantity", e.target.value)} />
                       </div>
                       <div className="rv2-form-group">
@@ -357,7 +357,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                         <div className="rv2-form-group">
                           <label className="rv2-label">Ilość litrów</label>
                           <div className="rv2-currency-wrap">
-                            <input className="field field--text-right field--currency" type="number" min="0" step="0.01"
+                            <input className="field field--text-right field--currency" type="number" inputMode="decimal" min="0" step="0.01"
                               value={item.fuel_amount_liters ?? ""}
                               onChange={e => updateItem(idx, "fuel_amount_liters", e.target.value)}
                               placeholder="np. 45.00" />

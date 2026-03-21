@@ -6,17 +6,54 @@ import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
 import { useAppData } from "../contexts/AppDataContext";
 
+const EDIT_CATS = ["Subskrypcje","Zdrowie","Dom","Rozrywka","Transport","Paliwo","Sport","Edukacja","Elektronika","Inne"];
+
 export default function RecurringView() {
   const { recurring, setRecurring, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
   const [form, setForm]   = useState({ name: "", amount: "", cycle: "Miesięcznie", category: "Subskrypcje", currency: "PLN" });
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState(null);
 
   const add = () => {
     if (!form.name.trim() || !parseFloat(form.amount)) return;
     setRecurring(r => [...r, { ...form, id: Date.now(), amount: parseFloat(form.amount) }]);
     setForm({ name: "", amount: "", cycle: "Miesięcznie", category: "Subskrypcje", currency: "PLN" });
     setAdding(false);
+  };
+
+  const startEdit = (item) => {
+    setEditingId(item.id);
+    setEditForm({ name: item.name, amount: String(item.amount), cycle: item.cycle, category: item.category || "Subskrypcje" });
+    setPauseMenu(null);
+  };
+
+  const saveEdit = (item) => {
+    if (!editForm.name.trim() || !parseFloat(editForm.amount)) return;
+    const newAmount = parseFloat(editForm.amount);
+    const oldAmount = parseFloat(item.amount);
+    const amountChanged = Math.abs(newAmount - oldAmount) > 0.001;
+
+    setRecurring(r => r.map(it => {
+      if (it.id !== item.id) return it;
+      const updated = { ...it, name: editForm.name.trim(), cycle: editForm.cycle, category: editForm.category };
+      if (amountChanged) {
+        // Record old amount in history so past charges keep the old price
+        const history = it.amountHistory || [];
+        history.push({ amount: oldAmount, until: new Date().toISOString().slice(0, 10) });
+        updated.amount = newAmount;
+        updated.amountHistory = history;
+      }
+      return updated;
+    }));
+    setEditingId(null);
+    setEditForm(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditForm(null);
   };
 
   const [pauseMenu, setPauseMenu] = useState(null);
@@ -61,7 +98,7 @@ export default function RecurringView() {
                   </div>
                   <div className="form-group min-w-100">
                     <label htmlFor="ramt" className="field-label-sm">Kwota (PLN)</label>
-                    <input id="ramt" className="field" type="number" min="0" step="0.01" value={form.amount} onChange={e => setForm(f => ({...f, amount: e.target.value}))} placeholder="29.99" />
+                    <input id="ramt" className="field" type="number" inputMode="decimal" min="0" step="0.01" value={form.amount} onChange={e => setForm(f => ({...f, amount: e.target.value}))} placeholder="29.99" />
                   </div>
                 </div>
                 <div className="flex-row flex-wrap gap-10">
@@ -115,6 +152,54 @@ export default function RecurringView() {
                 const catCol = CATS[item.category] || "#9CA3AF";
                 const dispAmt = (parseFloat(item.amount) * (FX[currency] || 1)).toFixed(2);
                 const paused = isRecurringPaused(item);
+                const isEditing = editingId === item.id;
+
+                if (isEditing) {
+                  return (
+                    <div key={item.id} className="recurring-item" style={{ animation: `fadeUp .4s cubic-bezier(.16,1,.3,1) ${i * .05}s both`, flexDirection: "column", alignItems: "stretch", gap: 12 }}>
+                      <div className="flex-row flex-wrap gap-10">
+                        <div className="form-group-lg min-w-160">
+                          <label className="field-label-sm">Nazwa</label>
+                          <input className="field" value={editForm.name} onChange={e => setEditForm(f => ({...f, name: e.target.value}))}
+                            onKeyDown={e => e.key === "Enter" && saveEdit(item)} autoFocus />
+                        </div>
+                        <div className="form-group min-w-100">
+                          <label className="field-label-sm">Kwota (PLN)</label>
+                          <input className="field" type="number" inputMode="decimal" min="0" step="0.01" value={editForm.amount}
+                            onChange={e => setEditForm(f => ({...f, amount: e.target.value}))} />
+                        </div>
+                      </div>
+                      {parseFloat(editForm.amount) !== parseFloat(item.amount) && parseFloat(editForm.amount) > 0 && (
+                        <div className="item-sub-sm" style={{ color: "#D97706" }}>
+                          Zmiana kwoty nie wpłynie na poprzednie obciążenia
+                        </div>
+                      )}
+                      <div className="flex-row flex-wrap gap-10">
+                        <div className="form-group min-w-140">
+                          <div className="field-label-sm mb-8">Cykl</div>
+                          <div className="pills-row" role="group" aria-label="Cykl płatności">
+                            {REC_CYCLES.map(c => (
+                              <button key={c} className={`pill${editForm.cycle === c ? " on" : ""}`} onClick={() => setEditForm(f => ({...f, cycle: c}))} aria-pressed={editForm.cycle === c}>{c}</button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="form-group min-w-140">
+                          <div className="field-label-sm mb-8">Kategoria</div>
+                          <div className="pills-row" role="group" aria-label="Kategoria">
+                            {EDIT_CATS.map(c => (
+                              <button key={c} className={`pill${editForm.category === c ? " on" : ""}`} onClick={() => setEditForm(f => ({...f, category: c}))} aria-pressed={editForm.category === c}>{c}</button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex-row gap-8">
+                        <button className="btn-primary" onClick={() => saveEdit(item)} style={{ flex: 1 }}>Zapisz</button>
+                        <button className="toggle-btn" onClick={cancelEdit}>Anuluj</button>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
                   <div key={item.id} className={`recurring-item${paused ? " recurring-item--paused" : ""}`} style={{ animation: `fadeUp .4s cubic-bezier(.16,1,.3,1) ${i * .05}s both` }}>
                     {/* Icon */}
@@ -146,6 +231,13 @@ export default function RecurringView() {
                       </div>
                       <div className="item-sub-sm">{sym} / {item.cycle.toLowerCase()}</div>
                     </div>
+
+                    {/* Edit button */}
+                    <button onClick={() => startEdit(item)}
+                      className="btn-icon-sm" style={{ color: $.ink3 }}
+                      aria-label={`Edytuj ${item.name}`}>
+                      ✏️
+                    </button>
 
                     {/* Pause button */}
                     <div className="pos-relative flex-shrink-0">
