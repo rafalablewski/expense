@@ -5,6 +5,7 @@ import { LS_KEYS, lsGet, lsSet } from "../services/localStorage";
 import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, parseJsonReceipt as parseJsonReceiptAPI, getCorrectionsHint } from "../services/claude";
 import { initCorrections, getCorrections, learnFromCorrections, applyLearnedCorrections } from "../hooks/useCorrections";
 import { haptic, sumReceiptItems, toMonthly } from "../utils/helpers";
+import { matchStoreAddress } from "../utils/addressMatcher";
 
 const AppDataContext = createContext(null);
 const deepEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -44,6 +45,8 @@ export function AppDataProvider({ uid, children }) {
   const initialLoadDone = useRef(false);
   const reviewQueueRef = useRef(reviewQueue);
   reviewQueueRef.current = reviewQueue;
+  const storeLocationsRef = useRef(storeLocations);
+  storeLocationsRef.current = storeLocations;
   const pendingWrites = useRef(0);
 
   // ── Load data from Firestore on mount, subscribe to real-time updates ──
@@ -349,7 +352,8 @@ export function AppDataProvider({ uid, children }) {
           r.readAsDataURL(file);
         });
         const parsed = await scanReceiptAPI(b64, file.type, key, getCorrectionsHint(getCorrections()));
-        const corrected = applyLearnedCorrections(parsed);
+        const matched = matchStoreAddress(parsed, storeLocationsRef.current);
+        const corrected = applyLearnedCorrections(matched);
         setReviewQueue(q => [...q, { ...corrected, id, _original: parsed }]);
         haptic(30);
       } catch (e) {
@@ -392,7 +396,8 @@ export function AppDataProvider({ uid, children }) {
       const batchId = receiptsArray.length > 1 ? Date.now() + "_batch" : null;
       for (let i = 0; i < receiptsArray.length; i++) {
         const receiptId = Date.now() + Math.random() + i;
-        const corrected = applyLearnedCorrections(receiptsArray[i]);
+        const matched = matchStoreAddress(receiptsArray[i], storeLocationsRef.current);
+        const corrected = applyLearnedCorrections(matched);
         setReviewQueue(q => [...q, { ...corrected, id: receiptId, _original: receiptsArray[i], ...(batchId ? { _batchId: batchId } : {}) }]);
       }
       haptic(30);
@@ -419,7 +424,8 @@ export function AppDataProvider({ uid, children }) {
         const batchId = receiptsArray.length > 1 ? Date.now() + "_batch" : null;
         for (let i = 0; i < receiptsArray.length; i++) {
           const receiptId = Date.now() + Math.random() + i;
-          const corrected = applyLearnedCorrections(receiptsArray[i]);
+          const matched = matchStoreAddress(receiptsArray[i], storeLocationsRef.current);
+          const corrected = applyLearnedCorrections(matched);
           const sourceTag = source ? `import-${source}` : "import-json";
           setReviewQueue(q => [...q, { ...corrected, id: receiptId, source: sourceTag, _original: receiptsArray[i], ...(batchId ? { _batchId: batchId } : {}) }]);
         }
@@ -453,7 +459,8 @@ export function AppDataProvider({ uid, children }) {
       const batchId = receiptsArray.length > 1 ? Date.now() + "_batch" : null;
       for (let i = 0; i < receiptsArray.length; i++) {
         const receiptId = Date.now() + Math.random() + i;
-        const corrected = applyLearnedCorrections(receiptsArray[i]);
+        const matched = matchStoreAddress(receiptsArray[i], storeLocationsRef.current);
+        const corrected = applyLearnedCorrections(matched);
         setReviewQueue(q => [...q, { ...corrected, id: receiptId, source: `import-${source}`, _original: receiptsArray[i], ...(batchId ? { _batchId: batchId } : {}) }]);
       }
       haptic(30);
@@ -492,8 +499,9 @@ export function AppDataProvider({ uid, children }) {
       if (current._original) {
         learnFromCorrections(current._original, reviewed);
       }
-      const { _original, _batchId, ...rest } = current;
-      const saved = ensureCity({ ...reviewed, id: rest.id });
+      const { _original, _batchId, all_addresses: _allAddr, ...rest } = current;
+      const { all_addresses: _allAddr2, ...reviewedClean } = reviewed;
+      const saved = ensureCity({ ...reviewedClean, id: rest.id });
       // Preserve source from queue item (e.g. "manual" for hand-entered receipts)
       if (current.source) saved.source = current.source;
       saved.total = sumReceiptItems(saved);
