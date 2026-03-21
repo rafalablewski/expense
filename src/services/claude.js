@@ -1,7 +1,7 @@
 // Claude API integration for receipt scanning and text parsing
 
 const API_URL = "https://api.anthropic.com/v1/messages";
-const MODEL = "claude-sonnet-4-20250514";
+const MODEL = "claude-sonnet-4-6";
 
 function apiHeaders(apiKey) {
   return {
@@ -15,7 +15,12 @@ function apiHeaders(apiKey) {
 async function handleApiResponse(res) {
   if (res.ok) return;
   if (res.status === 401) throw new Error("Nieprawidłowy klucz API — sprawdź lub zaktualizuj klucz w ustawieniach (ikona klucza)");
-  throw new Error(`HTTP ${res.status}`);
+  let detail = "";
+  try {
+    const body = await res.json();
+    detail = body.error?.message || JSON.stringify(body.error) || "";
+  } catch {}
+  throw new Error(detail ? `HTTP ${res.status}: ${detail}` : `HTTP ${res.status}`);
 }
 
 function extractText(data) {
