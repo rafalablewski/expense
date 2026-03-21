@@ -237,6 +237,8 @@ export default function ExpensesView() {
                         {item.store && <div><span className="detail-label">Sklep:</span> {item.store}</div>}
                         {item.quantity && <div><span className="detail-label">Ilość:</span> {item.quantity}{item.unit ? ` ${item.unit}` : ""}</div>}
                         {item.unit_price && <div><span className="detail-label">Cena jedn.:</span> {convertAmt(item.unit_price, currency)} {sym}</div>}
+                        {item.fuel_price_per_liter && <div><span className="detail-label">Cena za litr:</span> {convertAmt(item.fuel_price_per_liter, currency)} {sym}/L</div>}
+                        {item.fuel_amount_liters && <div><span className="detail-label">Zatankowano:</span> {item.fuel_amount_liters} L</div>}
                         {item.discount > 0 && <div className="color-red"><span>Zniżka:</span> −{convertAmt(item.discount, currency)} {sym}</div>}
                         {item.note && <div className="detail-full" style={{ color:$.ink2 }}><span className="detail-label">Notatka:</span> {item.note}</div>}
                         <div className="detail-full" style={{ marginTop: 4, display: "flex", gap: 8 }}>

@@ -80,6 +80,7 @@ export default function App() {
         <QuickAddExpense
           onClose={() => setShowQA(false)}
           onManualEntry={() => openManualEntry()}
+          onNavigate={go}
           onNeedKey={() => setShowKeyModal(true)}
           onTextReceipt={(text) => { setShowQA(false); processTextReceipt(text, () => setShowKeyModal(true)); }}
           onJsonImport={(files) => { processJsonFiles(files, () => setShowKeyModal(true)); }}
