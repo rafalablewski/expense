@@ -5,7 +5,7 @@ import { LS_KEYS, lsGet, lsSet } from "../services/localStorage";
 import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, parseJsonReceipt as parseJsonReceiptAPI, getCorrectionsHint, compressImageIfNeeded } from "../services/claude";
 import { initCorrections, getCorrections, learnFromCorrections, applyLearnedCorrections } from "../hooks/useCorrections";
 import { haptic, sumReceiptItems, toMonthly } from "../utils/helpers";
-import { matchStoreAddress } from "../utils/addressMatcher";
+import { matchStoreAddress, normalize, stripStreetPrefix } from "../utils/addressMatcher";
 
 const AppDataContext = createContext(null);
 const deepEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -22,6 +22,16 @@ const ensureCity = (receipt) => {
   if (receipt.city) return receipt;
   const city = extractCity(receipt.address);
   return city ? { ...receipt, city } : receipt;
+};
+
+// Trim whitespace from store-related fields so dedup keys always match
+const trimLocationFields = (obj) => {
+  if (!obj || typeof obj !== "object") return obj;
+  const out = { ...obj };
+  for (const k of ["store", "label", "address", "zip_code", "city"]) {
+    if (typeof out[k] === "string") out[k] = out[k].trim();
+  }
+  return out;
 };
 
 export function AppDataProvider({ uid, children }) {
@@ -172,9 +182,13 @@ export function AppDataProvider({ uid, children }) {
     setCustomStores(prev => deepEqual(prev, d.customStores || []) ? prev : (d.customStores || []));
 
     // Seed store locations from defaults + existing receipts + any already saved
-    // Use store|zip_code as dedup key (address text varies between receipts)
-    const locKey = (l) => l.zip_code ? `${l.store}|${l.zip_code}` : `${l.store}|${l.address || ""}|${l.city || ""}`;
-    const labelKey = (l) => l.label ? l.label.toLowerCase().trim() : "";
+    // Normalize dedup key: lowercase, collapse whitespace, strip Polish street prefixes
+    const locKey = (l) => {
+      const s = normalize(l.store);
+      const z = normalize(l.zip_code);
+      return z ? `${s}|${z}` : `${s}|${stripStreetPrefix(normalize(l.address))}|${normalize(l.city)}`;
+    };
+    const labelKey = (l) => l.label ? normalize(l.label) : "";
     // Deduplicate savedLocs themselves (merge entries with same key or same label)
     const dedupedSaved = [];
     const seenKeys = new Set();
@@ -370,7 +384,7 @@ export function AppDataProvider({ uid, children }) {
           r.readAsDataURL(file);
         });
         const { b64, mediaType } = await compressImageIfNeeded(rawB64, file.type);
-        const parsed = await scanReceiptAPI(b64, mediaType, key, getCorrectionsHint(getCorrections()));
+        const parsed = trimLocationFields(await scanReceiptAPI(b64, mediaType, key, getCorrectionsHint(getCorrections())));
         const matched = matchStoreAddress(parsed, storeLocationsRef.current);
         const corrected = applyLearnedCorrections(matched);
         setReviewQueue(q => [...q, { ...corrected, id, _original: parsed }]);
@@ -409,9 +423,9 @@ export function AppDataProvider({ uid, children }) {
     const id = Date.now() + Math.random();
     setProcessing(p => [...p, { id, name: "Analiza tekstu..." }]);
     try {
-      const parsed = await parseTextReceiptAPI(text, apiKey, getCorrectionsHint(getCorrections()));
+      const rawParsed = await parseTextReceiptAPI(text, apiKey, getCorrectionsHint(getCorrections()));
       // AI may return an array of receipts (multiple orders) or a single object
-      const receiptsArray = Array.isArray(parsed) ? parsed : [parsed];
+      const receiptsArray = (Array.isArray(rawParsed) ? rawParsed : [rawParsed]).map(trimLocationFields);
       const batchId = receiptsArray.length > 1 ? Date.now() + "_batch" : null;
       for (let i = 0; i < receiptsArray.length; i++) {
         const receiptId = Date.now() + Math.random() + i;
@@ -438,8 +452,8 @@ export function AppDataProvider({ uid, children }) {
       setProcessing(p => [...p, { id, name: file.name }]);
       try {
         const text = await file.text();
-        const parsed = await parseJsonReceiptAPI(text, apiKey, source, getCorrectionsHint(getCorrections()));
-        const receiptsArray = Array.isArray(parsed) ? parsed : [parsed];
+        const rawParsed = await parseJsonReceiptAPI(text, apiKey, source, getCorrectionsHint(getCorrections()));
+        const receiptsArray = (Array.isArray(rawParsed) ? rawParsed : [rawParsed]).map(trimLocationFields);
         const batchId = receiptsArray.length > 1 ? Date.now() + "_batch" : null;
         for (let i = 0; i < receiptsArray.length; i++) {
           const receiptId = Date.now() + Math.random() + i;
@@ -474,7 +488,7 @@ export function AppDataProvider({ uid, children }) {
       } catch {
         parsed = await parseTextReceiptAPI(text, apiKey, getCorrectionsHint(getCorrections()));
       }
-      const receiptsArray = Array.isArray(parsed) ? parsed : [parsed];
+      const receiptsArray = (Array.isArray(parsed) ? parsed : [parsed]).map(trimLocationFields);
       const batchId = receiptsArray.length > 1 ? Date.now() + "_batch" : null;
       for (let i = 0; i < receiptsArray.length; i++) {
         const receiptId = Date.now() + Math.random() + i;
@@ -493,25 +507,28 @@ export function AppDataProvider({ uid, children }) {
   const learnStoreLocation = useCallback((receipt) => {
     const { store, address, city, zip_code } = receipt;
     if (!store || (!address && !city && !zip_code)) return;
+    const s = store.trim(), a = (address || "").trim(), z = (zip_code || "").trim(), c = (city || "").trim();
+    const ns = normalize(store), nz = normalize(zip_code), na = stripStreetPrefix(normalize(address)), nc = normalize(city);
     // Skip if this location already exists in defaults
     const inDefaults = DEFAULT_STORE_LOCATIONS.some(d =>
-      d.store === store && (zip_code ? d.zip_code === zip_code : d.city === (city || "") && d.address === (address || ""))
+      normalize(d.store) === ns && (nz ? normalize(d.zip_code) === nz : normalize(d.city) === nc && stripStreetPrefix(normalize(d.address)) === na)
     );
     if (inDefaults) return;
-    // Dedup by store + zip_code (address text varies between receipts, zip won't)
-    const key = zip_code ? `${store}|${zip_code}` : `${store}|${address || ""}|${city || ""}`;
-    const shortAddr = city || (address ? address.split(",")[0].trim() : "");
-    const label = shortAddr ? `${store} ${shortAddr}` : store;
+    // Dedup by normalized store + zip_code (or address + city)
+    const key = nz ? `${ns}|${nz}` : `${ns}|${na}|${nc}`;
+    const shortAddr = c || (a ? a.split(",")[0].trim() : "");
+    const label = shortAddr ? `${s} ${shortAddr}` : s;
     setStoreLocations(prev => {
       const exists = prev.some(loc => {
-        const locKey = loc.zip_code ? `${loc.store}|${loc.zip_code}` : `${loc.store}|${loc.address || ""}|${loc.city || ""}`;
+        const lz = normalize(loc.zip_code);
+        const locKey = lz ? `${normalize(loc.store)}|${lz}` : `${normalize(loc.store)}|${stripStreetPrefix(normalize(loc.address))}|${normalize(loc.city)}`;
         if (locKey === key) return true;
         // Also deduplicate by label to prevent "Lidl Bazantowo" appearing twice
-        if (loc.label && label && loc.label.toLowerCase().trim() === label.toLowerCase().trim()) return true;
+        if (loc.label && label && normalize(loc.label) === normalize(label)) return true;
         return false;
       });
       if (exists) return prev;
-      return [...prev, { store, label, address: address || "", zip_code: zip_code || "", city: city || "" }];
+      return [...prev, { store: s, label, address: a, zip_code: z, city: c }];
     });
   }, []);
 
@@ -523,7 +540,7 @@ export function AppDataProvider({ uid, children }) {
       }
       const { _original, _batchId, all_addresses: _allAddr, ...rest } = current;
       const { all_addresses: _allAddr2, ...reviewedClean } = reviewed;
-      const saved = ensureCity({ ...reviewedClean, id: rest.id });
+      const saved = trimLocationFields(ensureCity({ ...reviewedClean, id: rest.id }));
       // Preserve source from queue item (e.g. "manual" for hand-entered receipts)
       if (current.source) saved.source = current.source;
       saved.total = sumReceiptItems(saved);
@@ -540,11 +557,11 @@ export function AppDataProvider({ uid, children }) {
   }, []);
 
   const addStoreLocation = useCallback((loc) => {
-    setStoreLocations(prev => [...prev, loc]);
+    setStoreLocations(prev => [...prev, trimLocationFields(loc)]);
   }, []);
 
   const updateStoreLocation = useCallback((idx, loc) => {
-    setStoreLocations(prev => prev.map((l, i) => i === idx ? loc : l));
+    setStoreLocations(prev => prev.map((l, i) => i === idx ? trimLocationFields(loc) : l));
   }, []);
 
   const deleteStoreLocation = useCallback((idx) => {

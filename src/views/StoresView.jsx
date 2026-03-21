@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import $ from "../config/theme";
 import { FX_SYMBOLS, DEFAULT_STORES } from "../config/defaults";
 import { convertAmt, parseDate, receiptSavings, sumReceiptItems, buildReceiptNumberMap } from "../utils/helpers";
+import { normalize } from "../utils/addressMatcher";
 import ReceiptDetailPopup from "../components/modals/ReceiptDetailPopup";
 import CatChip from "../components/primitives/CatChip";
 import Empty from "../components/primitives/Empty";
@@ -118,7 +119,7 @@ export default function StoresView() {
       const d = parseDate(r.date);
       if (d && (!map[key].lastDate || d > map[key].lastDate)) map[key].lastDate = d;
       // Track locations by address/zip
-      const locKey = [r.zip_code, r.address].filter(Boolean).join(" ").toLowerCase() || null;
+      const locKey = [r.zip_code, r.address].filter(Boolean).map(normalize).join(" ") || null;
       if (locKey) {
         if (!map[key].locations[locKey]) map[key].locations[locKey] = { address: r.address || "", zip_code: r.zip_code || "", city: r.city || "", visits: 0, total: 0 };
         map[key].locations[locKey].visits++;

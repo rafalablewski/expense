@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
+import { normalize, stripStreetPrefix } from '../../utils/addressMatcher';
 
 /**
  * StorePickerInput — shows store locations (name + address) as dropdown options.
@@ -29,7 +30,8 @@ export default function StorePickerInput({ value, onChange, onSelectLocation, st
     const seen = new Set();
 
     for (const loc of storeLocations) {
-      const key = loc.zip_code ? `${loc.store}|${loc.zip_code}` : `${loc.store}|${loc.address || ""}|${loc.city || ""}`;
+      const z = normalize(loc.zip_code);
+      const key = z ? `${normalize(loc.store)}|${z}` : `${normalize(loc.store)}|${stripStreetPrefix(normalize(loc.address))}|${normalize(loc.city)}`;
       if (seen.has(key)) continue;
       seen.add(key);
       result.push({
