@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import $ from "../config/theme";
 import { FX_SYMBOLS } from "../config/defaults";
 import { convertAmt, isRecurringPaused, parseDate, receiptSavings, sumReceiptItems, toMonthly } from "../utils/helpers";
+import { normalize } from "../utils/addressMatcher";
 import Empty from "../components/primitives/Empty";
 import { useAppData } from "../contexts/AppDataContext";
 
@@ -57,13 +58,13 @@ export default function DashboardView({ go }) {
     const nameMap = {};
     filteredItems.forEach(it => {
       if (!it.name) return;
-      const key = it.name.toLowerCase().trim();
+      const key = normalize(it.name);
       if (!nameMap[key]) nameMap[key] = [];
       nameMap[key].push(it);
     });
     return Object.entries(nameMap)
       .filter(([, items]) => {
-        const stores = new Set(items.map(i => (i.store || "").trim().toLowerCase()).filter(Boolean));
+        const stores = new Set(items.map(i => normalize(i.store)).filter(Boolean));
         return stores.size >= 2;
       })
       .map(([name, items]) => {

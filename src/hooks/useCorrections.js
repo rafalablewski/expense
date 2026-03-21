@@ -2,6 +2,7 @@
 // Learns from user corrections to product names and categories.
 
 import { updateField } from '../firestore';
+import { normalize } from '../utils/addressMatcher';
 
 let _correctionsCache = { names: {}, categories: {} };
 let _correctionsUid = null;
@@ -31,7 +32,7 @@ export function learnFromCorrections(original, confirmed) {
     const ci = confItems[i];
     // Learn name corrections — store as array of alternatives
     if (oi.name && ci.name && oi.name !== ci.name) {
-      const key = oi.name.trim();
+      const key = normalize(oi.name);
       const val = ci.name.trim();
       if (!corr.names[key]) corr.names[key] = [];
       if (Array.isArray(corr.names[key])) {
@@ -45,11 +46,11 @@ export function learnFromCorrections(original, confirmed) {
     }
     // Learn category corrections (keyed by confirmed name lowercase)
     if (ci.name && oi.category !== ci.category) {
-      corr.categories[ci.name.trim().toLowerCase()] = ci.category;
+      corr.categories[normalize(ci.name)] = ci.category;
       changed = true;
     }
     if (oi.name && ci.name && oi.name !== ci.name && ci.category) {
-      corr.categories[oi.name.trim().toLowerCase()] = ci.category;
+      corr.categories[normalize(oi.name)] = ci.category;
     }
   }
   if (changed) saveCorrections(corr);
@@ -70,7 +71,7 @@ export function applyLearnedCorrections(parsed) {
       let _suggestions = null;
       // Check name corrections
       if (hasNames && name) {
-        const corrections = corr.names[name.trim()];
+        const corrections = corr.names[normalize(name)];
         if (corrections) {
           const arr = Array.isArray(corrections) ? corrections : [corrections];
           if (arr.length === 1) {
@@ -83,7 +84,7 @@ export function applyLearnedCorrections(parsed) {
         }
       }
       // Apply category correction
-      const lookupKey = (name || "").trim().toLowerCase();
+      const lookupKey = normalize(name);
       if (hasCats && corr.categories[lookupKey]) {
         category = corr.categories[lookupKey];
       }

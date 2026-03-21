@@ -219,7 +219,7 @@ export function AppDataProvider({ uid, children }) {
       const key = locKey(r);
       if (seenKeys.has(key) || defaultKeys.has(key)) continue;
       const shortAddr = r.city || (r.address ? r.address.split(",")[0].trim() : "");
-      const lbl = (shortAddr ? `${r.store} ${shortAddr}` : r.store).toLowerCase().trim();
+      const lbl = normalize(shortAddr ? `${r.store} ${shortAddr}` : r.store);
       if (seenLabels.has(lbl)) continue;
       seenKeys.add(key);
       seenLabels.add(lbl);

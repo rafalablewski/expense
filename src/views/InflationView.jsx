@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import $ from "../config/theme";
 import { FX, FX_SYMBOLS } from "../config/defaults";
 import { parseDate } from "../utils/helpers";
+import { normalize } from "../utils/addressMatcher";
 import SparkLine from "../components/charts/SparkLine";
 import Empty from "../components/primitives/Empty";
 import Zl from "../components/primitives/Zl";
@@ -22,7 +23,7 @@ export default function InflationView() {
       const dateKey = r.date;
       (r.items || []).forEach(it => {
         if (!it.name) return;
-        const key = it.name.toLowerCase().trim();
+        const key = normalize(it.name);
         if (!map[key]) map[key] = { name: it.name, entries: [] };
         const price = parseFloat(it.unit_price || it.total_price) || 0;
         if (price > 0) map[key].entries.push({ date: d, dateKey, price, store: r.store });

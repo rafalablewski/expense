@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import $ from "../config/theme";
 import { CATS, CAT_GROUPS, FX_SYMBOLS, MONTH_NAMES } from "../config/defaults";
 import { parseDate, convertAmt, isRecurringPaused, receiptSavings, sumReceiptItems, toMonthly } from "../utils/helpers";
+import { normalize } from "../utils/addressMatcher";
 import BarChart from "../components/charts/BarChart";
 import DonutChart from "../components/charts/DonutChart";
 import InsightCard from "../components/charts/InsightCard";
@@ -57,7 +58,7 @@ export default function StatsView() {
   // ── Unique stores for the shop filter ──
   const storeList = useMemo(() => {
     const set = new Set();
-    allRaw.forEach(it => { if (it.store) set.add(it.store.trim()); });
+    allRaw.forEach(it => { if (it.store) set.add(normalize(it.store)); });
     return [...set].sort((a, b) => a.localeCompare(b, "pl"));
   }, [allRaw]);
 
@@ -77,7 +78,7 @@ export default function StatsView() {
   const all = useMemo(() => allRaw.filter(item => {
     const cat = item.category || "Inne";
     if (!allowedCats.has(cat)) return false;
-    if (selectedStore && (!item.store || item.store.trim() !== selectedStore)) return false;
+    if (selectedStore && (!item.store || normalize(item.store) !== selectedStore)) return false;
     if (!matchesMonth(item.date)) return false;
     return true;
   }), [allRaw, allowedCats, selectedStore, selectedMonth]);
@@ -85,7 +86,7 @@ export default function StatsView() {
   // ── Filtered receipts — by store and month ──
   const filteredReceipts = useMemo(() =>
     receipts.filter(r => {
-      if (selectedStore && (!r.store || r.store.trim() !== selectedStore)) return false;
+      if (selectedStore && (!r.store || normalize(r.store) !== selectedStore)) return false;
       if (!matchesMonth(r.date)) return false;
       return true;
     }),
@@ -165,7 +166,7 @@ export default function StatsView() {
   // Most visited store
   const topStore = useMemo(() => {
     const map = {};
-    filteredReceipts.forEach(r => { if (r.store) { const k = r.store.trim().toLowerCase(); if (!map[k]) map[k] = { name: r.store.trim(), count: 0 }; map[k].count++; } });
+    filteredReceipts.forEach(r => { if (r.store) { const k = normalize(r.store); if (!map[k]) map[k] = { name: r.store.trim(), count: 0 }; map[k].count++; } });
     const entries = Object.values(map).sort((a, b) => b.count - a.count);
     return entries[0] || null;
   }, [filteredReceipts]);
