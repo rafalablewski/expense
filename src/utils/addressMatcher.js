@@ -41,22 +41,14 @@ export function matchStoreAddress(receipt, storeLocations) {
   // Try to find a match between any extracted address and any known location
   for (const addr of allAddresses) {
     for (const loc of relevantLocations) {
-      // Primary match: zip code (most reliable, unique per location)
-      if (zipMatch(addr.zip_code, loc.zip_code)) {
+      const matched = zipMatch(addr.zip_code, loc.zip_code) || addressMatch(addr.address, loc.address);
+      if (matched) {
+        // Known store location is the source of truth — prefer its details
         return {
           ...receipt,
-          address: addr.address || loc.address,
-          zip_code: addr.zip_code || loc.zip_code,
-          city: addr.city || loc.city,
-        };
-      }
-      // Secondary match: street address
-      if (addressMatch(addr.address, loc.address)) {
-        return {
-          ...receipt,
-          address: addr.address || loc.address,
-          zip_code: addr.zip_code || loc.zip_code,
-          city: addr.city || loc.city,
+          address: loc.address || addr.address,
+          zip_code: loc.zip_code || addr.zip_code,
+          city: loc.city || addr.city,
         };
       }
     }
