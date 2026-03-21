@@ -1,6 +1,10 @@
 // Match receipt addresses against known store locations to pick the correct physical store address
 
-const normalize = (s) => (s || "").trim().toLowerCase().replace(/\s+/g, " ");
+/** Normalize a string: trim, lowercase, collapse whitespace */
+export const normalize = (s) => (s || "").trim().toLowerCase().replace(/\s+/g, " ");
+
+/** Strip common Polish street prefixes (ul., al., pl.) for fuzzy matching */
+export const stripStreetPrefix = (s) => s.replace(/^ul\.\s*/, "").replace(/^al\.\s*/, "").replace(/^pl\.\s*/, "");
 
 const zipMatch = (a, b) => a && b && normalize(a) === normalize(b);
 
@@ -9,9 +13,7 @@ const addressMatch = (a, b) => {
   const nb = normalize(b);
   if (!na || !nb) return false;
   if (na === nb) return true;
-  // Strip common Polish prefixes for fuzzy street matching
-  const strip = (s) => s.replace(/^ul\.\s*/, "").replace(/^al\.\s*/, "").replace(/^pl\.\s*/, "");
-  return strip(na) === strip(nb);
+  return stripStreetPrefix(na) === stripStreetPrefix(nb);
 };
 
 /**
