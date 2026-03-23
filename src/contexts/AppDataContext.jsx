@@ -276,19 +276,19 @@ export function AppDataProvider({ uid, children }) {
     prevReceipts.current = receipts;
     guardedWrite("receipts", receipts);
     lsSet(LS_KEYS.receipts, receipts);
-  }, [receipts]);
+  }, [receipts, guardedWrite]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevExpenses.current === null) { prevExpenses.current = expenses; return; }
     prevExpenses.current = expenses;
     guardedWrite("expenses", expenses);
-  }, [expenses]);
+  }, [expenses, guardedWrite]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevBudgets.current === null) { prevBudgets.current = budgets; return; }
     prevBudgets.current = budgets;
     guardedWrite("budgets", budgets);
-  }, [budgets]);
+  }, [budgets, guardedWrite]);
   useEffect(() => {
     if (!initialLoadDone.current) {
       if (recurring.length > 0) lsSet(LS_KEYS.recurring, recurring);
@@ -298,46 +298,46 @@ export function AppDataProvider({ uid, children }) {
     prevRecurring.current = recurring;
     guardedWrite("recurring", recurring);
     lsSet(LS_KEYS.recurring, recurring);
-  }, [recurring]);
+  }, [recurring, guardedWrite]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevCustomStores.current === null) { prevCustomStores.current = customStores; return; }
     prevCustomStores.current = customStores;
     guardedWrite("customStores", customStores);
-  }, [customStores]);
+  }, [customStores, guardedWrite]);
   const prevStoreLocations = useRef(null);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevStoreLocations.current === null) { prevStoreLocations.current = storeLocations; return; }
     prevStoreLocations.current = storeLocations;
     guardedWrite("storeLocations", storeLocations);
-  }, [storeLocations]);
+  }, [storeLocations, guardedWrite]);
   const prevPendingReceipts = useRef(null);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevPendingReceipts.current === null) { prevPendingReceipts.current = pendingReceipts; return; }
     prevPendingReceipts.current = pendingReceipts;
     guardedWrite("pendingReceipts", pendingReceipts);
-  }, [pendingReceipts]);
+  }, [pendingReceipts, guardedWrite]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevCurrency.current === null) { prevCurrency.current = currency; return; }
     prevCurrency.current = currency;
     guardedWrite("currency", currency);
-  }, [currency]);
+  }, [currency, guardedWrite]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevDarkMode.current === null) { prevDarkMode.current = darkMode; return; }
     prevDarkMode.current = darkMode;
     guardedWrite("darkMode", darkMode);
     lsSet(LS_KEYS.darkMode, darkMode);
-  }, [darkMode]);
+  }, [darkMode, guardedWrite]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevOnboarded.current === null) { prevOnboarded.current = onboarded; return; }
     prevOnboarded.current = onboarded;
     guardedWrite("onboarded", onboarded);
-  }, [onboarded]);
+  }, [onboarded, guardedWrite]);
 
   // ── Sync dark mode to DOM ──
   useEffect(() => {
@@ -376,10 +376,10 @@ export function AppDataProvider({ uid, children }) {
   }, []);
 
   const addCustomStore = useCallback((s) => {
-    if (s && !customStores.includes(s) && !DEFAULT_STORES.includes(s)) {
-      setCustomStores(cs => [...cs, s]);
+    if (s && !DEFAULT_STORES.includes(s)) {
+      setCustomStores(cs => cs.includes(s) ? cs : [...cs, s]);
     }
-  }, [customStores]);
+  }, []);
 
   const processFiles = useCallback(async (files, key) => {
     for (const file of files) {

@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import StorePickerInput from '../primitives/StorePickerInput';
-import { CATS, ALL_CATS, CAT_ICONS } from '../../config/defaults';
+import { CATS, ALL_CATS, CAT_ICONS, CAT_GROUPS } from '../../config/defaults';
 import { FX_SYMBOLS } from '../../config/defaults';
 import { haptic } from '../../utils/helpers';
 import { useAppData } from '../../contexts/AppDataContext';
@@ -12,7 +12,7 @@ const fmtDate = (d) => {
   return `${parseInt(day)} ${MONTH_PL[parseInt(m) - 1] || m} ${y}`;
 };
 
-const TOP_CATS = ["Nabiał","Mięso","Warzywa","Owoce","Napoje","Pieczywo","Zboża","Słodycze","Chemia","Kosmetyki","Inne"];
+const TOP_CATS = [...CAT_GROUPS["Spożywcze"], "Kosmetyki", "Inne"];
 const UNITS = [
   { value: "szt", label: "szt" },
   { value: "kg",  label: "kg" },
@@ -57,9 +57,10 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSav
   const overlayRef = useRef();
   const drawerRef = useRef();
 
-  // Auto-open header when manual entry (no store name)
+  // Auto-open header when manual entry (no store name) — run once on mount
   useEffect(() => {
     if (!data.store && receipt.source === "manual") setHeaderOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* Focus trap & keyboard */

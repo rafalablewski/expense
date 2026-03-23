@@ -8,7 +8,6 @@ import QuickAddExpense from "./components/modals/QuickAddExpense";
 import BulkReceiptsModal from "./components/modals/BulkReceiptsModal";
 import ApiKeyModal from "./components/modals/ApiKeyModal";
 import ReceiptsView from "./views/ReceiptsView";
-import ProductsView from "./views/ProductsView";
 import ShoppingView from "./views/ShoppingView";
 import MealPlanView from "./views/MealPlanView";
 import StatsView from "./views/StatsView";

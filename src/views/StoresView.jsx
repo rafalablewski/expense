@@ -92,11 +92,10 @@ export default function StoresView() {
   const toggleExpand = (key) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
   // ── Filter receipts by time range ──
-  const now = new Date();
   const filtered = useMemo(() => {
     if (range === "all") return receipts;
     const days = parseInt(range, 10);
-    const cutoff = new Date(now - days * 864e5);
+    const cutoff = new Date(Date.now() - days * 864e5);
     return receipts.filter(r => {
       const d = parseDate(r.date);
       return d && d >= cutoff;

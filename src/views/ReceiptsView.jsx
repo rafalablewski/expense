@@ -31,7 +31,6 @@ export default function ReceiptsView({ onFiles, onManualEntry, onTextReceipt, on
   const [editingRecurring, setEditingRecurring] = useState(null);
   const [showText, setShowText] = useState(false);
   const [textVal, setTextVal] = useState("");
-  const [jsonDrag, setJsonDrag] = useState(false);
   const jsonFileRef = useRef();
   const sym = FX_SYMBOLS[currency] || "z\u0142";
 
@@ -73,8 +72,13 @@ export default function ReceiptsView({ onFiles, onManualEntry, onTextReceipt, on
     const jsonFiles = Array.from(files).filter(f =>
       f.name.endsWith(".json") || f.type === "application/json"
     );
-    if (jsonFiles.length && onJsonImport) {
-      haptic(20);
+    if (!jsonFiles.length) return;
+    haptic(20);
+    const source = jsonFileRef.current?.getAttribute("data-source");
+    jsonFileRef.current?.removeAttribute("data-source");
+    if (source && onSourceImport) {
+      onSourceImport(source, jsonFiles, null);
+    } else if (onJsonImport) {
       onJsonImport(jsonFiles);
     }
   };
