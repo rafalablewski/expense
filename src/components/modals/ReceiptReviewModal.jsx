@@ -27,7 +27,7 @@ const CurrencyInput = ({ value, onChange, placeholder = "0.00", min = "0", step 
   </div>
 );
 
-export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
+export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSavePending }) {
   const { storeLocations, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
 
@@ -163,6 +163,30 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     onConfirm(cleaned);
   };
 
+  const handleSavePending = () => {
+    if (!onSavePending) return;
+    haptic(20);
+    const cleaned = {
+      ...data,
+      total: finalTotal,
+      total_discounts: computedDiscounts,
+      delivery_cost: parseFloat(data.delivery_cost) || null,
+      delivery_free: data.delivery_free || false,
+      voucher: parseFloat(data.voucher) || null,
+      items: data.items.map(({ _key, _suggestions, ...it }) => ({
+        ...it,
+        quantity: parseFloat(it.quantity) || 1,
+        unit: it.unit || "szt",
+        unit_price: parseFloat(it.unit_price) || null,
+        total_price: parseFloat(it.total_price) || 0,
+        discount: it.discount ? parseFloat(it.discount) : null,
+        fuel_price_per_liter: it.category === "Paliwo" && it.fuel_price_per_liter ? parseFloat(it.fuel_price_per_liter) : null,
+        fuel_amount_liters: it.category === "Paliwo" && it.fuel_amount_liters ? parseFloat(it.fuel_amount_liters) : null,
+      })),
+    };
+    onSavePending(cleaned);
+  };
+
   // Format item display line
   const fmtItemLine = (item) => {
     const qty = parseFloat(item.quantity) || 1;
@@ -226,6 +250,9 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
                 <div className="rv2-loc-info">
                   <span className="rv2-loc-icon">📍</span>
                   <span className="rv2-loc-text">{[data.address, data.zip_code, data.city].filter(Boolean).join(", ")}</span>
+                  {receipt._isNewLocation && (
+                    <span className="rv2-new-loc-badge">Nowa lokalizacja</span>
+                  )}
                 </div>
               )}
               {(parseFloat(data.delivery_cost) > 0 || data.delivery_free) && (
@@ -479,6 +506,11 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
           <button className="btn-primary rv2-confirm-btn" onClick={handleConfirm}>
             Zatwierdź paragon
           </button>
+          {onSavePending && (
+            <button className="rv2-pending-btn" onClick={handleSavePending}>
+              Zapisz do sprawdzenia
+            </button>
+          )}
           <button className="rv2-cancel-link" onClick={onCancel}>
             Odrzuć
           </button>

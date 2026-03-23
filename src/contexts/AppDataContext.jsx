@@ -48,6 +48,7 @@ export function AppDataProvider({ uid, children }) {
   const [processing,setProcessing]= useState([]);
   const [errors,    setErrors]    = useState([]);
   const [reviewQueue, setReviewQueue] = useState([]);
+  const [pendingReceipts, setPendingReceipts] = useState([]);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -180,6 +181,7 @@ export function AppDataProvider({ uid, children }) {
     setBudgets(prev => deepEqual(prev, d.budgets || {}) ? prev : (d.budgets || {}));
     setRecurring(prev => deepEqual(prev, rec) ? prev : rec);
     setCustomStores(prev => deepEqual(prev, d.customStores || []) ? prev : (d.customStores || []));
+    setPendingReceipts(prev => deepEqual(prev, d.pendingReceipts || []) ? prev : (d.pendingReceipts || []));
 
     // Seed store locations from defaults + existing receipts + any already saved
     // Normalize dedup key: lowercase, collapse whitespace, strip Polish street prefixes
@@ -310,6 +312,13 @@ export function AppDataProvider({ uid, children }) {
     prevStoreLocations.current = storeLocations;
     guardedWrite("storeLocations", storeLocations);
   }, [storeLocations]);
+  const prevPendingReceipts = useRef(null);
+  useEffect(() => {
+    if (!initialLoadDone.current) return;
+    if (prevPendingReceipts.current === null) { prevPendingReceipts.current = pendingReceipts; return; }
+    prevPendingReceipts.current = pendingReceipts;
+    guardedWrite("pendingReceipts", pendingReceipts);
+  }, [pendingReceipts]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevCurrency.current === null) { prevCurrency.current = currency; return; }
@@ -568,6 +577,36 @@ export function AppDataProvider({ uid, children }) {
     setStoreLocations(prev => prev.filter((_, i) => i !== idx));
   }, []);
 
+  const savePending = useCallback((receipt) => {
+    const { _original, _batchId, _isNewLocation, _suggestions, ...clean } = receipt;
+    const saved = trimLocationFields(ensureCity({
+      ...clean,
+      id: clean.id || Date.now() + Math.random(),
+      savedAt: new Date().toISOString(),
+    }));
+    if (receipt.source) saved.source = receipt.source;
+    saved.total = sumReceiptItems(saved);
+    setPendingReceipts(p => [saved, ...p]);
+    setReviewQueue(q => q.slice(1));
+    haptic(30);
+  }, []);
+
+  const confirmPending = useCallback((id, reviewed) => {
+    const pending = pendingReceipts.find(r => r.id === id);
+    if (!pending) return;
+    const { savedAt, ...rest } = reviewed;
+    const saved = trimLocationFields(ensureCity({ ...rest, id }));
+    saved.total = sumReceiptItems(saved);
+    setReceipts(p => [saved, ...p]);
+    learnStoreLocation(saved);
+    setPendingReceipts(p => p.filter(r => r.id !== id));
+    haptic(30);
+  }, [pendingReceipts, learnStoreLocation]);
+
+  const deletePending = useCallback((id) => {
+    setPendingReceipts(p => p.filter(r => r.id !== id));
+  }, []);
+
   const updateReceipt = useCallback((updated) => {
     const synced = ensureCity({ ...updated, total: sumReceiptItems(updated) });
     setReceipts(p => p.map(r => r.id === synced.id ? synced : r));
@@ -614,14 +653,18 @@ export function AppDataProvider({ uid, children }) {
     addStoreLocation,
     updateStoreLocation,
     deleteStoreLocation,
+    pendingReceipts,
+    savePending,
+    confirmPending,
+    deletePending,
   }), [
     receipts, expenses, budgets, recurring, customStores, storeLocations,
     currency, darkMode, onboarded, apiKey,
-    processing, errors, reviewQueue,
+    processing, errors, reviewQueue, pendingReceipts,
     dataLoaded, loadFailed, allItems,
     addExpense, addCustomStore, updateExpense, deleteExpense, updateReceipt,
     handleFiles, processTextReceipt, processJsonFiles, processSourceText,
-    confirmReceipt, cancelReceipt,
+    confirmReceipt, cancelReceipt, savePending, confirmPending, deletePending,
   ]);
 
   return (

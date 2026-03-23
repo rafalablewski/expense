@@ -2411,3 +2411,60 @@
   .sdb-card { flex-direction: column; align-items: stretch; }
   .sdb-card-actions { justify-content: flex-end; }
 }
+
+/* ── Pending receipt cards ── */
+.pending-card {
+  padding: 16px;
+  border-left: 3px solid rgba(245,158,11,0.5);
+}
+.pending-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.pending-card-info { flex: 1; min-width: 0; }
+.pending-card-store {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--c-ink);
+  margin-bottom: 4px;
+}
+.pending-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12px;
+  color: var(--c-ink3);
+}
+.pending-card-saved {
+  font-size: 11px;
+  color: var(--c-ink3);
+  margin-top: 4px;
+  opacity: 0.7;
+}
+.pending-card-total {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--c-ink);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.pending-card-actions {
+  display: flex;
+  gap: 8px;
+}
+.pending-review-btn {
+  flex: 1;
+  min-height: 40px;
+  font-size: 14px;
+  border-radius: 12px;
+  justify-content: center;
+}
+.pending-delete-btn {
+  min-height: 40px;
+  font-size: 14px;
+  border-radius: 12px;
+  padding: 8px 16px;
+}
