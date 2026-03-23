@@ -43,7 +43,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSav
     delivery_cost: receipt.delivery_cost ?? "",
     delivery_free: receipt.delivery_free || false,
     voucher: receipt.voucher ?? "",
-    _locationLabel: receipt._locationLabel || "",
+    _locationLabel: receipt._locationLabel || receipt.locationLabel || "",
     items: (receipt.items || []).map((it, i) => ({
       ...it,
       _key: i,

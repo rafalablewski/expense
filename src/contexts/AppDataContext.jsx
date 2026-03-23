@@ -566,6 +566,8 @@ export function AppDataProvider({ uid, children }) {
       // Preserve source from queue item (e.g. "manual" for hand-entered receipts)
       if (current.source) saved.source = current.source;
       saved.total = sumReceiptItems(saved);
+      // Persist branch/location label so it shows when re-editing
+      if (_locationLabel) saved.locationLabel = _locationLabel;
       setReceipts(p => [saved, ...p]);
       // Auto-learn store location (pass _locationLabel for user-chosen branch name)
       learnStoreLocation({ ...saved, _locationLabel });
@@ -612,6 +614,7 @@ export function AppDataProvider({ uid, children }) {
     const { savedAt, _locationLabel, ...rest } = reviewed;
     const saved = trimLocationFields(ensureCity({ ...rest, id }));
     saved.total = sumReceiptItems(saved);
+    if (_locationLabel) saved.locationLabel = _locationLabel;
     setReceipts(p => [saved, ...p]);
     learnStoreLocation({ ...saved, _locationLabel });
     if (saved.store) addCustomStore(saved.store);
@@ -624,7 +627,9 @@ export function AppDataProvider({ uid, children }) {
   }, []);
 
   const updateReceipt = useCallback((updated) => {
-    const synced = ensureCity({ ...updated, total: sumReceiptItems(updated) });
+    const { _locationLabel, ...rest } = updated;
+    const synced = ensureCity({ ...rest, total: sumReceiptItems(rest) });
+    if (_locationLabel) synced.locationLabel = _locationLabel;
     setReceipts(p => p.map(r => r.id === synced.id ? synced : r));
   }, []);
 
