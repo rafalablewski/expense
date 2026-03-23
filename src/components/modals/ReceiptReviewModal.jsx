@@ -218,7 +218,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSav
             <div className="rv2-header-form">
               <div className="rv2-form-row">
                 <div className="rv2-form-group rv2-form-grow">
-                  <label className="rv2-label">Sklep</label>
+                  <label className="rv2-label">Sieć</label>
                   <StorePickerInput value={data.store}
                     onChange={v => setData(d => ({ ...d, store: v }))}
                     onSelectStore={name => setData(d => ({ ...d, store: name }))}
@@ -227,29 +227,26 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSav
                     onSelectLocation={(loc) => {
                       setData(d => ({ ...d, store: loc.store, address: loc.address, zip_code: loc.zip_code, city: loc.city }));
                     }}
-                    placeholder="Wybierz sklep" />
+                    placeholder="Wybierz sieć" />
                 </div>
+                <div className="rv2-form-group rv2-form-grow">
+                  <label className="rv2-label">Nazwa sklepu</label>
+                  <input className="field" value={data._locationLabel || ""}
+                    onChange={e => updateField("_locationLabel", e.target.value)}
+                    placeholder="np. Brynów, Centrum" />
+                </div>
+              </div>
+              <div className="rv2-form-row">
                 <div className="rv2-form-group">
                   <label className="rv2-label">Data</label>
                   <input className="field" type="date" value={data.date} onChange={e => updateField("date", e.target.value)} />
                 </div>
               </div>
-              {/* Show address as green info bar when present */}
+              {/* Show address as info bar when present */}
               {(data.address || data.zip_code || data.city) && (
                 <div className="rv2-loc-info">
                   <span className="rv2-loc-icon">📍</span>
                   <span className="rv2-loc-text">{[data.address, data.zip_code, data.city].filter(Boolean).join(", ")}</span>
-                </div>
-              )}
-              {/* New location: ask user to name this branch */}
-              {receipt._isNewLocation && data.store && (
-                <div className="rv2-new-loc-form">
-                  <div className="rv2-new-loc-badge">Nowa lokalizacja</div>
-                  <label className="rv2-label">Nazwa tej lokalizacji</label>
-                  <input className="field" value={data._locationLabel}
-                    onChange={e => updateField("_locationLabel", e.target.value)}
-                    placeholder={`np. Brynów, Centrum, ${data.city || "Katowice"}`} />
-                  <div className="rv2-new-loc-hint">Krótka nazwa oddziału, np. dzielnica lub ulica</div>
                 </div>
               )}
               {(parseFloat(data.delivery_cost) > 0 || data.delivery_free) && (
