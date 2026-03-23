@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { normalize, stripStreetPrefix, stripLegalSuffix } from '../../utils/addressMatcher';
+import { normalize, stripStreetPrefix, stripLegalSuffix, fuzzyStoreMatch } from '../../utils/addressMatcher';
 
 /**
  * StorePickerInput — dropdown with two sections:
@@ -32,16 +32,23 @@ export default function StorePickerInput({ value, onChange, onSelectStore, onSel
     return words.every(w => target.includes(w));
   };
 
-  // Unique store chain names (derived only from storeLocations database)
+  // Unique store chain names (derived only from storeLocations database, fuzzy-deduped)
   const nameEntries = useMemo(() => {
-    const seen = new Set();
     const result = [];
     for (const loc of storeLocations) {
-      const key = stripLegalSuffix(normalize(loc.store));
-      if (key && !seen.has(key)) {
-        seen.add(key);
-        result.push({ store: loc.store, searchText: normalize(loc.store) });
+      const name = loc.store;
+      if (!name) continue;
+      // Skip if a fuzzy match already exists (keep shortest/canonical name)
+      const existing = result.find(e => fuzzyStoreMatch(e.store, name));
+      if (existing) {
+        // Keep the shorter name as canonical
+        if (name.length < existing.store.length) {
+          existing.store = name;
+          existing.searchText = normalize(name);
+        }
+        continue;
       }
+      result.push({ store: name, searchText: normalize(name) });
     }
     return result;
   }, [storeLocations]);
