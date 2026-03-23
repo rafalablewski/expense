@@ -156,15 +156,6 @@
   background: rgba(6,193,103,0.12);
   color: #3DDC84;
 }
-[data-dark="1"] .rv2-cat-pill {
-  background: rgba(255,255,255,0.06);
-  border-color: rgba(255,255,255,0.15);
-  color: rgba(255,255,255,0.70);
-}
-[data-dark="1"] .rv2-cat-pill:hover {
-  background: rgba(255,255,255,0.12);
-  border-color: rgba(255,255,255,0.25);
-}
 [data-dark="1"] .rv2-total-toggle { color: #3DDC84; }
 
 /* ReceiptsView input cards dark */

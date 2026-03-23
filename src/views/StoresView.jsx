@@ -293,7 +293,7 @@ export default function StoresView() {
                           })()}
                           <span>{st.visits} wizyt</span>
                           <span>śr. {convertAmt(avg, currency)} {sym}/wizyta</span>
-                          {st.saved > 0 && <span className="color-red">−{convertAmt(st.saved, currency)} {sym} saved</span>}
+                          {st.saved > 0 && <span className="color-red">−{convertAmt(st.saved, currency)} {sym} zaoszcz.</span>}
                           <span className="detail-label">ost. {fmtDate(st.lastDate)}</span>
                         </div>
                       </div>

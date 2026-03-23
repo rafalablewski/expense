@@ -141,51 +141,34 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSav
     return w;
   }, [data, computedTotal, totalOverride, manualTotal]);
 
+  const cleanData = () => ({
+    ...data,
+    total: finalTotal,
+    total_discounts: computedDiscounts,
+    delivery_cost: parseFloat(data.delivery_cost) || null,
+    delivery_free: data.delivery_free || false,
+    voucher: parseFloat(data.voucher) || null,
+    items: data.items.map(({ _key, _suggestions, ...it }) => ({
+      ...it,
+      quantity: parseFloat(it.quantity) || 1,
+      unit: it.unit || "szt",
+      unit_price: parseFloat(it.unit_price) || null,
+      total_price: parseFloat(it.total_price) || 0,
+      discount: it.discount ? parseFloat(it.discount) : null,
+      fuel_price_per_liter: it.category === "Paliwo" && it.fuel_price_per_liter ? parseFloat(it.fuel_price_per_liter) : null,
+      fuel_amount_liters: it.category === "Paliwo" && it.fuel_amount_liters ? parseFloat(it.fuel_amount_liters) : null,
+    })),
+  });
+
   const handleConfirm = () => {
     haptic(20);
-    const cleaned = {
-      ...data,
-      total: finalTotal,
-      total_discounts: computedDiscounts,
-      delivery_cost: parseFloat(data.delivery_cost) || null,
-      delivery_free: data.delivery_free || false,
-      voucher: parseFloat(data.voucher) || null,
-      items: data.items.map(({ _key, _suggestions, ...it }) => ({
-        ...it,
-        quantity: parseFloat(it.quantity) || 1,
-        unit: it.unit || "szt",
-        unit_price: parseFloat(it.unit_price) || null,
-        total_price: parseFloat(it.total_price) || 0,
-        discount: it.discount ? parseFloat(it.discount) : null,
-        fuel_price_per_liter: it.category === "Paliwo" && it.fuel_price_per_liter ? parseFloat(it.fuel_price_per_liter) : null,
-        fuel_amount_liters: it.category === "Paliwo" && it.fuel_amount_liters ? parseFloat(it.fuel_amount_liters) : null,
-      })),
-    };
-    onConfirm(cleaned);
+    onConfirm(cleanData());
   };
 
   const handleSavePending = () => {
     if (!onSavePending) return;
     haptic(20);
-    const cleaned = {
-      ...data,
-      total: finalTotal,
-      total_discounts: computedDiscounts,
-      delivery_cost: parseFloat(data.delivery_cost) || null,
-      delivery_free: data.delivery_free || false,
-      voucher: parseFloat(data.voucher) || null,
-      items: data.items.map(({ _key, _suggestions, ...it }) => ({
-        ...it,
-        quantity: parseFloat(it.quantity) || 1,
-        unit: it.unit || "szt",
-        unit_price: parseFloat(it.unit_price) || null,
-        total_price: parseFloat(it.total_price) || 0,
-        discount: it.discount ? parseFloat(it.discount) : null,
-        fuel_price_per_liter: it.category === "Paliwo" && it.fuel_price_per_liter ? parseFloat(it.fuel_price_per_liter) : null,
-        fuel_amount_liters: it.category === "Paliwo" && it.fuel_amount_liters ? parseFloat(it.fuel_amount_liters) : null,
-      })),
-    };
-    onSavePending(cleaned);
+    onSavePending(cleanData());
   };
 
   // Format item display line
