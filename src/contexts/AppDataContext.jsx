@@ -28,6 +28,8 @@ const ensureCity = (receipt) => {
 const trimLocationFields = (obj) => {
   if (!obj || typeof obj !== "object") return obj;
   const out = { ...obj };
+  // Strip internal/transient fields
+  delete out._idx;
   for (const k of ["store", "label", "address", "zip_code", "city"]) {
     if (typeof out[k] === "string") out[k] = out[k].trim();
   }
@@ -109,7 +111,7 @@ export function AppDataProvider({ uid, children }) {
         if (!cancelled) {
           unsubscribe = subscribeUserData(uid, (remoteData) => {
             if (pendingWrites.current > 0) return;
-            applyData(remoteData);
+            applyData(remoteData, true);
           });
         }
       } catch (e) {
@@ -122,7 +124,7 @@ export function AppDataProvider({ uid, children }) {
     return () => { cancelled = true; if (unsubscribe) unsubscribe(); };
   }, [uid]);
 
-  function applyData(d) {
+  function applyData(d, isRealtimeUpdate = false) {
     // Migrate old flat expenses into receipt format (one-time, on load)
     const oldExpenses = (d.expenses || []).filter(e => e.type !== "recurring");
     const migratedReceipts = oldExpenses.map(e => ensureCity({
@@ -183,6 +185,11 @@ export function AppDataProvider({ uid, children }) {
     setCustomStores(prev => deepEqual(prev, d.customStores || []) ? prev : (d.customStores || []));
     setPendingReceipts(prev => deepEqual(prev, d.pendingReceipts || []) ? prev : (d.pendingReceipts || []));
 
+    // For real-time updates, just use saved data directly (merging was already done on initial load)
+    if (isRealtimeUpdate) {
+      const remoteLocs = d.storeLocations || [];
+      setStoreLocations(prev => deepEqual(prev, remoteLocs) ? prev : remoteLocs);
+    } else {
     // Seed store locations from defaults + existing receipts + any already saved
     // Normalize dedup key: lowercase, collapse whitespace, strip Polish street prefixes
     const locKey = (l) => {
@@ -240,6 +247,7 @@ export function AppDataProvider({ uid, children }) {
     if (newLocs.length > 0 || savedLocs.length < rawSavedLen) {
       updateField(uid, "storeLocations", mergedLocs);
     }
+    } // end of !isRealtimeUpdate
     setCurrency(prev => prev === (d.currency || "PLN") ? prev : (d.currency || "PLN"));
     setDarkMode(prev => prev === (d.darkMode || false) ? prev : (d.darkMode || false));
     setOnboarded(prev => prev === (d.onboarded || false) ? prev : (d.onboarded || false));
@@ -263,7 +271,7 @@ export function AppDataProvider({ uid, children }) {
   const guardedWrite = useCallback((field, value) => {
     pendingWrites.current++;
     updateField(uid, field, value).finally(() => {
-      setTimeout(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); }, 1500);
+      setTimeout(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); }, 3000);
     });
   }, [uid]);
 
@@ -583,11 +591,13 @@ export function AppDataProvider({ uid, children }) {
   }, []);
 
   const addStoreLocation = useCallback((loc) => {
-    setStoreLocations(prev => [...prev, trimLocationFields(loc)]);
+    const { _idx, ...clean } = loc;
+    setStoreLocations(prev => [...prev, trimLocationFields(clean)]);
   }, []);
 
   const updateStoreLocation = useCallback((idx, loc) => {
-    setStoreLocations(prev => prev.map((l, i) => i === idx ? trimLocationFields(loc) : l));
+    const { _idx, ...clean } = loc;
+    setStoreLocations(prev => prev.map((l, i) => i === idx ? trimLocationFields(clean) : l));
   }, []);
 
   const deleteStoreLocation = useCallback((idx) => {
