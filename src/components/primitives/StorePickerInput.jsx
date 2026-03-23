@@ -12,9 +12,8 @@ import { normalize, stripStreetPrefix, stripLegalSuffix } from '../../utils/addr
  *  - onSelectStore: called with store name when user picks a name from the dropdown (no address change)
  *  - onSelectLocation: called with { store, address, zip_code, city } when a location is picked
  *  - storeLocations: array of { store, label, address, zip_code, city }
- *  - storeNames: array of unique store name strings (shown as name-only options)
  */
-export default function StorePickerInput({ value, onChange, onSelectStore, onSelectLocation, storeLocations = [], storeNames = [], id, placeholder }) {
+export default function StorePickerInput({ value, onChange, onSelectStore, onSelectLocation, storeLocations = [], id, placeholder }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(value || "");
   const ref = useRef(null);
@@ -33,17 +32,10 @@ export default function StorePickerInput({ value, onChange, onSelectStore, onSel
     return words.every(w => target.includes(w));
   };
 
-  // Unique store names (from storeNames prop + deduped from locations)
+  // Unique store chain names (derived only from storeLocations database)
   const nameEntries = useMemo(() => {
     const seen = new Set();
     const result = [];
-    for (const name of storeNames) {
-      const key = stripLegalSuffix(normalize(name));
-      if (key && !seen.has(key)) {
-        seen.add(key);
-        result.push({ store: name, searchText: normalize(name) });
-      }
-    }
     for (const loc of storeLocations) {
       const key = stripLegalSuffix(normalize(loc.store));
       if (key && !seen.has(key)) {
@@ -52,7 +44,7 @@ export default function StorePickerInput({ value, onChange, onSelectStore, onSel
       }
     }
     return result;
-  }, [storeNames, storeLocations]);
+  }, [storeLocations]);
 
   // Location entries (deduped by store+zip or store+address+city)
   const locEntries = useMemo(() => {

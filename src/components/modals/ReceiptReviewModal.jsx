@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import StorePickerInput from '../primitives/StorePickerInput';
-import { CATS, ALL_CATS, CAT_ICONS, CAT_GROUPS, DEFAULT_STORES } from '../../config/defaults';
+import { CATS, ALL_CATS, CAT_ICONS, CAT_GROUPS } from '../../config/defaults';
 import { FX_SYMBOLS } from '../../config/defaults';
 import { haptic } from '../../utils/helpers';
 import { useAppData } from '../../contexts/AppDataContext';
@@ -28,9 +28,9 @@ const CurrencyInput = ({ value, onChange, placeholder = "0.00", min = "0", step 
 );
 
 export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSavePending }) {
-  const { storeLocations, customStores, currency } = useAppData();
+  const { storeLocations, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
-  const storeNames = useMemo(() => [...new Set([...DEFAULT_STORES, ...customStores])], [customStores]);
+
 
   const [data, setData] = useState(() => ({
     store: receipt.store || "",
@@ -223,7 +223,6 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSav
                     onChange={v => setData(d => ({ ...d, store: v }))}
                     onSelectStore={name => setData(d => ({ ...d, store: name }))}
                     storeLocations={storeLocations}
-                    storeNames={storeNames}
                     onSelectLocation={(loc) => {
                       setData(d => ({ ...d, store: loc.store, address: loc.address, zip_code: loc.zip_code, city: loc.city }));
                     }}
