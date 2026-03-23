@@ -120,6 +120,7 @@ export default function StorePickerInput({ value, onChange, onSelectStore, onSel
     if (onSelectLocation) {
       onSelectLocation({
         store: entry.store,
+        label: entry.label || "",
         address: entry.address,
         zip_code: entry.zip_code,
         city: entry.city,

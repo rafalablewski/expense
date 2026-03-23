@@ -224,7 +224,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSav
                     onSelectStore={name => setData(d => ({ ...d, store: name }))}
                     storeLocations={storeLocations}
                     onSelectLocation={(loc) => {
-                      setData(d => ({ ...d, store: loc.store, address: loc.address, zip_code: loc.zip_code, city: loc.city }));
+                      setData(d => ({ ...d, store: loc.store, _locationLabel: loc.label || "", address: loc.address, zip_code: loc.zip_code, city: loc.city }));
                     }}
                     placeholder="Wybierz sieć" />
                 </div>
