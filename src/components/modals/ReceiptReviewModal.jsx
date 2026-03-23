@@ -226,7 +226,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSav
                     storeNames={storeNames}
                     onSelectLocation={(loc) => {
                       setData(d => ({ ...d, store: loc.store, address: loc.address, zip_code: loc.zip_code, city: loc.city }));
-                    }
+                    }}
                     placeholder="Wybierz sklep" />
                 </div>
                 <div className="rv2-form-group">
