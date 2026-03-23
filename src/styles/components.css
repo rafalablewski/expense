@@ -2420,6 +2420,9 @@
   .sdb-zip { max-width: 100%; }
   .sdb-card { flex-direction: column; align-items: stretch; }
   .sdb-card-actions { justify-content: flex-end; }
+  .sdb-loc-actions { opacity: 1; }
+  .sdb-loc-row { flex-wrap: wrap; }
+  .sdb-chain-locations { padding-left: 16px; }
 }
 
 /* ── Pending receipt cards ── */
@@ -2491,12 +2494,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
-  cursor: pointer;
-  user-select: none;
-  transition: background .15s;
+  padding: 14px 16px 8px;
 }
-.sdb-chain-header:hover { background: rgba(0,0,0,0.02); }
 .store-avatar--sm {
   width: 36px;
   height: 36px;
@@ -2514,33 +2513,41 @@
   color: var(--c-ink3);
   white-space: nowrap;
 }
-.sdb-chain-chevron {
-  font-size: 14px;
-  color: var(--c-ink3);
-  transition: transform .2s;
-  flex-shrink: 0;
-}
-.sdb-chain-chevron.open { transform: rotate(90deg); }
 .sdb-chain-locations {
-  border-top: 1px solid rgba(0,0,0,0.06);
-  padding: 4px 0;
+  padding: 0 16px 8px 52px;
 }
-.sdb-card--branch {
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  padding: 10px 16px 10px 24px;
+.sdb-loc-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
   border-bottom: 1px solid rgba(0,0,0,0.04);
 }
-.sdb-card--branch:last-child { border-bottom: none; }
-.sdb-card--branch:hover {
-  background: rgba(0,0,0,0.02);
-  box-shadow: none;
-  border-color: rgba(0,0,0,0.04);
-}
-.sdb-branch-icon {
+.sdb-loc-row:last-child { border-bottom: none; }
+.sdb-loc-row:hover { background: rgba(0,0,0,0.015); }
+.sdb-loc-content {
+  flex: 1;
+  min-width: 0;
   font-size: 14px;
-  flex-shrink: 0;
+  line-height: 1.4;
+}
+.sdb-loc-pin {
+  font-size: 13px;
   margin-right: 4px;
 }
+.sdb-loc-name {
+  font-weight: 600;
+  color: var(--c-ink);
+}
+.sdb-loc-addr {
+  color: var(--c-ink3);
+  font-size: 13px;
+}
+.sdb-loc-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.sdb-loc-row:hover .sdb-loc-actions { opacity: 1; }

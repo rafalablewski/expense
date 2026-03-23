@@ -296,6 +296,10 @@
 [data-dark="1"] .sdb-card-name { color: #F5F5F7; }
 [data-dark="1"] .sdb-card-addr { color: rgba(255,255,255,0.50); }
 [data-dark="1"] .sdb-card-chain { color: rgba(255,255,255,0.35); }
+[data-dark="1"] .sdb-loc-name { color: #F5F5F7; }
+[data-dark="1"] .sdb-loc-addr { color: rgba(255,255,255,0.45); }
+[data-dark="1"] .sdb-loc-row { border-bottom-color: rgba(255,255,255,0.06); }
+[data-dark="1"] .sdb-loc-row:hover { background: rgba(255,255,255,0.04); }
 [data-dark="1"] .sdb-action-btn {
   background: rgba(255,255,255,0.06);
   border-color: rgba(255,255,255,0.10);
@@ -362,7 +366,4 @@
   background: rgba(255,255,255,0.07);
   border-color: rgba(255,255,255,0.12);
 }
-[data-dark="1"] .sdb-chain-header:hover { background: rgba(255,255,255,0.04); }
 [data-dark="1"] .sdb-chain-locations { border-top-color: rgba(255,255,255,0.08); }
-[data-dark="1"] .sdb-card--branch { border-bottom-color: rgba(255,255,255,0.06); }
-[data-dark="1"] .sdb-card--branch:hover { background: rgba(255,255,255,0.04); }
