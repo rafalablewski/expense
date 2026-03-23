@@ -221,24 +221,36 @@ export function AppDataProvider({ uid, children }) {
       if (lbl) seenLabels.add(lbl);
       newLocs.push(loc);
     }
-    // Merge locations discovered from receipts (skip if already in defaults)
+    // Merge locations discovered from receipts (skip if already in defaults or saved)
     const defaultKeys = new Set(DEFAULT_STORE_LOCATIONS.map(locKey));
+    const allExisting = [...savedLocs, ...DEFAULT_STORE_LOCATIONS];
     for (const r of finalReceipts) {
       if (!r.store || (!r.address && !r.city && !r.zip_code)) continue;
       const key = locKey(r);
       if (seenKeys.has(key) || defaultKeys.has(key)) continue;
+      // Fuzzy check: skip if any existing location has the same zip/address AND fuzzy-matching store name
+      const rz = normalize(r.zip_code), ra = stripStreetPrefix(normalize(r.address)), rc = normalize(r.city);
+      const fuzzyExists = allExisting.some(loc => {
+        if (!fuzzyStoreMatch(loc.store, r.store)) return false;
+        const lz = normalize(loc.zip_code);
+        if (rz && lz) return rz === lz;
+        return stripStreetPrefix(normalize(loc.address)) === ra && normalize(loc.city) === rc;
+      });
+      if (fuzzyExists) continue;
       const shortAddr = r.city || (r.address ? r.address.split(",")[0].trim() : "");
       const lbl = (shortAddr ? `${r.store} ${shortAddr}` : r.store).toLowerCase().trim();
       if (seenLabels.has(lbl)) continue;
       seenKeys.add(key);
       seenLabels.add(lbl);
-      newLocs.push({
+      const newLoc = {
         store: r.store,
         label: shortAddr ? `${r.store} ${shortAddr}` : r.store,
         address: r.address || "",
         zip_code: r.zip_code || "",
         city: r.city || "",
-      });
+      };
+      newLocs.push(newLoc);
+      allExisting.push(newLoc);
     }
     const mergedLocs = [...savedLocs, ...newLocs];
     setStoreLocations(prev => deepEqual(prev, mergedLocs) ? prev : mergedLocs);
