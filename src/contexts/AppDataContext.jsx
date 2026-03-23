@@ -591,7 +591,7 @@ export function AppDataProvider({ uid, children }) {
   }, []);
 
   const savePending = useCallback((receipt) => {
-    const { _original, _batchId, _isNewLocation, _suggestions, ...clean } = receipt;
+    const { _original, _batchId, _suggestions, ...clean } = receipt;
     const saved = trimLocationFields(ensureCity({
       ...clean,
       id: clean.id || Date.now() + Math.random(),

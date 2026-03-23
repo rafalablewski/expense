@@ -18,7 +18,12 @@ export const fuzzyStoreMatch = (a, b) => {
   const na = stripLegalSuffix(normalize(a));
   const nb = stripLegalSuffix(normalize(b));
   if (!na || !nb) return false;
-  return na === nb || na.startsWith(nb) || nb.startsWith(na);
+  if (na === nb) return true;
+  // Only allow startsWith matching when the shorter name is at least 3 chars
+  // to prevent false positives like "Al" matching "Aldi"
+  const shorter = na.length <= nb.length ? na : nb;
+  const longer  = na.length <= nb.length ? nb : na;
+  return shorter.length >= 3 && longer.startsWith(shorter);
 };
 
 const zipMatch = (a, b) => a && b && normalize(a) === normalize(b);
