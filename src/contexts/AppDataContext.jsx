@@ -590,19 +590,38 @@ export function AppDataProvider({ uid, children }) {
     setReviewQueue(q => q.slice(1));
   }, []);
 
+  const writeStoreLocations = useCallback((next) => {
+    pendingWrites.current++;
+    updateField(uid, "storeLocations", next).finally(() => {
+      setTimeout(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); }, 3000);
+    });
+  }, [uid]);
+
   const addStoreLocation = useCallback((loc) => {
     const { _idx, ...clean } = loc;
-    setStoreLocations(prev => [...prev, trimLocationFields(clean)]);
-  }, []);
+    setStoreLocations(prev => {
+      const next = [...prev, trimLocationFields(clean)];
+      writeStoreLocations(next);
+      return next;
+    });
+  }, [writeStoreLocations]);
 
   const updateStoreLocation = useCallback((idx, loc) => {
     const { _idx, ...clean } = loc;
-    setStoreLocations(prev => prev.map((l, i) => i === idx ? trimLocationFields(clean) : l));
-  }, []);
+    setStoreLocations(prev => {
+      const next = prev.map((l, i) => i === idx ? trimLocationFields(clean) : l);
+      writeStoreLocations(next);
+      return next;
+    });
+  }, [writeStoreLocations]);
 
   const deleteStoreLocation = useCallback((idx) => {
-    setStoreLocations(prev => prev.filter((_, i) => i !== idx));
-  }, []);
+    setStoreLocations(prev => {
+      const next = prev.filter((_, i) => i !== idx);
+      writeStoreLocations(next);
+      return next;
+    });
+  }, [writeStoreLocations]);
 
   const savePending = useCallback((receipt) => {
     const { _original, _batchId, _suggestions, ...clean } = receipt;
