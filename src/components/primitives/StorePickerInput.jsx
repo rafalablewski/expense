@@ -1,19 +1,20 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { normalize, stripStreetPrefix } from '../../utils/addressMatcher';
+import { normalize, stripStreetPrefix, stripLegalSuffix } from '../../utils/addressMatcher';
 
 /**
  * StorePickerInput — dropdown with two sections:
- *  1. Store names (just the name, no address auto-fill)
+ *  1. Store names (just the name, no address change)
  *  2. Store locations (name + address, auto-fills address fields)
  *
  * Props:
  *  - value: current store name string
- *  - onChange: called with store name string (always)
+ *  - onChange: called with store name string when user types freely
+ *  - onSelectStore: called with store name when user picks a name from the dropdown (no address change)
  *  - onSelectLocation: called with { store, address, zip_code, city } when a location is picked
  *  - storeLocations: array of { store, label, address, zip_code, city }
  *  - storeNames: array of unique store name strings (shown as name-only options)
  */
-export default function StorePickerInput({ value, onChange, onSelectLocation, storeLocations = [], storeNames = [], id, placeholder }) {
+export default function StorePickerInput({ value, onChange, onSelectStore, onSelectLocation, storeLocations = [], storeNames = [], id, placeholder }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(value || "");
   const ref = useRef(null);
@@ -26,22 +27,28 @@ export default function StorePickerInput({ value, onChange, onSelectLocation, st
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  /** Fuzzy search: checks if query words all appear in the target (as substrings) */
+  const fuzzySearch = (target, query) => {
+    const words = query.split(/\s+/).filter(Boolean);
+    return words.every(w => target.includes(w));
+  };
+
   // Unique store names (from storeNames prop + deduped from locations)
   const nameEntries = useMemo(() => {
     const seen = new Set();
     const result = [];
     for (const name of storeNames) {
-      const key = normalize(name);
+      const key = stripLegalSuffix(normalize(name));
       if (key && !seen.has(key)) {
         seen.add(key);
-        result.push({ store: name, searchText: key });
+        result.push({ store: name, searchText: normalize(name) });
       }
     }
     for (const loc of storeLocations) {
-      const key = normalize(loc.store);
+      const key = stripLegalSuffix(normalize(loc.store));
       if (key && !seen.has(key)) {
         seen.add(key);
-        result.push({ store: loc.store, searchText: key });
+        result.push({ store: loc.store, searchText: normalize(loc.store) });
       }
     }
     return result;
@@ -62,32 +69,46 @@ export default function StorePickerInput({ value, onChange, onSelectLocation, st
         address: loc.address || "",
         zip_code: loc.zip_code || "",
         city: loc.city || "",
-        searchText: `${loc.store} ${loc.label || ""} ${loc.address || ""} ${loc.city || ""}`.toLowerCase(),
+        searchText: normalize(`${loc.store} ${loc.label || ""} ${loc.address || ""} ${loc.city || ""}`),
       });
     }
     return result;
   }, [storeLocations]);
 
-  const q = search.toLowerCase().trim();
+  const q = normalize(search);
   const filteredNames = useMemo(() => {
     if (!q) return nameEntries;
-    return nameEntries.filter(e => e.searchText.includes(q));
+    // Match if query is substring of name OR name contains the query (fuzzy word match)
+    const stripped = stripLegalSuffix(q);
+    return nameEntries.filter(e =>
+      fuzzySearch(e.searchText, q) ||
+      fuzzySearch(e.searchText, stripped) ||
+      e.searchText.includes(stripped)
+    );
   }, [q, nameEntries]);
 
   const filteredLocs = useMemo(() => {
     if (!q) return locEntries;
-    return locEntries.filter(e => e.searchText.includes(q));
+    const stripped = stripLegalSuffix(q);
+    return locEntries.filter(e =>
+      fuzzySearch(e.searchText, q) ||
+      fuzzySearch(e.searchText, stripped) ||
+      e.searchText.includes(stripped)
+    );
   }, [q, locEntries]);
 
   const selectName = (entry) => {
-    onChange(entry.store);
     setSearch(entry.store);
     setOpen(false);
-    // No onSelectLocation — user just wants the store name
+    // Use onSelectStore if available — preserves address fields
+    if (onSelectStore) {
+      onSelectStore(entry.store);
+    } else {
+      onChange(entry.store);
+    }
   };
 
   const selectLocation = (entry) => {
-    onChange(entry.store);
     setSearch(entry.label);
     setOpen(false);
     if (onSelectLocation) {
@@ -97,6 +118,8 @@ export default function StorePickerInput({ value, onChange, onSelectLocation, st
         zip_code: entry.zip_code,
         city: entry.city,
       });
+    } else {
+      onChange(entry.store);
     }
   };
 
@@ -105,7 +128,7 @@ export default function StorePickerInput({ value, onChange, onSelectLocation, st
   return (
     <div ref={ref} className="store-picker">
       <input id={id} className="field" value={search}
-        onChange={e => { setSearch(e.target.value); setOpen(true); }}
+        onChange={e => { setSearch(e.target.value); onChange(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
         placeholder={placeholder || "Wybierz sklep"}
         autoComplete="off" />

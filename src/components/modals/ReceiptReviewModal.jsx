@@ -220,7 +220,8 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSav
                 <div className="rv2-form-group rv2-form-grow">
                   <label className="rv2-label">Sklep</label>
                   <StorePickerInput value={data.store}
-                    onChange={v => setData(d => ({ ...d, store: v, address: "", zip_code: "", city: "" }))}
+                    onChange={v => setData(d => ({ ...d, store: v }))}
+                    onSelectStore={name => setData(d => ({ ...d, store: name }))}
                     storeLocations={storeLocations}
                     storeNames={storeNames}
                     onSelectLocation={(loc) => {
