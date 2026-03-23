@@ -222,28 +222,24 @@ export function AppDataProvider({ uid, children }) {
       if (sl) seenStoreLabels.add(sl);
       newLocs.push(loc);
     }
-    // Bootstrap locations from receipts ONLY on first use (no saved locations yet).
-    // After that, new locations are learned via learnStoreLocation when receipts are confirmed.
-    // Re-merging on every reload is fragile and can overwrite user edits to labels.
-    if (savedLocs.length === 0) {
-      const defaultKeys = new Set(DEFAULT_STORE_LOCATIONS.map(locKey));
-      for (const r of finalReceipts) {
-        if (!r.store || (!r.address && !r.city && !r.zip_code)) continue;
-        const key = locKey(r);
-        if (seenKeys.has(key) || defaultKeys.has(key)) continue;
-        const shortAddr = r.city || (r.address ? r.address.split(",")[0].trim() : "");
-        const sl = `${normalize(r.store)}|${(shortAddr ? `${r.store} ${shortAddr}` : r.store).toLowerCase().trim()}`;
-        if (seenStoreLabels.has(sl)) continue;
-        seenKeys.add(key);
-        seenStoreLabels.add(sl);
-        newLocs.push({
-          store: r.store,
-          label: shortAddr ? `${r.store} ${shortAddr}` : r.store,
-          address: r.address || "",
-          zip_code: r.zip_code || "",
-          city: r.city || "",
-        });
-      }
+    // Discover locations from receipts that aren't already saved or in defaults.
+    // Only the locKey (store+zip) is checked — existing entries with user-edited labels are preserved.
+    for (const r of finalReceipts) {
+      if (!r.store || (!r.address && !r.city && !r.zip_code)) continue;
+      const key = locKey(r);
+      if (seenKeys.has(key)) continue;
+      const shortAddr = r.city || (r.address ? r.address.split(",")[0].trim() : "");
+      const sl = storeLabelKey({ store: r.store, label: shortAddr ? `${r.store} ${shortAddr}` : r.store });
+      if (seenStoreLabels.has(sl)) continue;
+      seenKeys.add(key);
+      seenStoreLabels.add(sl);
+      newLocs.push({
+        store: r.store,
+        label: shortAddr ? `${r.store} ${shortAddr}` : r.store,
+        address: r.address || "",
+        zip_code: r.zip_code || "",
+        city: r.city || "",
+      });
     }
     const mergedLocs = [...savedLocs, ...newLocs];
     setStoreLocations(prev => deepEqual(prev, mergedLocs) ? prev : mergedLocs);
