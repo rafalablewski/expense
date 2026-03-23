@@ -197,17 +197,18 @@ export function AppDataProvider({ uid, children }) {
       const z = normalize(l.zip_code);
       return z ? `${s}|${z}` : `${s}|${stripStreetPrefix(normalize(l.address))}|${normalize(l.city)}`;
     };
-    const labelKey = (l) => l.label ? normalize(l.label) : "";
-    // Deduplicate savedLocs themselves (merge entries with same key or same label)
+    // Label dedup key scoped per store chain — "Bazantowo" for Lidl ≠ "Bazantowo" for Rossmann
+    const storeLabelKey = (l) => l.label ? `${normalize(l.store)}|${normalize(l.label)}` : "";
+    // Deduplicate savedLocs themselves (merge entries with same key or same store+label)
     const dedupedSaved = [];
     const seenKeys = new Set();
-    const seenLabels = new Set();
+    const seenStoreLabels = new Set();
     for (const loc of (d.storeLocations || [])) {
       const key = locKey(loc);
-      const lbl = labelKey(loc);
-      if (seenKeys.has(key) || (lbl && seenLabels.has(lbl))) continue;
+      const sl = storeLabelKey(loc);
+      if (seenKeys.has(key) || (sl && seenStoreLabels.has(sl))) continue;
       seenKeys.add(key);
-      if (lbl) seenLabels.add(lbl);
+      if (sl) seenStoreLabels.add(sl);
       dedupedSaved.push(loc);
     }
     const savedLocs = dedupedSaved;
@@ -215,10 +216,10 @@ export function AppDataProvider({ uid, children }) {
     // Merge default store locations
     for (const loc of DEFAULT_STORE_LOCATIONS) {
       const key = locKey(loc);
-      const lbl = labelKey(loc);
-      if (seenKeys.has(key) || (lbl && seenLabels.has(lbl))) continue;
+      const sl = storeLabelKey(loc);
+      if (seenKeys.has(key) || (sl && seenStoreLabels.has(sl))) continue;
       seenKeys.add(key);
-      if (lbl) seenLabels.add(lbl);
+      if (sl) seenStoreLabels.add(sl);
       newLocs.push(loc);
     }
     // Bootstrap locations from receipts ONLY on first use (no saved locations yet).
@@ -231,10 +232,10 @@ export function AppDataProvider({ uid, children }) {
         const key = locKey(r);
         if (seenKeys.has(key) || defaultKeys.has(key)) continue;
         const shortAddr = r.city || (r.address ? r.address.split(",")[0].trim() : "");
-        const lbl = (shortAddr ? `${r.store} ${shortAddr}` : r.store).toLowerCase().trim();
-        if (seenLabels.has(lbl)) continue;
+        const sl = `${normalize(r.store)}|${(shortAddr ? `${r.store} ${shortAddr}` : r.store).toLowerCase().trim()}`;
+        if (seenStoreLabels.has(sl)) continue;
         seenKeys.add(key);
-        seenLabels.add(lbl);
+        seenStoreLabels.add(sl);
         newLocs.push({
           store: r.store,
           label: shortAddr ? `${r.store} ${shortAddr}` : r.store,
