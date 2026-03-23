@@ -5,7 +5,7 @@ import { LS_KEYS, lsGet, lsSet } from "../services/localStorage";
 import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, parseJsonReceipt as parseJsonReceiptAPI, getCorrectionsHint, compressImageIfNeeded } from "../services/claude";
 import { initCorrections, getCorrections, learnFromCorrections, applyLearnedCorrections } from "../hooks/useCorrections";
 import { haptic, sumReceiptItems, toMonthly } from "../utils/helpers";
-import { matchStoreAddress, normalize, stripStreetPrefix } from "../utils/addressMatcher";
+import { matchStoreAddress, normalize, stripStreetPrefix, fuzzyStoreMatch } from "../utils/addressMatcher";
 
 const AppDataContext = createContext(null);
 const deepEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -28,6 +28,8 @@ const ensureCity = (receipt) => {
 const trimLocationFields = (obj) => {
   if (!obj || typeof obj !== "object") return obj;
   const out = { ...obj };
+  // Strip internal/transient fields
+  delete out._idx;
   for (const k of ["store", "label", "address", "zip_code", "city"]) {
     if (typeof out[k] === "string") out[k] = out[k].trim();
   }
@@ -48,6 +50,7 @@ export function AppDataProvider({ uid, children }) {
   const [processing,setProcessing]= useState([]);
   const [errors,    setErrors]    = useState([]);
   const [reviewQueue, setReviewQueue] = useState([]);
+  const [pendingReceipts, setPendingReceipts] = useState([]);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
 
@@ -108,7 +111,7 @@ export function AppDataProvider({ uid, children }) {
         if (!cancelled) {
           unsubscribe = subscribeUserData(uid, (remoteData) => {
             if (pendingWrites.current > 0) return;
-            applyData(remoteData);
+            applyData(remoteData, true);
           });
         }
       } catch (e) {
@@ -121,7 +124,7 @@ export function AppDataProvider({ uid, children }) {
     return () => { cancelled = true; if (unsubscribe) unsubscribe(); };
   }, [uid]);
 
-  function applyData(d) {
+  function applyData(d, isRealtimeUpdate = false) {
     // Migrate old flat expenses into receipt format (one-time, on load)
     const oldExpenses = (d.expenses || []).filter(e => e.type !== "recurring");
     const migratedReceipts = oldExpenses.map(e => ensureCity({
@@ -180,7 +183,13 @@ export function AppDataProvider({ uid, children }) {
     setBudgets(prev => deepEqual(prev, d.budgets || {}) ? prev : (d.budgets || {}));
     setRecurring(prev => deepEqual(prev, rec) ? prev : rec);
     setCustomStores(prev => deepEqual(prev, d.customStores || []) ? prev : (d.customStores || []));
+    setPendingReceipts(prev => deepEqual(prev, d.pendingReceipts || []) ? prev : (d.pendingReceipts || []));
 
+    // For real-time updates, just use saved data directly (merging was already done on initial load)
+    if (isRealtimeUpdate) {
+      const remoteLocs = d.storeLocations || [];
+      setStoreLocations(prev => deepEqual(prev, remoteLocs) ? prev : remoteLocs);
+    } else {
     // Seed store locations from defaults + existing receipts + any already saved
     // Normalize dedup key: lowercase, collapse whitespace, strip Polish street prefixes
     const locKey = (l) => {
@@ -188,17 +197,18 @@ export function AppDataProvider({ uid, children }) {
       const z = normalize(l.zip_code);
       return z ? `${s}|${z}` : `${s}|${stripStreetPrefix(normalize(l.address))}|${normalize(l.city)}`;
     };
-    const labelKey = (l) => l.label ? normalize(l.label) : "";
-    // Deduplicate savedLocs themselves (merge entries with same key or same label)
+    // Label dedup key scoped per store chain — "Bazantowo" for Lidl ≠ "Bazantowo" for Rossmann
+    const storeLabelKey = (l) => l.label ? `${normalize(l.store)}|${normalize(l.label)}` : "";
+    // Deduplicate savedLocs themselves (merge entries with same key or same store+label)
     const dedupedSaved = [];
     const seenKeys = new Set();
-    const seenLabels = new Set();
+    const seenStoreLabels = new Set();
     for (const loc of (d.storeLocations || [])) {
       const key = locKey(loc);
-      const lbl = labelKey(loc);
-      if (seenKeys.has(key) || (lbl && seenLabels.has(lbl))) continue;
+      const sl = storeLabelKey(loc);
+      if (seenKeys.has(key) || (sl && seenStoreLabels.has(sl))) continue;
       seenKeys.add(key);
-      if (lbl) seenLabels.add(lbl);
+      if (sl) seenStoreLabels.add(sl);
       dedupedSaved.push(loc);
     }
     const savedLocs = dedupedSaved;
@@ -206,23 +216,23 @@ export function AppDataProvider({ uid, children }) {
     // Merge default store locations
     for (const loc of DEFAULT_STORE_LOCATIONS) {
       const key = locKey(loc);
-      const lbl = labelKey(loc);
-      if (seenKeys.has(key) || (lbl && seenLabels.has(lbl))) continue;
+      const sl = storeLabelKey(loc);
+      if (seenKeys.has(key) || (sl && seenStoreLabels.has(sl))) continue;
       seenKeys.add(key);
-      if (lbl) seenLabels.add(lbl);
+      if (sl) seenStoreLabels.add(sl);
       newLocs.push(loc);
     }
-    // Merge locations discovered from receipts (skip if already in defaults)
-    const defaultKeys = new Set(DEFAULT_STORE_LOCATIONS.map(locKey));
+    // Discover locations from receipts that aren't already saved or in defaults.
+    // Only the locKey (store+zip) is checked — existing entries with user-edited labels are preserved.
     for (const r of finalReceipts) {
       if (!r.store || (!r.address && !r.city && !r.zip_code)) continue;
       const key = locKey(r);
-      if (seenKeys.has(key) || defaultKeys.has(key)) continue;
+      if (seenKeys.has(key)) continue;
       const shortAddr = r.city || (r.address ? r.address.split(",")[0].trim() : "");
-      const lbl = (shortAddr ? `${r.store} ${shortAddr}` : r.store).toLowerCase().trim();
-      if (seenLabels.has(lbl)) continue;
+      const sl = storeLabelKey({ store: r.store, label: shortAddr ? `${r.store} ${shortAddr}` : r.store });
+      if (seenStoreLabels.has(sl)) continue;
       seenKeys.add(key);
-      seenLabels.add(lbl);
+      seenStoreLabels.add(sl);
       newLocs.push({
         store: r.store,
         label: shortAddr ? `${r.store} ${shortAddr}` : r.store,
@@ -238,6 +248,7 @@ export function AppDataProvider({ uid, children }) {
     if (newLocs.length > 0 || savedLocs.length < rawSavedLen) {
       updateField(uid, "storeLocations", mergedLocs);
     }
+    } // end of !isRealtimeUpdate
     setCurrency(prev => prev === (d.currency || "PLN") ? prev : (d.currency || "PLN"));
     setDarkMode(prev => prev === (d.darkMode || false) ? prev : (d.darkMode || false));
     setOnboarded(prev => prev === (d.onboarded || false) ? prev : (d.onboarded || false));
@@ -261,7 +272,7 @@ export function AppDataProvider({ uid, children }) {
   const guardedWrite = useCallback((field, value) => {
     pendingWrites.current++;
     updateField(uid, field, value).finally(() => {
-      setTimeout(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); }, 1500);
+      setTimeout(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); }, 3000);
     });
   }, [uid]);
 
@@ -274,19 +285,19 @@ export function AppDataProvider({ uid, children }) {
     prevReceipts.current = receipts;
     guardedWrite("receipts", receipts);
     lsSet(LS_KEYS.receipts, receipts);
-  }, [receipts]);
+  }, [receipts, guardedWrite]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevExpenses.current === null) { prevExpenses.current = expenses; return; }
     prevExpenses.current = expenses;
     guardedWrite("expenses", expenses);
-  }, [expenses]);
+  }, [expenses, guardedWrite]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevBudgets.current === null) { prevBudgets.current = budgets; return; }
     prevBudgets.current = budgets;
     guardedWrite("budgets", budgets);
-  }, [budgets]);
+  }, [budgets, guardedWrite]);
   useEffect(() => {
     if (!initialLoadDone.current) {
       if (recurring.length > 0) lsSet(LS_KEYS.recurring, recurring);
@@ -296,39 +307,46 @@ export function AppDataProvider({ uid, children }) {
     prevRecurring.current = recurring;
     guardedWrite("recurring", recurring);
     lsSet(LS_KEYS.recurring, recurring);
-  }, [recurring]);
+  }, [recurring, guardedWrite]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevCustomStores.current === null) { prevCustomStores.current = customStores; return; }
     prevCustomStores.current = customStores;
     guardedWrite("customStores", customStores);
-  }, [customStores]);
+  }, [customStores, guardedWrite]);
   const prevStoreLocations = useRef(null);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevStoreLocations.current === null) { prevStoreLocations.current = storeLocations; return; }
     prevStoreLocations.current = storeLocations;
     guardedWrite("storeLocations", storeLocations);
-  }, [storeLocations]);
+  }, [storeLocations, guardedWrite]);
+  const prevPendingReceipts = useRef(null);
+  useEffect(() => {
+    if (!initialLoadDone.current) return;
+    if (prevPendingReceipts.current === null) { prevPendingReceipts.current = pendingReceipts; return; }
+    prevPendingReceipts.current = pendingReceipts;
+    guardedWrite("pendingReceipts", pendingReceipts);
+  }, [pendingReceipts, guardedWrite]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevCurrency.current === null) { prevCurrency.current = currency; return; }
     prevCurrency.current = currency;
     guardedWrite("currency", currency);
-  }, [currency]);
+  }, [currency, guardedWrite]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevDarkMode.current === null) { prevDarkMode.current = darkMode; return; }
     prevDarkMode.current = darkMode;
     guardedWrite("darkMode", darkMode);
     lsSet(LS_KEYS.darkMode, darkMode);
-  }, [darkMode]);
+  }, [darkMode, guardedWrite]);
   useEffect(() => {
     if (!initialLoadDone.current) return;
     if (prevOnboarded.current === null) { prevOnboarded.current = onboarded; return; }
     prevOnboarded.current = onboarded;
     guardedWrite("onboarded", onboarded);
-  }, [onboarded]);
+  }, [onboarded, guardedWrite]);
 
   // ── Sync dark mode to DOM ──
   useEffect(() => {
@@ -367,10 +385,10 @@ export function AppDataProvider({ uid, children }) {
   }, []);
 
   const addCustomStore = useCallback((s) => {
-    if (s && !customStores.includes(s) && !DEFAULT_STORES.includes(s)) {
-      setCustomStores(cs => [...cs, s]);
+    if (s && !DEFAULT_STORES.includes(s)) {
+      setCustomStores(cs => cs.includes(s) ? cs : [...cs, s]);
     }
-  }, [customStores]);
+  }, []);
 
   const processFiles = useCallback(async (files, key) => {
     for (const file of files) {
@@ -505,30 +523,43 @@ export function AppDataProvider({ uid, children }) {
   }, [apiKey]);
 
   const learnStoreLocation = useCallback((receipt) => {
-    const { store, address, city, zip_code } = receipt;
+    const { store, address, city, zip_code, _locationLabel } = receipt;
     if (!store || (!address && !city && !zip_code)) return;
-    const s = store.trim(), a = (address || "").trim(), z = (zip_code || "").trim(), c = (city || "").trim();
-    const ns = normalize(store), nz = normalize(zip_code), na = stripStreetPrefix(normalize(address)), nc = normalize(city);
+    const a = (address || "").trim(), z = (zip_code || "").trim(), c = (city || "").trim();
+    const nz = normalize(zip_code), na = stripStreetPrefix(normalize(address)), nc = normalize(city);
+
+    // Use fuzzy matching to find canonical store name from existing locations
+    const canonicalFromDefaults = DEFAULT_STORE_LOCATIONS.find(d => fuzzyStoreMatch(d.store, store));
+    const s = canonicalFromDefaults ? canonicalFromDefaults.store : store.trim();
+
     // Skip if this location already exists in defaults
     const inDefaults = DEFAULT_STORE_LOCATIONS.some(d =>
-      normalize(d.store) === ns && (nz ? normalize(d.zip_code) === nz : normalize(d.city) === nc && stripStreetPrefix(normalize(d.address)) === na)
+      fuzzyStoreMatch(d.store, store) && (nz ? normalize(d.zip_code) === nz : normalize(d.city) === nc && stripStreetPrefix(normalize(d.address)) === na)
     );
     if (inDefaults) return;
-    // Dedup by normalized store + zip_code (or address + city)
-    const key = nz ? `${ns}|${nz}` : `${ns}|${na}|${nc}`;
-    const shortAddr = c || (a ? a.split(",")[0].trim() : "");
-    const label = shortAddr ? `${s} ${shortAddr}` : s;
+
     setStoreLocations(prev => {
+      // Find canonical name from existing locations (fuzzy match)
+      const canonicalFromPrev = prev.find(loc => fuzzyStoreMatch(loc.store, store));
+      const finalStore = canonicalFromPrev ? canonicalFromPrev.store : s;
+      const finalNs = normalize(finalStore);
+      const key = nz ? `${finalNs}|${nz}` : `${finalNs}|${na}|${nc}`;
+
+      // Use user-provided label, or auto-generate as fallback (branch name only, no store prefix)
+      const autoLabel = c || (a ? a.split(",")[0].trim() : "");
+      const finalLabel = (_locationLabel && _locationLabel.trim()) ? _locationLabel.trim() : autoLabel;
+
       const exists = prev.some(loc => {
+        if (!fuzzyStoreMatch(loc.store, store)) return false;
         const lz = normalize(loc.zip_code);
-        const locKey = lz ? `${normalize(loc.store)}|${lz}` : `${normalize(loc.store)}|${stripStreetPrefix(normalize(loc.address))}|${normalize(loc.city)}`;
+        const locNs = normalize(loc.store);
+        const locKey = lz ? `${locNs}|${lz}` : `${locNs}|${stripStreetPrefix(normalize(loc.address))}|${normalize(loc.city)}`;
         if (locKey === key) return true;
-        // Also deduplicate by label to prevent "Lidl Bazantowo" appearing twice
-        if (loc.label && label && normalize(loc.label) === normalize(label)) return true;
+        if (loc.label && finalLabel && normalize(loc.label) === normalize(finalLabel)) return true;
         return false;
       });
       if (exists) return prev;
-      return [...prev, { store: s, label, address: a, zip_code: z, city: c }];
+      return [...prev, { store: finalStore, label: finalLabel, address: a, zip_code: z, city: c }];
     });
   }, []);
 
@@ -539,37 +570,96 @@ export function AppDataProvider({ uid, children }) {
         learnFromCorrections(current._original, reviewed);
       }
       const { _original, _batchId, all_addresses: _allAddr, ...rest } = current;
-      const { all_addresses: _allAddr2, ...reviewedClean } = reviewed;
+      const { all_addresses: _allAddr2, _locationLabel, ...reviewedClean } = reviewed;
       const saved = trimLocationFields(ensureCity({ ...reviewedClean, id: rest.id }));
       // Preserve source from queue item (e.g. "manual" for hand-entered receipts)
       if (current.source) saved.source = current.source;
       saved.total = sumReceiptItems(saved);
+      // Persist branch/location label so it shows when re-editing
+      if (_locationLabel) saved.locationLabel = _locationLabel;
       setReceipts(p => [saved, ...p]);
-      // Auto-learn store location
-      learnStoreLocation(saved);
+      // Auto-learn store location (pass _locationLabel for user-chosen branch name)
+      learnStoreLocation({ ...saved, _locationLabel });
+      // Add store name to custom stores list
+      if (saved.store) addCustomStore(saved.store);
     }
     setReviewQueue(q => q.slice(1));
     haptic(30);
-  }, [learnStoreLocation]);
+  }, [learnStoreLocation, addCustomStore]);
 
   const cancelReceipt = useCallback(() => {
     setReviewQueue(q => q.slice(1));
   }, []);
 
+  const writeStoreLocations = useCallback((next) => {
+    pendingWrites.current++;
+    updateField(uid, "storeLocations", next).finally(() => {
+      setTimeout(() => { pendingWrites.current = Math.max(0, pendingWrites.current - 1); }, 3000);
+    });
+  }, [uid]);
+
   const addStoreLocation = useCallback((loc) => {
-    setStoreLocations(prev => [...prev, trimLocationFields(loc)]);
-  }, []);
+    const { _idx, ...clean } = loc;
+    setStoreLocations(prev => {
+      const next = [...prev, trimLocationFields(clean)];
+      writeStoreLocations(next);
+      return next;
+    });
+  }, [writeStoreLocations]);
 
   const updateStoreLocation = useCallback((idx, loc) => {
-    setStoreLocations(prev => prev.map((l, i) => i === idx ? trimLocationFields(loc) : l));
-  }, []);
+    const { _idx, ...clean } = loc;
+    setStoreLocations(prev => {
+      const next = prev.map((l, i) => i === idx ? trimLocationFields(clean) : l);
+      writeStoreLocations(next);
+      return next;
+    });
+  }, [writeStoreLocations]);
 
   const deleteStoreLocation = useCallback((idx) => {
-    setStoreLocations(prev => prev.filter((_, i) => i !== idx));
+    setStoreLocations(prev => {
+      const next = prev.filter((_, i) => i !== idx);
+      writeStoreLocations(next);
+      return next;
+    });
+  }, [writeStoreLocations]);
+
+  const savePending = useCallback((receipt) => {
+    const { _original, _batchId, _suggestions, ...clean } = receipt;
+    const saved = trimLocationFields(ensureCity({
+      ...clean,
+      id: clean.id || Date.now() + Math.random(),
+      savedAt: new Date().toISOString(),
+    }));
+    if (receipt.source) saved.source = receipt.source;
+    saved.total = sumReceiptItems(saved);
+    setPendingReceipts(p => [saved, ...p]);
+    setReviewQueue(q => q.slice(1));
+    haptic(30);
+  }, []);
+
+  const confirmPending = useCallback((id, reviewed) => {
+    const pending = pendingReceipts.find(r => r.id === id);
+    if (!pending) return;
+    const { savedAt, _locationLabel, ...rest } = reviewed;
+    const saved = trimLocationFields(ensureCity({ ...rest, id }));
+    saved.total = sumReceiptItems(saved);
+    if (_locationLabel) saved.locationLabel = _locationLabel;
+    setReceipts(p => [saved, ...p]);
+    learnStoreLocation({ ...saved, _locationLabel });
+    if (saved.store) addCustomStore(saved.store);
+    setPendingReceipts(p => p.filter(r => r.id !== id));
+    haptic(30);
+  }, [pendingReceipts, learnStoreLocation, addCustomStore]);
+
+  const deletePending = useCallback((id) => {
+    setPendingReceipts(p => p.filter(r => r.id !== id));
   }, []);
 
   const updateReceipt = useCallback((updated) => {
-    const synced = ensureCity({ ...updated, total: sumReceiptItems(updated) });
+    const { _locationLabel, ...rest } = updated;
+    const synced = ensureCity({ ...rest, total: sumReceiptItems(rest) });
+    if (_locationLabel) synced.locationLabel = _locationLabel;
     setReceipts(p => p.map(r => r.id === synced.id ? synced : r));
   }, []);
 
@@ -614,14 +704,18 @@ export function AppDataProvider({ uid, children }) {
     addStoreLocation,
     updateStoreLocation,
     deleteStoreLocation,
+    pendingReceipts,
+    savePending,
+    confirmPending,
+    deletePending,
   }), [
     receipts, expenses, budgets, recurring, customStores, storeLocations,
     currency, darkMode, onboarded, apiKey,
-    processing, errors, reviewQueue,
+    processing, errors, reviewQueue, pendingReceipts,
     dataLoaded, loadFailed, allItems,
     addExpense, addCustomStore, updateExpense, deleteExpense, updateReceipt,
     handleFiles, processTextReceipt, processJsonFiles, processSourceText,
-    confirmReceipt, cancelReceipt,
+    confirmReceipt, cancelReceipt, savePending, confirmPending, deletePending,
   ]);
 
   return (

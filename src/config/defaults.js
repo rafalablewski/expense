@@ -57,11 +57,11 @@ export const CAT_ICONS = {
 export const DEFAULT_STORES = ["Biedronka","Auchan","Lidl","Netto"];
 
 export const DEFAULT_STORE_LOCATIONS = [
-  { store: "Lidl",      label: "Lidl Bazantowo",      address: "Szarych Szeregów 3A",   zip_code: "40-750", city: "Katowice" },
-  { store: "Biedronka", label: "Biedronka Bazantowo",  address: "ul. Radockiego 150",    zip_code: "40-645", city: "Katowice" },
-  { store: "Lidl",      label: "Lidl Zarzecze",        address: "Grota Roweckiego 2F",   zip_code: "40-748", city: "Katowice" },
-  { store: "Auchan",    label: "Auchan Mikołów",       address: "Gliwicka 3",            zip_code: "43-190", city: "Mikołów" },
-  { store: "Netto",     label: "Netto Bazantowo",      address: "Armii Krajowej 208",    zip_code: "40-750", city: "Katowice" },
+  { store: "Lidl",      label: "Bazantowo",   address: "Szarych Szeregów 3A",   zip_code: "40-750", city: "Katowice" },
+  { store: "Biedronka", label: "Bazantowo",   address: "ul. Radockiego 150",    zip_code: "40-645", city: "Katowice" },
+  { store: "Lidl",      label: "Zarzecze",    address: "Grota Roweckiego 2F",   zip_code: "40-748", city: "Katowice" },
+  { store: "Auchan",    label: "Mikołów",     address: "Gliwicka 3",            zip_code: "43-190", city: "Mikołów" },
+  { store: "Netto",     label: "Bazantowo",   address: "Armii Krajowej 208",    zip_code: "40-750", city: "Katowice" },
 ];
 
 export const REC_CYCLES = ["Miesięcznie", "Tygodniowo", "Rocznie", "Kwartalnie"];

@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import StorePickerInput from '../primitives/StorePickerInput';
-import { CATS, ALL_CATS, CAT_ICONS } from '../../config/defaults';
+import { CATS, ALL_CATS, CAT_ICONS, CAT_GROUPS } from '../../config/defaults';
 import { FX_SYMBOLS } from '../../config/defaults';
 import { haptic } from '../../utils/helpers';
 import { useAppData } from '../../contexts/AppDataContext';
@@ -12,7 +12,7 @@ const fmtDate = (d) => {
   return `${parseInt(day)} ${MONTH_PL[parseInt(m) - 1] || m} ${y}`;
 };
 
-const TOP_CATS = ["Nabiał","Mięso","Warzywa","Owoce","Napoje","Pieczywo","Zboża","Słodycze","Chemia","Kosmetyki","Inne"];
+const TOP_CATS = [...CAT_GROUPS["Spożywcze"], "Kosmetyki", "Inne"];
 const UNITS = [
   { value: "szt", label: "szt" },
   { value: "kg",  label: "kg" },
@@ -27,9 +27,10 @@ const CurrencyInput = ({ value, onChange, placeholder = "0.00", min = "0", step 
   </div>
 );
 
-export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
+export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSavePending }) {
   const { storeLocations, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
+
 
   const [data, setData] = useState(() => ({
     store: receipt.store || "",
@@ -42,6 +43,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     delivery_cost: receipt.delivery_cost ?? "",
     delivery_free: receipt.delivery_free || false,
     voucher: receipt.voucher ?? "",
+    _locationLabel: receipt._locationLabel || receipt.locationLabel || "",
     items: (receipt.items || []).map((it, i) => ({
       ...it,
       _key: i,
@@ -56,9 +58,10 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
   const overlayRef = useRef();
   const drawerRef = useRef();
 
-  // Auto-open header when manual entry (no store name)
+  // Auto-open header when manual entry (no store name) — run once on mount
   useEffect(() => {
     if (!data.store && receipt.source === "manual") setHeaderOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* Focus trap & keyboard */
@@ -140,27 +143,34 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
     return w;
   }, [data, computedTotal, totalOverride, manualTotal]);
 
+  const cleanData = () => ({
+    ...data,
+    total: finalTotal,
+    total_discounts: computedDiscounts,
+    delivery_cost: parseFloat(data.delivery_cost) || null,
+    delivery_free: data.delivery_free || false,
+    voucher: parseFloat(data.voucher) || null,
+    items: data.items.map(({ _key, _suggestions, ...it }) => ({
+      ...it,
+      quantity: parseFloat(it.quantity) || 1,
+      unit: it.unit || "szt",
+      unit_price: parseFloat(it.unit_price) || null,
+      total_price: parseFloat(it.total_price) || 0,
+      discount: it.discount ? parseFloat(it.discount) : null,
+      fuel_price_per_liter: it.category === "Paliwo" && it.fuel_price_per_liter ? parseFloat(it.fuel_price_per_liter) : null,
+      fuel_amount_liters: it.category === "Paliwo" && it.fuel_amount_liters ? parseFloat(it.fuel_amount_liters) : null,
+    })),
+  });
+
   const handleConfirm = () => {
     haptic(20);
-    const cleaned = {
-      ...data,
-      total: finalTotal,
-      total_discounts: computedDiscounts,
-      delivery_cost: parseFloat(data.delivery_cost) || null,
-      delivery_free: data.delivery_free || false,
-      voucher: parseFloat(data.voucher) || null,
-      items: data.items.map(({ _key, _suggestions, ...it }) => ({
-        ...it,
-        quantity: parseFloat(it.quantity) || 1,
-        unit: it.unit || "szt",
-        unit_price: parseFloat(it.unit_price) || null,
-        total_price: parseFloat(it.total_price) || 0,
-        discount: it.discount ? parseFloat(it.discount) : null,
-        fuel_price_per_liter: it.category === "Paliwo" && it.fuel_price_per_liter ? parseFloat(it.fuel_price_per_liter) : null,
-        fuel_amount_liters: it.category === "Paliwo" && it.fuel_amount_liters ? parseFloat(it.fuel_amount_liters) : null,
-      })),
-    };
-    onConfirm(cleaned);
+    onConfirm(cleanData());
+  };
+
+  const handleSavePending = () => {
+    if (!onSavePending) return;
+    haptic(20);
+    onSavePending(cleanData());
   };
 
   // Format item display line
@@ -208,21 +218,31 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
             <div className="rv2-header-form">
               <div className="rv2-form-row">
                 <div className="rv2-form-group rv2-form-grow">
-                  <label className="rv2-label">Sklep</label>
-                  <StorePickerInput value={data.store} onChange={v => updateField("store", v)}
+                  <label className="rv2-label">Sieć</label>
+                  <StorePickerInput value={data.store}
+                    onChange={v => setData(d => ({ ...d, store: v }))}
+                    onSelectStore={name => setData(d => ({ ...d, store: name }))}
                     storeLocations={storeLocations}
                     onSelectLocation={(loc) => {
-                      setData(d => ({ ...d, store: loc.store, address: loc.address, zip_code: loc.zip_code, city: loc.city }));
+                      setData(d => ({ ...d, store: loc.store, _locationLabel: loc.label || "", address: loc.address, zip_code: loc.zip_code, city: loc.city }));
                     }}
-                    placeholder="Wybierz sklep" />
+                    placeholder="Wybierz sieć" />
                 </div>
+                <div className="rv2-form-group rv2-form-grow">
+                  <label className="rv2-label">Nazwa sklepu</label>
+                  <input className="field" value={data._locationLabel || ""}
+                    onChange={e => updateField("_locationLabel", e.target.value)}
+                    placeholder="np. Brynów, Centrum" />
+                </div>
+              </div>
+              <div className="rv2-form-row">
                 <div className="rv2-form-group">
                   <label className="rv2-label">Data</label>
                   <input className="field" type="date" value={data.date} onChange={e => updateField("date", e.target.value)} />
                 </div>
               </div>
-              {/* Show selected location as read-only info */}
-              {(data.address || data.city) && (
+              {/* Show address as info bar when present */}
+              {(data.address || data.zip_code || data.city) && (
                 <div className="rv2-loc-info">
                   <span className="rv2-loc-icon">📍</span>
                   <span className="rv2-loc-text">{[data.address, data.zip_code, data.city].filter(Boolean).join(", ")}</span>
@@ -479,6 +499,11 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel }) {
           <button className="btn-primary rv2-confirm-btn" onClick={handleConfirm}>
             Zatwierdź paragon
           </button>
+          {onSavePending && (
+            <button className="rv2-pending-btn" onClick={handleSavePending}>
+              Zapisz do sprawdzenia
+            </button>
+          )}
           <button className="rv2-cancel-link" onClick={onCancel}>
             Odrzuć
           </button>

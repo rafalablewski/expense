@@ -13,6 +13,7 @@ const DEFAULTS = {
   onboarded: false,
   corrections: { names: {}, categories: {} },
   customStores: [],
+  pendingReceipts: [],
 };
 
 export async function loadUserData(uid) {

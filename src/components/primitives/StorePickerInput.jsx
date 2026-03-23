@@ -1,17 +1,19 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { normalize, stripStreetPrefix } from '../../utils/addressMatcher';
+import { normalize, stripStreetPrefix, stripLegalSuffix, fuzzyStoreMatch } from '../../utils/addressMatcher';
 
 /**
- * StorePickerInput — shows store locations (name + address) as dropdown options.
- * Only shows locations from the store database (Baza sklepów).
+ * StorePickerInput — dropdown with two sections:
+ *  1. Store names (just the name, no address change)
+ *  2. Store locations (name + address, auto-fills address fields)
  *
  * Props:
  *  - value: current store name string
- *  - onChange: called with store name string
+ *  - onChange: called with store name string when user types freely
+ *  - onSelectStore: called with store name when user picks a name from the dropdown (no address change)
  *  - onSelectLocation: called with { store, address, zip_code, city } when a location is picked
  *  - storeLocations: array of { store, label, address, zip_code, city }
  */
-export default function StorePickerInput({ value, onChange, onSelectLocation, storeLocations = [], id, placeholder }) {
+export default function StorePickerInput({ value, onChange, onSelectStore, onSelectLocation, storeLocations = [], id, placeholder }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(value || "");
   const ref = useRef(null);
@@ -24,11 +26,37 @@ export default function StorePickerInput({ value, onChange, onSelectLocation, st
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Build list from store locations only — dedup by store+zip
-  const entries = useMemo(() => {
+  /** Fuzzy search: checks if query words all appear in the target (as substrings) */
+  const fuzzySearch = (target, query) => {
+    const words = query.split(/\s+/).filter(Boolean);
+    return words.every(w => target.includes(w));
+  };
+
+  // Unique store chain names (derived only from storeLocations database, fuzzy-deduped)
+  const nameEntries = useMemo(() => {
+    const result = [];
+    for (const loc of storeLocations) {
+      const name = loc.store;
+      if (!name) continue;
+      // Skip if a fuzzy match already exists (keep shortest/canonical name)
+      const existing = result.find(e => fuzzyStoreMatch(e.store, name));
+      if (existing) {
+        // Keep the shorter name as canonical
+        if (name.length < existing.store.length) {
+          existing.store = name;
+          existing.searchText = normalize(name);
+        }
+        continue;
+      }
+      result.push({ store: name, searchText: normalize(name) });
+    }
+    return result;
+  }, [storeLocations]);
+
+  // Location entries (deduped by store+zip or store+address+city)
+  const locEntries = useMemo(() => {
     const result = [];
     const seen = new Set();
-
     for (const loc of storeLocations) {
       const z = normalize(loc.zip_code);
       const key = z ? `${normalize(loc.store)}|${z}` : `${normalize(loc.store)}|${stripStreetPrefix(normalize(loc.address))}|${normalize(loc.city)}`;
@@ -40,59 +68,116 @@ export default function StorePickerInput({ value, onChange, onSelectLocation, st
         address: loc.address || "",
         zip_code: loc.zip_code || "",
         city: loc.city || "",
-        searchText: `${loc.store} ${loc.label || ""} ${loc.address || ""} ${loc.city || ""}`.toLowerCase(),
+        searchText: normalize(`${loc.store} ${loc.label || ""} ${loc.address || ""} ${loc.city || ""}`),
       });
     }
-
     return result;
   }, [storeLocations]);
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    if (!q) return entries;
-    return entries.filter(e => e.searchText.includes(q));
-  }, [search, entries]);
+  const q = normalize(search);
+  const filteredNames = useMemo(() => {
+    if (!q) return nameEntries;
+    // Match if query is substring of name OR name contains the query (fuzzy word match)
+    const stripped = stripLegalSuffix(q);
+    return nameEntries.filter(e =>
+      fuzzySearch(e.searchText, q) ||
+      fuzzySearch(e.searchText, stripped) ||
+      e.searchText.includes(stripped)
+    );
+  }, [q, nameEntries]);
 
-  const selectEntry = (entry) => {
-    onChange(entry.store);
-    setSearch(entry.label);
+  const filteredLocs = useMemo(() => {
+    if (!q) return locEntries;
+    const stripped = stripLegalSuffix(q);
+    return locEntries.filter(e =>
+      fuzzySearch(e.searchText, q) ||
+      fuzzySearch(e.searchText, stripped) ||
+      e.searchText.includes(stripped)
+    );
+  }, [q, locEntries]);
+
+  const selectName = (entry) => {
+    setSearch(entry.store);
+    setOpen(false);
+    // Use onSelectStore if available — preserves address fields
+    if (onSelectStore) {
+      onSelectStore(entry.store);
+    } else {
+      onChange(entry.store);
+    }
+  };
+
+  /** Build display name: "Store · Label" if label differs from store, otherwise just store */
+  const locDisplayName = (entry) => {
+    const lbl = entry.label || "";
+    if (!lbl || normalize(lbl) === normalize(entry.store)) return entry.store;
+    return `${entry.store} · ${lbl}`;
+  };
+
+  const selectLocation = (entry) => {
+    setSearch(entry.store);
     setOpen(false);
     if (onSelectLocation) {
       onSelectLocation({
         store: entry.store,
+        label: entry.label || "",
         address: entry.address,
         zip_code: entry.zip_code,
         city: entry.city,
       });
+    } else {
+      onChange(entry.store);
     }
   };
+
+  const hasResults = filteredNames.length > 0 || filteredLocs.length > 0;
 
   return (
     <div ref={ref} className="store-picker">
       <input id={id} className="field" value={search}
-        onChange={e => { setSearch(e.target.value); setOpen(true); }}
+        onChange={e => { setSearch(e.target.value); onChange(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
         placeholder={placeholder || "Wybierz sklep"}
         autoComplete="off" />
       {open && (
         <div className="store-picker-dropdown">
-          {filtered.map((entry, i) => {
-            const sub = [entry.address, entry.city].filter(Boolean).join(", ");
-            return (
-              <div key={`${entry.store}-${entry.zip_code || i}`}
-                onClick={() => selectEntry(entry)}
-                className="store-picker-option store-picker-option--loc">
-                <div className="store-picker-option-main">
-                  <span className="store-picker-option-icon">📍</span>
-                  <span className="store-picker-option-name">{entry.label}</span>
+          {filteredNames.length > 0 && (
+            <>
+              <div className="store-picker-section">Sklepy</div>
+              {filteredNames.map((entry) => (
+                <div key={`name-${entry.store}`}
+                  onClick={() => selectName(entry)}
+                  className="store-picker-option">
+                  <div className="store-picker-option-main">
+                    <span className="store-picker-option-icon">🏪</span>
+                    <span className="store-picker-option-name">{entry.store}</span>
+                  </div>
                 </div>
-                {sub && <div className="store-picker-option-sub">{sub}</div>}
-              </div>
-            );
-          })}
-          {filtered.length === 0 && (
+              ))}
+            </>
+          )}
+          {filteredLocs.length > 0 && (
+            <>
+              <div className="store-picker-section">Lokalizacje</div>
+              {filteredLocs.map((entry, i) => {
+                const sub = [entry.address, entry.city].filter(Boolean).join(", ");
+                return (
+                  <div key={`loc-${entry.store}-${entry.zip_code || i}`}
+                    onClick={() => selectLocation(entry)}
+                    className="store-picker-option store-picker-option--loc">
+                    <div className="store-picker-option-main">
+                      <span className="store-picker-option-icon">📍</span>
+                      <span className="store-picker-option-name">{locDisplayName(entry)}</span>
+                    </div>
+                    {sub && <div className="store-picker-option-sub">{sub}</div>}
+                  </div>
+                );
+              })}
+            </>
+          )}
+          {!hasResults && (
             <div className="store-picker-empty">
-              {search ? "Nie znaleziono sklepu" : "Brak sklepów — dodaj w Baza sklepów"}
+              {search ? "Nie znaleziono sklepu" : "Brak sklepów"}
             </div>
           )}
         </div>

@@ -156,15 +156,6 @@
   background: rgba(6,193,103,0.12);
   color: #3DDC84;
 }
-[data-dark="1"] .rv2-cat-pill {
-  background: rgba(255,255,255,0.06);
-  border-color: rgba(255,255,255,0.15);
-  color: rgba(255,255,255,0.70);
-}
-[data-dark="1"] .rv2-cat-pill:hover {
-  background: rgba(255,255,255,0.12);
-  border-color: rgba(255,255,255,0.25);
-}
 [data-dark="1"] .rv2-total-toggle { color: #3DDC84; }
 
 /* ReceiptsView input cards dark */
@@ -200,6 +191,11 @@
 [data-dark="1"] .store-picker-option:hover { background: rgba(6,193,103,0.10); }
 [data-dark="1"] .store-picker-option-sub { color: rgba(255,255,255,0.40); }
 [data-dark="1"] .store-picker-add { color: #3DDC84; }
+[data-dark="1"] .store-picker-section {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.40);
+}
 
 /* QA method cards / sources dark */
 [data-dark="1"] .qa-method-card,
@@ -300,6 +296,10 @@
 [data-dark="1"] .sdb-card-name { color: #F5F5F7; }
 [data-dark="1"] .sdb-card-addr { color: rgba(255,255,255,0.50); }
 [data-dark="1"] .sdb-card-chain { color: rgba(255,255,255,0.35); }
+[data-dark="1"] .sdb-loc-name { color: #F5F5F7; }
+[data-dark="1"] .sdb-loc-addr { color: rgba(255,255,255,0.45); }
+[data-dark="1"] .sdb-loc-row { border-bottom-color: rgba(255,255,255,0.06); }
+[data-dark="1"] .sdb-loc-row:hover { background: rgba(255,255,255,0.04); }
 [data-dark="1"] .sdb-action-btn {
   background: rgba(255,255,255,0.06);
   border-color: rgba(255,255,255,0.10);
@@ -345,3 +345,25 @@
 [data-dark="1"] .qa-method-card--accent:hover {
   background: rgba(6,193,103,0.15);
 }
+[data-dark="1"] .rv2-new-loc-form {
+  background: rgba(245,158,11,0.08);
+  border-color: rgba(245,158,11,0.2);
+}
+[data-dark="1"] .rv2-new-loc-badge {
+  color: #fbbf24;
+}
+[data-dark="1"] .rv2-pending-btn {
+  color: #fbbf24;
+  border-color: rgba(245,158,11,0.35);
+}
+[data-dark="1"] .rv2-pending-btn:hover {
+  background: rgba(245,158,11,0.12);
+}
+[data-dark="1"] .pending-card {
+  border-left-color: rgba(245,158,11,0.4);
+}
+[data-dark="1"] .sdb-chain-group {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.12);
+}
+[data-dark="1"] .sdb-chain-locations { border-top-color: rgba(255,255,255,0.08); }

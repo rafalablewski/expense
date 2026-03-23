@@ -8,7 +8,6 @@ import QuickAddExpense from "./components/modals/QuickAddExpense";
 import BulkReceiptsModal from "./components/modals/BulkReceiptsModal";
 import ApiKeyModal from "./components/modals/ApiKeyModal";
 import ReceiptsView from "./views/ReceiptsView";
-import ProductsView from "./views/ProductsView";
 import ShoppingView from "./views/ShoppingView";
 import MealPlanView from "./views/MealPlanView";
 import StatsView from "./views/StatsView";
@@ -31,12 +30,14 @@ export default function App() {
     reviewQueue, setReviewQueue, dataLoaded,
     handleFiles, processTextReceipt, processJsonFiles, processSourceText,
     confirmReceipt, cancelReceipt,
+    pendingReceipts, savePending, confirmPending, deletePending,
   } = useAppData();
 
   const [view,    setView]    = useState("home");
   const [showQA,  setShowQA]  = useState(false);
   const [showBulk, setShowBulk] = useState(false);
   const [showKeyModal, setShowKeyModal] = useState(false);
+  const [reviewingPendingId, setReviewingPendingId] = useState(null);
   const pageRef = useRef();
 
   const openManualEntry = () => {
@@ -144,6 +145,26 @@ export default function App() {
             receipt={first}
             onConfirm={confirmReceipt}
             onCancel={cancelReceipt}
+            onSavePending={(cleaned) => {
+              const current = reviewQueue[0];
+              savePending({ ...current, ...cleaned });
+            }}
+          />
+        );
+      })()}
+
+      {reviewingPendingId && (() => {
+        const pending = pendingReceipts.find(r => r.id === reviewingPendingId);
+        if (!pending) return null;
+        return (
+          <ReceiptReviewModal
+            key={`pending-${pending.id}`}
+            receipt={pending}
+            onConfirm={(reviewed) => {
+              confirmPending(pending.id, reviewed);
+              setReviewingPendingId(null);
+            }}
+            onCancel={() => setReviewingPendingId(null)}
           />
         );
       })()}
@@ -169,6 +190,7 @@ export default function App() {
             else if (text) processSourceText(source, text, () => setShowKeyModal(true));
           }}
           onNeedKey={() => setShowKeyModal(true)}
+          onReviewPending={(id) => setReviewingPendingId(id)}
         />}
         {view === "home"       && <DashboardView go={go} />}
         {view === "expenses"   && <ExpensesView />}

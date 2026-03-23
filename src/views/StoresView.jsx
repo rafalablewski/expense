@@ -38,29 +38,29 @@ function StoreForm({ loc, onSave, onCancel, existingStores }) {
             {[...new Set([...DEFAULT_STORES, ...existingStores])].map(s => <option key={s} value={s} />)}
           </datalist>
         </div>
+      </div>
+      <div className="sdb-form-row">
         <div className="sdb-form-group sdb-form-grow">
           <label className="sdb-form-label">Nazwa sklepu</label>
           <input className="field" value={form.label} onChange={e => set("label", e.target.value)}
-            placeholder="np. Lidl Bazantowo" />
+            placeholder="np. Brynów, Bazantowo" />
         </div>
       </div>
       <div className="sdb-form-row">
         <div className="sdb-form-group sdb-form-grow">
-          <label className="sdb-form-label">Adres</label>
+          <label className="sdb-form-label">Ulica</label>
           <input className="field" value={form.address} onChange={e => set("address", e.target.value)}
             placeholder="np. Szarych Szeregów 3A" />
-        </div>
-      </div>
-      <div className="sdb-form-row">
-        <div className="sdb-form-group sdb-form-grow">
-          <label className="sdb-form-label">Miasto</label>
-          <input className="field" value={form.city} onChange={e => set("city", e.target.value)}
-            placeholder="np. Katowice" />
         </div>
         <div className="sdb-form-group">
           <label className="sdb-form-label">Kod pocztowy</label>
           <input className="field sdb-zip" value={form.zip_code} onChange={e => set("zip_code", e.target.value)}
             placeholder="00-000" />
+        </div>
+        <div className="sdb-form-group sdb-form-grow">
+          <label className="sdb-form-label">Miasto</label>
+          <input className="field" value={form.city} onChange={e => set("city", e.target.value)}
+            placeholder="np. Katowice" />
         </div>
       </div>
       <div className="sdb-form-actions">
@@ -92,11 +92,10 @@ export default function StoresView() {
   const toggleExpand = (key) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
   // ── Filter receipts by time range ──
-  const now = new Date();
   const filtered = useMemo(() => {
     if (range === "all") return receipts;
     const days = parseInt(range, 10);
-    const cutoff = new Date(now - days * 864e5);
+    const cutoff = new Date(Date.now() - days * 864e5);
     return receipts.filter(r => {
       const d = parseDate(r.date);
       return d && d >= cutoff;
@@ -183,7 +182,7 @@ export default function StoresView() {
                     <div className="drill-locs">
                       {locs.map((l, i) => (
                         <span key={i} className="drill-loc">
-                          📍 {l.label}{l.address || l.city ? ` — ${[l.address, l.zip_code, l.city].filter(Boolean).join(", ")}` : ""}
+                          📍 {l.label || l.city || l.address}{l.address || l.city ? ` — ${[l.address, l.zip_code, l.city].filter(Boolean).join(", ")}` : ""}
                         </span>
                       ))}
                     </div>
@@ -288,12 +287,12 @@ export default function StoresView() {
                           {(() => {
                             const locs = storeLocations.filter(l => l.store.toLowerCase() === key);
                             return locs.length > 0
-                              ? locs.map((l, li) => <span key={li}>📍 {l.label}</span>)
+                              ? locs.map((l, li) => <span key={li}>📍 {l.label || l.city || l.address}</span>)
                               : Object.keys(st.cities).length > 0 && <span>📍 {Object.keys(st.cities).join(", ")}</span>;
                           })()}
                           <span>{st.visits} wizyt</span>
                           <span>śr. {convertAmt(avg, currency)} {sym}/wizyta</span>
-                          {st.saved > 0 && <span className="color-red">−{convertAmt(st.saved, currency)} {sym} saved</span>}
+                          {st.saved > 0 && <span className="color-red">−{convertAmt(st.saved, currency)} {sym} zaoszcz.</span>}
                           <span className="detail-label">ost. {fmtDate(st.lastDate)}</span>
                         </div>
                       </div>
@@ -481,7 +480,7 @@ export default function StoresView() {
               <div className="sdb-header">
                 <div className="section-heading-sm">Zapisane lokalizacje</div>
                 <button className="sdb-btn sdb-btn--add" onClick={() => setEditIdx("new")}>
-                  + Dodaj sklep
+                  + Dodaj lokalizację
                 </button>
               </div>
 
@@ -498,51 +497,72 @@ export default function StoresView() {
                 <Empty icon="📍" title="Brak lokalizacji" sub="Dodaj swoje ulubione sklepy, aby szybko je wybierać na paragonach" />
               )}
 
-              <div className="flex-col gap-8">
-                {storeLocations.map((loc, i) => (
-                  <div key={`${loc.store}-${loc.zip_code}-${i}`} className="sdb-card">
-                    {editIdx === i ? (
-                      <StoreForm
-                        loc={loc}
-                        existingStores={existingStores}
-                        onSave={(updated) => { updateStoreLocation(i, updated); setEditIdx(null); }}
-                        onCancel={() => setEditIdx(null)}
-                      />
-                    ) : (
-                      <>
-                        <div className="sdb-card-info">
-                          <div className="sdb-card-name">{loc.label || loc.store}</div>
-                          <div className="sdb-card-addr">
-                            {[loc.address, loc.zip_code, loc.city].filter(Boolean).join(", ")}
+              {/* Group locations by store chain name */}
+              {(() => {
+                const groups = {};
+                storeLocations.forEach((loc, i) => {
+                  const chain = loc.store || "Inne";
+                  if (!groups[chain]) groups[chain] = [];
+                  groups[chain].push({ ...loc, _idx: i });
+                });
+                return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b)).map(([chain, locs]) => {
+                  const col = storeColor(chain);
+                  return (
+                    <div key={chain} className="sdb-chain-group">
+                      <div className="sdb-chain-header">
+                        <div className="store-avatar store-avatar--sm" style={{ background: col + "18", border: `1px solid ${col}35`, color: col }}>
+                          {chain.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="sdb-chain-name">{chain}</div>
+                        <div className="sdb-chain-count">{locs.length} {locs.length === 1 ? "lokalizacja" : locs.length < 5 ? "lokalizacje" : "lokalizacji"}</div>
+                      </div>
+                      <div className="sdb-chain-locations">
+                        {locs.map((loc) => (
+                          <div key={`${loc.store}-${loc.zip_code}-${loc._idx}`} className="sdb-loc-row">
+                            {editIdx === loc._idx ? (
+                              <StoreForm
+                                loc={loc}
+                                existingStores={existingStores}
+                                onSave={(updated) => { updateStoreLocation(loc._idx, updated); setEditIdx(null); }}
+                                onCancel={() => setEditIdx(null)}
+                              />
+                            ) : (
+                              <>
+                                <div className="sdb-loc-content">
+                                  <span className="sdb-loc-pin">📍</span>
+                                  <span className="sdb-loc-name">{loc.label || loc.city || loc.address}</span>
+                                  {(loc.address || loc.zip_code || loc.city) && (
+                                    <span className="sdb-loc-addr"> — {[loc.address, loc.zip_code, loc.city].filter(Boolean).join(", ")}</span>
+                                  )}
+                                </div>
+                                <div className="sdb-loc-actions">
+                                  <button className="sdb-action-btn" onClick={() => { setEditIdx(loc._idx); setDelConfirm(null); }}>
+                                    Edytuj
+                                  </button>
+                                  {delConfirm === loc._idx ? (
+                                    <>
+                                      <button className="sdb-action-btn sdb-action-btn--danger" onClick={() => { deleteStoreLocation(loc._idx); setDelConfirm(null); }}>
+                                        Na pewno?
+                                      </button>
+                                      <button className="sdb-action-btn" onClick={() => setDelConfirm(null)}>
+                                        Nie
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button className="sdb-action-btn sdb-action-btn--danger" onClick={() => setDelConfirm(loc._idx)}>
+                                      Usuń
+                                    </button>
+                                  )}
+                                </div>
+                              </>
+                            )}
                           </div>
-                          <div className="sdb-card-chain">{loc.store}</div>
-                        </div>
-                        <div className="sdb-card-actions">
-                          <button className="sdb-action-btn" onClick={() => { setEditIdx(i); setDelConfirm(null); }}
-                            title="Edytuj">
-                            Edytuj
-                          </button>
-                          {delConfirm === i ? (
-                            <>
-                              <button className="sdb-action-btn sdb-action-btn--danger" onClick={() => { deleteStoreLocation(i); setDelConfirm(null); }}>
-                                Na pewno?
-                              </button>
-                              <button className="sdb-action-btn" onClick={() => setDelConfirm(null)}>
-                                Nie
-                              </button>
-                            </>
-                          ) : (
-                            <button className="sdb-action-btn sdb-action-btn--danger" onClick={() => setDelConfirm(i)}
-                              title="Usuń">
-                              Usuń
-                            </button>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           )}
 

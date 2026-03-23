@@ -11,25 +11,26 @@ import { haptic } from "../utils/helpers";
 
 const TABS = [
   { id: "receipts",      label: "Paragony",    icon: "\uD83E\uDDFE" },
+  { id: "pending",       label: "Oczekuj\u0105ce", icon: "\uD83D\uDD50" },
   { id: "subscriptions", label: "Subskrypcje", icon: "\uD83D\uDD04" },
   { id: "invoices",      label: "Faktury",     icon: "\uD83D\uDCC4" },
 ];
 
 const REC_CATS = ["Subskrypcje","Zdrowie","Dom","Rozrywka","Transport","Inne"];
 
-export default function ReceiptsView({ onFiles, onManualEntry, onTextReceipt, onJsonImport, onSourceImport, onNeedKey }) {
+export default function ReceiptsView({ onFiles, onManualEntry, onTextReceipt, onJsonImport, onSourceImport, onNeedKey, onReviewPending }) {
   const {
     receipts, setReceipts, updateReceipt,
     recurring, setRecurring,
     processing, errors, setErrors,
     currency, apiKey,
+    pendingReceipts, deletePending,
   } = useAppData();
 
   const [tab, setTab] = useState("receipts");
   const [editingRecurring, setEditingRecurring] = useState(null);
   const [showText, setShowText] = useState(false);
   const [textVal, setTextVal] = useState("");
-  const [jsonDrag, setJsonDrag] = useState(false);
   const jsonFileRef = useRef();
   const sym = FX_SYMBOLS[currency] || "z\u0142";
 
@@ -50,6 +51,7 @@ export default function ReceiptsView({ onFiles, onManualEntry, onTextReceipt, on
   // Counts for tab badges
   const counts = {
     receipts: allReceipts.length,
+    pending: pendingReceipts.length,
     subscriptions: recurring.length,
     invoices: invoiceReceipts.length,
   };
@@ -70,8 +72,13 @@ export default function ReceiptsView({ onFiles, onManualEntry, onTextReceipt, on
     const jsonFiles = Array.from(files).filter(f =>
       f.name.endsWith(".json") || f.type === "application/json"
     );
-    if (jsonFiles.length && onJsonImport) {
-      haptic(20);
+    if (!jsonFiles.length) return;
+    haptic(20);
+    const source = jsonFileRef.current?.getAttribute("data-source");
+    jsonFileRef.current?.removeAttribute("data-source");
+    if (source && onSourceImport) {
+      onSourceImport(source, jsonFiles, null);
+    } else if (onJsonImport) {
       onJsonImport(jsonFiles);
     }
   };
@@ -206,6 +213,50 @@ export default function ReceiptsView({ onFiles, onManualEntry, onTextReceipt, on
 
               {!allReceipts.length && !processing.length && (
                 <Empty icon="\uD83E\uDDFE" title="Brak paragon\u00F3w" sub="Dodaj pierwszy paragon \u2014 przeci\u0105gnij zdj\u0119cie, wklej tekst lub importuj JSON" />
+              )}
+            </>
+          )}
+
+          {/* ── PENDING TAB ── */}
+          {tab === "pending" && (
+            <>
+              {pendingReceipts.length > 0 ? (
+                <div>
+                  <div className="section-label">Oczekuj\u0105ce \u00B7 {pendingReceipts.length}</div>
+                  <div className="flex-col gap-10">
+                    {pendingReceipts.map((r, i) => {
+                      const total = (parseFloat(r.total) || 0).toFixed(2);
+                      const itemCount = (r.items || []).length;
+                      const savedDate = r.savedAt ? new Date(r.savedAt).toLocaleDateString("pl-PL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+                      return (
+                        <div key={r.id} className="card pending-card au" style={{ animation: `fadeUp .4s cubic-bezier(.16,1,.3,1) ${i * 0.04}s both` }}>
+                          <div className="pending-card-header">
+                            <div className="pending-card-info">
+                              <div className="pending-card-store">{r.store || "Nieznany sklep"}</div>
+                              <div className="pending-card-meta">
+                                {r.date && <span>{r.date}</span>}
+                                {r.city && <span>{r.city}</span>}
+                                {itemCount > 0 && <span>{itemCount} {itemCount === 1 ? "produkt" : itemCount < 5 ? "produkty" : "produkt\u00F3w"}</span>}
+                              </div>
+                              {savedDate && <div className="pending-card-saved">Zapisano: {savedDate}</div>}
+                            </div>
+                            <div className="pending-card-total">{total} {sym}</div>
+                          </div>
+                          <div className="pending-card-actions">
+                            <button className="btn-primary pending-review-btn" onClick={() => { haptic(15); onReviewPending(r.id); }}>
+                              Sprawd\u017A
+                            </button>
+                            <button className="btn-secondary pending-delete-btn" onClick={() => { haptic(12); deletePending(r.id); }}>
+                              Usu\u0144
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <Empty icon="\uD83D\uDD50" title="Brak oczekuj\u0105cych" sub="Zeskanuj paragon i zapisz go do sprawdzenia p\u00F3\u017Aniej" />
               )}
             </>
           )}
