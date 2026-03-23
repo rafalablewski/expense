@@ -569,10 +569,12 @@ export function AppDataProvider({ uid, children }) {
       setReceipts(p => [saved, ...p]);
       // Auto-learn store location (pass _locationLabel for user-chosen branch name)
       learnStoreLocation({ ...saved, _locationLabel });
+      // Add store name to custom stores list
+      if (saved.store) addCustomStore(saved.store);
     }
     setReviewQueue(q => q.slice(1));
     haptic(30);
-  }, [learnStoreLocation]);
+  }, [learnStoreLocation, addCustomStore]);
 
   const cancelReceipt = useCallback(() => {
     setReviewQueue(q => q.slice(1));
@@ -612,9 +614,10 @@ export function AppDataProvider({ uid, children }) {
     saved.total = sumReceiptItems(saved);
     setReceipts(p => [saved, ...p]);
     learnStoreLocation({ ...saved, _locationLabel });
+    if (saved.store) addCustomStore(saved.store);
     setPendingReceipts(p => p.filter(r => r.id !== id));
     haptic(30);
-  }, [pendingReceipts, learnStoreLocation]);
+  }, [pendingReceipts, learnStoreLocation, addCustomStore]);
 
   const deletePending = useCallback((id) => {
     setPendingReceipts(p => p.filter(r => r.id !== id));
