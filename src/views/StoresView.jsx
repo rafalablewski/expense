@@ -481,7 +481,7 @@ export default function StoresView() {
               <div className="sdb-header">
                 <div className="section-heading-sm">Zapisane lokalizacje</div>
                 <button className="sdb-btn sdb-btn--add" onClick={() => setEditIdx("new")}>
-                  + Dodaj sklep
+                  + Dodaj lokalizację
                 </button>
               </div>
 
@@ -498,51 +498,79 @@ export default function StoresView() {
                 <Empty icon="📍" title="Brak lokalizacji" sub="Dodaj swoje ulubione sklepy, aby szybko je wybierać na paragonach" />
               )}
 
-              <div className="flex-col gap-8">
-                {storeLocations.map((loc, i) => (
-                  <div key={`${loc.store}-${loc.zip_code}-${i}`} className="sdb-card">
-                    {editIdx === i ? (
-                      <StoreForm
-                        loc={loc}
-                        existingStores={existingStores}
-                        onSave={(updated) => { updateStoreLocation(i, updated); setEditIdx(null); }}
-                        onCancel={() => setEditIdx(null)}
-                      />
-                    ) : (
-                      <>
-                        <div className="sdb-card-info">
-                          <div className="sdb-card-name">{loc.label || loc.store}</div>
-                          <div className="sdb-card-addr">
-                            {[loc.address, loc.zip_code, loc.city].filter(Boolean).join(", ")}
-                          </div>
-                          <div className="sdb-card-chain">{loc.store}</div>
+              {/* Group locations by store chain name */}
+              {(() => {
+                const groups = {};
+                storeLocations.forEach((loc, i) => {
+                  const chain = loc.store || "Inne";
+                  if (!groups[chain]) groups[chain] = [];
+                  groups[chain].push({ ...loc, _idx: i });
+                });
+                return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b)).map(([chain, locs]) => {
+                  const col = storeColor(chain);
+                  const isChainExpanded = expanded[`db_${chain}`] !== false; // default open
+                  return (
+                    <div key={chain} className="sdb-chain-group">
+                      <div className="sdb-chain-header" onClick={() => setExpanded(prev => ({ ...prev, [`db_${chain}`]: !isChainExpanded }))}
+                        role="button" tabIndex={0} onKeyDown={e => (e.key === "Enter" || e.key === " ") && setExpanded(prev => ({ ...prev, [`db_${chain}`]: !isChainExpanded }))}>
+                        <div className="store-avatar store-avatar--sm" style={{ background: col + "18", border: `1px solid ${col}35`, color: col }}>
+                          {chain.charAt(0).toUpperCase()}
                         </div>
-                        <div className="sdb-card-actions">
-                          <button className="sdb-action-btn" onClick={() => { setEditIdx(i); setDelConfirm(null); }}
-                            title="Edytuj">
-                            Edytuj
-                          </button>
-                          {delConfirm === i ? (
-                            <>
-                              <button className="sdb-action-btn sdb-action-btn--danger" onClick={() => { deleteStoreLocation(i); setDelConfirm(null); }}>
-                                Na pewno?
-                              </button>
-                              <button className="sdb-action-btn" onClick={() => setDelConfirm(null)}>
-                                Nie
-                              </button>
-                            </>
-                          ) : (
-                            <button className="sdb-action-btn sdb-action-btn--danger" onClick={() => setDelConfirm(i)}
-                              title="Usuń">
-                              Usuń
-                            </button>
-                          )}
+                        <div className="sdb-chain-name">{chain}</div>
+                        <div className="sdb-chain-count">{locs.length} {locs.length === 1 ? "lokalizacja" : locs.length < 5 ? "lokalizacje" : "lokalizacji"}</div>
+                        <span className={`sdb-chain-chevron${isChainExpanded ? " open" : ""}`}>▸</span>
+                      </div>
+                      {isChainExpanded && (
+                        <div className="sdb-chain-locations">
+                          {locs.map((loc) => (
+                            <div key={`${loc.store}-${loc.zip_code}-${loc._idx}`} className="sdb-card sdb-card--branch">
+                              {editIdx === loc._idx ? (
+                                <StoreForm
+                                  loc={loc}
+                                  existingStores={existingStores}
+                                  onSave={(updated) => { updateStoreLocation(loc._idx, updated); setEditIdx(null); }}
+                                  onCancel={() => setEditIdx(null)}
+                                />
+                              ) : (
+                                <>
+                                  <div className="sdb-branch-icon">📍</div>
+                                  <div className="sdb-card-info">
+                                    <div className="sdb-card-name">{loc.label || loc.store}</div>
+                                    <div className="sdb-card-addr">
+                                      {[loc.address, loc.zip_code, loc.city].filter(Boolean).join(", ")}
+                                    </div>
+                                  </div>
+                                  <div className="sdb-card-actions">
+                                    <button className="sdb-action-btn" onClick={() => { setEditIdx(loc._idx); setDelConfirm(null); }}
+                                      title="Edytuj">
+                                      Edytuj
+                                    </button>
+                                    {delConfirm === loc._idx ? (
+                                      <>
+                                        <button className="sdb-action-btn sdb-action-btn--danger" onClick={() => { deleteStoreLocation(loc._idx); setDelConfirm(null); }}>
+                                          Na pewno?
+                                        </button>
+                                        <button className="sdb-action-btn" onClick={() => setDelConfirm(null)}>
+                                          Nie
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <button className="sdb-action-btn sdb-action-btn--danger" onClick={() => setDelConfirm(loc._idx)}
+                                        title="Usuń">
+                                        Usuń
+                                      </button>
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          ))}
                         </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
             </div>
           )}
 

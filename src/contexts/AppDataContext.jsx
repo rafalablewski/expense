@@ -5,7 +5,7 @@ import { LS_KEYS, lsGet, lsSet } from "../services/localStorage";
 import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, parseJsonReceipt as parseJsonReceiptAPI, getCorrectionsHint, compressImageIfNeeded } from "../services/claude";
 import { initCorrections, getCorrections, learnFromCorrections, applyLearnedCorrections } from "../hooks/useCorrections";
 import { haptic, sumReceiptItems, toMonthly } from "../utils/helpers";
-import { matchStoreAddress, normalize, stripStreetPrefix } from "../utils/addressMatcher";
+import { matchStoreAddress, normalize, stripStreetPrefix, fuzzyStoreMatch } from "../utils/addressMatcher";
 
 const AppDataContext = createContext(null);
 const deepEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -516,28 +516,41 @@ export function AppDataProvider({ uid, children }) {
   const learnStoreLocation = useCallback((receipt) => {
     const { store, address, city, zip_code } = receipt;
     if (!store || (!address && !city && !zip_code)) return;
-    const s = store.trim(), a = (address || "").trim(), z = (zip_code || "").trim(), c = (city || "").trim();
-    const ns = normalize(store), nz = normalize(zip_code), na = stripStreetPrefix(normalize(address)), nc = normalize(city);
+    const a = (address || "").trim(), z = (zip_code || "").trim(), c = (city || "").trim();
+    const nz = normalize(zip_code), na = stripStreetPrefix(normalize(address)), nc = normalize(city);
+
+    // Use fuzzy matching to find canonical store name from existing locations
+    const canonicalFromDefaults = DEFAULT_STORE_LOCATIONS.find(d => fuzzyStoreMatch(d.store, store));
+    const s = canonicalFromDefaults ? canonicalFromDefaults.store : store.trim();
+    const ns = normalize(s);
+
     // Skip if this location already exists in defaults
     const inDefaults = DEFAULT_STORE_LOCATIONS.some(d =>
-      normalize(d.store) === ns && (nz ? normalize(d.zip_code) === nz : normalize(d.city) === nc && stripStreetPrefix(normalize(d.address)) === na)
+      fuzzyStoreMatch(d.store, store) && (nz ? normalize(d.zip_code) === nz : normalize(d.city) === nc && stripStreetPrefix(normalize(d.address)) === na)
     );
     if (inDefaults) return;
-    // Dedup by normalized store + zip_code (or address + city)
-    const key = nz ? `${ns}|${nz}` : `${ns}|${na}|${nc}`;
+    // Dedup by normalized store + zip_code (or address + city) — use fuzzy store match
     const shortAddr = c || (a ? a.split(",")[0].trim() : "");
     const label = shortAddr ? `${s} ${shortAddr}` : s;
     setStoreLocations(prev => {
+      // Find canonical name from existing locations (fuzzy match)
+      const canonicalFromPrev = prev.find(loc => fuzzyStoreMatch(loc.store, store));
+      const finalStore = canonicalFromPrev ? canonicalFromPrev.store : s;
+      const finalNs = normalize(finalStore);
+      const key = nz ? `${finalNs}|${nz}` : `${finalNs}|${na}|${nc}`;
+      const finalLabel = shortAddr ? `${finalStore} ${shortAddr}` : finalStore;
+
       const exists = prev.some(loc => {
+        if (!fuzzyStoreMatch(loc.store, store)) return false;
         const lz = normalize(loc.zip_code);
-        const locKey = lz ? `${normalize(loc.store)}|${lz}` : `${normalize(loc.store)}|${stripStreetPrefix(normalize(loc.address))}|${normalize(loc.city)}`;
+        const locNs = normalize(loc.store);
+        const locKey = lz ? `${locNs}|${lz}` : `${locNs}|${stripStreetPrefix(normalize(loc.address))}|${normalize(loc.city)}`;
         if (locKey === key) return true;
-        // Also deduplicate by label to prevent "Lidl Bazantowo" appearing twice
-        if (loc.label && label && normalize(loc.label) === normalize(label)) return true;
+        if (loc.label && finalLabel && normalize(loc.label) === normalize(finalLabel)) return true;
         return false;
       });
       if (exists) return prev;
-      return [...prev, { store: s, label, address: a, zip_code: z, city: c }];
+      return [...prev, { store: finalStore, label: finalLabel, address: a, zip_code: z, city: c }];
     });
   }, []);
 

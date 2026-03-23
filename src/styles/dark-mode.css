@@ -360,3 +360,11 @@
 [data-dark="1"] .pending-card {
   border-left-color: rgba(245,158,11,0.4);
 }
+[data-dark="1"] .sdb-chain-group {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.12);
+}
+[data-dark="1"] .sdb-chain-header:hover { background: rgba(255,255,255,0.04); }
+[data-dark="1"] .sdb-chain-locations { border-top-color: rgba(255,255,255,0.08); }
+[data-dark="1"] .sdb-card--branch { border-bottom-color: rgba(255,255,255,0.06); }
+[data-dark="1"] .sdb-card--branch:hover { background: rgba(255,255,255,0.04); }
