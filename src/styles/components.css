@@ -747,6 +747,16 @@
   font-size: 13px;
   color: #9CA3AF;
 }
+.store-picker-section {
+  padding: 6px 14px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9CA3AF;
+  background: #f9fafb;
+  border-bottom: 1px solid #f3f4f6;
+}
 
 /* ── Dropzone content wrapper ── */
 .dropzone-content { position: relative; z-index: 1; }

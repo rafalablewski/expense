@@ -191,6 +191,11 @@
 [data-dark="1"] .store-picker-option:hover { background: rgba(6,193,103,0.10); }
 [data-dark="1"] .store-picker-option-sub { color: rgba(255,255,255,0.40); }
 [data-dark="1"] .store-picker-add { color: #3DDC84; }
+[data-dark="1"] .store-picker-section {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.40);
+}
 
 /* QA method cards / sources dark */
 [data-dark="1"] .qa-method-card,
