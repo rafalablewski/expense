@@ -41,7 +41,7 @@ function StoreForm({ loc, onSave, onCancel, existingStores }) {
         <div className="sdb-form-group sdb-form-grow">
           <label className="sdb-form-label">Nazwa sklepu</label>
           <input className="field" value={form.label} onChange={e => set("label", e.target.value)}
-            placeholder="np. Lidl Bazantowo" />
+            placeholder="np. Bazantowo" />
         </div>
       </div>
       <div className="sdb-form-row">
@@ -182,7 +182,7 @@ export default function StoresView() {
                     <div className="drill-locs">
                       {locs.map((l, i) => (
                         <span key={i} className="drill-loc">
-                          📍 {l.label}{l.address || l.city ? ` — ${[l.address, l.zip_code, l.city].filter(Boolean).join(", ")}` : ""}
+                          📍 {l.label || l.city || l.address}{l.address || l.city ? ` — ${[l.address, l.zip_code, l.city].filter(Boolean).join(", ")}` : ""}
                         </span>
                       ))}
                     </div>
@@ -287,7 +287,7 @@ export default function StoresView() {
                           {(() => {
                             const locs = storeLocations.filter(l => l.store.toLowerCase() === key);
                             return locs.length > 0
-                              ? locs.map((l, li) => <span key={li}>📍 {l.label}</span>)
+                              ? locs.map((l, li) => <span key={li}>📍 {l.label || l.city || l.address}</span>)
                               : Object.keys(st.cities).length > 0 && <span>📍 {Object.keys(st.cities).join(", ")}</span>;
                           })()}
                           <span>{st.visits} wizyt</span>

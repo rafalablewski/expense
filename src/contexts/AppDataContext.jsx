@@ -536,8 +536,8 @@ export function AppDataProvider({ uid, children }) {
       const finalNs = normalize(finalStore);
       const key = nz ? `${finalNs}|${nz}` : `${finalNs}|${na}|${nc}`;
 
-      // Use user-provided label, or auto-generate as fallback
-      const autoLabel = c ? `${finalStore} ${c}` : (a ? `${finalStore} ${a.split(",")[0].trim()}` : finalStore);
+      // Use user-provided label, or auto-generate as fallback (branch name only, no store prefix)
+      const autoLabel = c || (a ? a.split(",")[0].trim() : "");
       const finalLabel = (_locationLabel && _locationLabel.trim()) ? _locationLabel.trim() : autoLabel;
 
       const exists = prev.some(loc => {

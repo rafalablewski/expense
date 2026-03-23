@@ -108,8 +108,15 @@ export default function StorePickerInput({ value, onChange, onSelectStore, onSel
     }
   };
 
+  /** Build display name: "Store · Label" if label differs from store, otherwise just store */
+  const locDisplayName = (entry) => {
+    const lbl = entry.label || "";
+    if (!lbl || normalize(lbl) === normalize(entry.store)) return entry.store;
+    return `${entry.store} · ${lbl}`;
+  };
+
   const selectLocation = (entry) => {
-    setSearch(entry.label);
+    setSearch(entry.store);
     setOpen(false);
     if (onSelectLocation) {
       onSelectLocation({
@@ -160,7 +167,7 @@ export default function StorePickerInput({ value, onChange, onSelectStore, onSel
                     className="store-picker-option store-picker-option--loc">
                     <div className="store-picker-option-main">
                       <span className="store-picker-option-icon">📍</span>
-                      <span className="store-picker-option-name">{entry.label}</span>
+                      <span className="store-picker-option-name">{locDisplayName(entry)}</span>
                     </div>
                     {sub && <div className="store-picker-option-sub">{sub}</div>}
                   </div>

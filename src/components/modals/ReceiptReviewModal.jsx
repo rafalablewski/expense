@@ -248,8 +248,8 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSav
                   <label className="rv2-label">Nazwa tej lokalizacji</label>
                   <input className="field" value={data._locationLabel}
                     onChange={e => updateField("_locationLabel", e.target.value)}
-                    placeholder={`np. ${data.store} ${data.city || "Centrum"}`} />
-                  <div className="rv2-new-loc-hint">Jak chcesz nazywać ten sklep? np. dzielnica, ulica</div>
+                    placeholder={`np. Brynów, Centrum, ${data.city || "Katowice"}`} />
+                  <div className="rv2-new-loc-hint">Krótka nazwa oddziału, np. dzielnica lub ulica</div>
                 </div>
               )}
               {(parseFloat(data.delivery_cost) > 0 || data.delivery_free) && (
