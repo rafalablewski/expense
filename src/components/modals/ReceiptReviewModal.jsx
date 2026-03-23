@@ -53,6 +53,10 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSav
   const [editingItem, setEditingItem] = useState(null);
   const [headerOpen, setHeaderOpen] = useState(false);
   const [showAllCats, setShowAllCats] = useState(false);
+  // Address is "matched" (green) when it came from a known location, not new
+  const [addressMatched, setAddressMatched] = useState(
+    () => !receipt._isNewLocation && !!(receipt.address || receipt.city || receipt.zip_code)
+  );
   const [totalOverride, setTotalOverride] = useState(false);
   const [manualTotal, setManualTotal] = useState(receipt.total ?? 0);
   const overlayRef = useRef();
@@ -220,12 +224,13 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSav
                 <div className="rv2-form-group rv2-form-grow">
                   <label className="rv2-label">Sklep</label>
                   <StorePickerInput value={data.store}
-                    onChange={v => setData(d => ({ ...d, store: v }))}
+                    onChange={v => { setData(d => ({ ...d, store: v })); setAddressMatched(false); }}
                     onSelectStore={name => setData(d => ({ ...d, store: name }))}
                     storeLocations={storeLocations}
                     storeNames={storeNames}
                     onSelectLocation={(loc) => {
                       setData(d => ({ ...d, store: loc.store, address: loc.address, zip_code: loc.zip_code, city: loc.city }));
+                      setAddressMatched(true);
                     }}
                     placeholder="Wybierz sklep" />
                 </div>
@@ -234,24 +239,24 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSav
                   <input className="field" type="date" value={data.date} onChange={e => updateField("date", e.target.value)} />
                 </div>
               </div>
-              {/* Address fields — always editable */}
-              <div className="rv2-form-row">
+              {/* Address fields — always editable, green when matched */}
+              <div className={`rv2-form-row${addressMatched ? " rv2-addr-matched" : ""}`}>
                 <div className="rv2-form-group rv2-form-grow">
                   <label className="rv2-label">Adres</label>
                   <input className="field" value={data.address}
-                    onChange={e => updateField("address", e.target.value)}
+                    onChange={e => { updateField("address", e.target.value); setAddressMatched(false); }}
                     placeholder="ul. Przykładowa 1" />
                 </div>
                 <div className="rv2-form-group">
                   <label className="rv2-label">Kod poczt.</label>
                   <input className="field" value={data.zip_code}
-                    onChange={e => updateField("zip_code", e.target.value)}
+                    onChange={e => { updateField("zip_code", e.target.value); setAddressMatched(false); }}
                     placeholder="00-000" />
                 </div>
                 <div className="rv2-form-group">
                   <label className="rv2-label">Miasto</label>
                   <input className="field" value={data.city}
-                    onChange={e => updateField("city", e.target.value)}
+                    onChange={e => { updateField("city", e.target.value); setAddressMatched(false); }}
                     placeholder="Miasto" />
                 </div>
               </div>
