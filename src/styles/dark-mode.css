@@ -345,10 +345,12 @@
 [data-dark="1"] .qa-method-card--accent:hover {
   background: rgba(6,193,103,0.15);
 }
+[data-dark="1"] .rv2-new-loc-form {
+  background: rgba(245,158,11,0.08);
+  border-color: rgba(245,158,11,0.2);
+}
 [data-dark="1"] .rv2-new-loc-badge {
-  background: rgba(245,158,11,0.15);
   color: #fbbf24;
-  border-color: rgba(245,158,11,0.3);
 }
 [data-dark="1"] .rv2-pending-btn {
   color: #fbbf24;

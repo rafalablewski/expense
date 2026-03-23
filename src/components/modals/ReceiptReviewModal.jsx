@@ -42,6 +42,7 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSav
     delivery_cost: receipt.delivery_cost ?? "",
     delivery_free: receipt.delivery_free || false,
     voucher: receipt.voucher ?? "",
+    _locationLabel: receipt._locationLabel || "",
     items: (receipt.items || []).map((it, i) => ({
       ...it,
       _key: i,
@@ -250,9 +251,17 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSav
                 <div className="rv2-loc-info">
                   <span className="rv2-loc-icon">📍</span>
                   <span className="rv2-loc-text">{[data.address, data.zip_code, data.city].filter(Boolean).join(", ")}</span>
-                  {receipt._isNewLocation && (
-                    <span className="rv2-new-loc-badge">Nowa lokalizacja</span>
-                  )}
+                </div>
+              )}
+              {/* New location: ask user to name this branch */}
+              {receipt._isNewLocation && data.store && (
+                <div className="rv2-new-loc-form">
+                  <div className="rv2-new-loc-badge">Nowa lokalizacja</div>
+                  <label className="rv2-label">Nazwa tej lokalizacji</label>
+                  <input className="field" value={data._locationLabel}
+                    onChange={e => updateField("_locationLabel", e.target.value)}
+                    placeholder={`np. ${data.store} ${data.city || "Centrum"}`} />
+                  <div className="rv2-new-loc-hint">Jak chcesz nazywać ten sklep? np. dzielnica, ulica</div>
                 </div>
               )}
               {(parseFloat(data.delivery_cost) > 0 || data.delivery_free) && (

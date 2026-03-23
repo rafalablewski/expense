@@ -514,7 +514,7 @@ export function AppDataProvider({ uid, children }) {
   }, [apiKey]);
 
   const learnStoreLocation = useCallback((receipt) => {
-    const { store, address, city, zip_code } = receipt;
+    const { store, address, city, zip_code, _locationLabel } = receipt;
     if (!store || (!address && !city && !zip_code)) return;
     const a = (address || "").trim(), z = (zip_code || "").trim(), c = (city || "").trim();
     const nz = normalize(zip_code), na = stripStreetPrefix(normalize(address)), nc = normalize(city);
@@ -522,23 +522,23 @@ export function AppDataProvider({ uid, children }) {
     // Use fuzzy matching to find canonical store name from existing locations
     const canonicalFromDefaults = DEFAULT_STORE_LOCATIONS.find(d => fuzzyStoreMatch(d.store, store));
     const s = canonicalFromDefaults ? canonicalFromDefaults.store : store.trim();
-    const ns = normalize(s);
 
     // Skip if this location already exists in defaults
     const inDefaults = DEFAULT_STORE_LOCATIONS.some(d =>
       fuzzyStoreMatch(d.store, store) && (nz ? normalize(d.zip_code) === nz : normalize(d.city) === nc && stripStreetPrefix(normalize(d.address)) === na)
     );
     if (inDefaults) return;
-    // Dedup by normalized store + zip_code (or address + city) — use fuzzy store match
-    const shortAddr = c || (a ? a.split(",")[0].trim() : "");
-    const label = shortAddr ? `${s} ${shortAddr}` : s;
+
     setStoreLocations(prev => {
       // Find canonical name from existing locations (fuzzy match)
       const canonicalFromPrev = prev.find(loc => fuzzyStoreMatch(loc.store, store));
       const finalStore = canonicalFromPrev ? canonicalFromPrev.store : s;
       const finalNs = normalize(finalStore);
       const key = nz ? `${finalNs}|${nz}` : `${finalNs}|${na}|${nc}`;
-      const finalLabel = shortAddr ? `${finalStore} ${shortAddr}` : finalStore;
+
+      // Use user-provided label, or auto-generate as fallback
+      const autoLabel = c ? `${finalStore} ${c}` : (a ? `${finalStore} ${a.split(",")[0].trim()}` : finalStore);
+      const finalLabel = (_locationLabel && _locationLabel.trim()) ? _locationLabel.trim() : autoLabel;
 
       const exists = prev.some(loc => {
         if (!fuzzyStoreMatch(loc.store, store)) return false;
@@ -561,14 +561,14 @@ export function AppDataProvider({ uid, children }) {
         learnFromCorrections(current._original, reviewed);
       }
       const { _original, _batchId, all_addresses: _allAddr, ...rest } = current;
-      const { all_addresses: _allAddr2, ...reviewedClean } = reviewed;
+      const { all_addresses: _allAddr2, _locationLabel, ...reviewedClean } = reviewed;
       const saved = trimLocationFields(ensureCity({ ...reviewedClean, id: rest.id }));
       // Preserve source from queue item (e.g. "manual" for hand-entered receipts)
       if (current.source) saved.source = current.source;
       saved.total = sumReceiptItems(saved);
       setReceipts(p => [saved, ...p]);
-      // Auto-learn store location
-      learnStoreLocation(saved);
+      // Auto-learn store location (pass _locationLabel for user-chosen branch name)
+      learnStoreLocation({ ...saved, _locationLabel });
     }
     setReviewQueue(q => q.slice(1));
     haptic(30);
@@ -607,11 +607,11 @@ export function AppDataProvider({ uid, children }) {
   const confirmPending = useCallback((id, reviewed) => {
     const pending = pendingReceipts.find(r => r.id === id);
     if (!pending) return;
-    const { savedAt, ...rest } = reviewed;
+    const { savedAt, _locationLabel, ...rest } = reviewed;
     const saved = trimLocationFields(ensureCity({ ...rest, id }));
     saved.total = sumReceiptItems(saved);
     setReceipts(p => [saved, ...p]);
-    learnStoreLocation(saved);
+    learnStoreLocation({ ...saved, _locationLabel });
     setPendingReceipts(p => p.filter(r => r.id !== id));
     haptic(30);
   }, [pendingReceipts, learnStoreLocation]);

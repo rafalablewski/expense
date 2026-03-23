@@ -459,16 +459,26 @@
 }
 .rv2-loc-icon { font-size: 14px; flex-shrink: 0; }
 .rv2-loc-text { font-size: 12px; color: var(--c-ink2); }
+.rv2-new-loc-form {
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: rgba(245,158,11,0.06);
+  border-radius: 12px;
+  border: 1px solid rgba(245,158,11,0.18);
+}
 .rv2-new-loc-badge {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: rgba(245,158,11,0.12);
+  font-size: 11px;
+  font-weight: 700;
   color: #b45309;
-  border: 1px solid rgba(245,158,11,0.25);
-  white-space: nowrap;
-  flex-shrink: 0;
+  margin-bottom: 8px;
+}
+.rv2-new-loc-form .field {
+  margin-top: 4px;
+}
+.rv2-new-loc-hint {
+  font-size: 11px;
+  color: var(--c-ink3);
+  margin-top: 4px;
 }
 .rv2-form-row {
   display: flex;
