@@ -234,27 +234,13 @@ export default function ReceiptReviewModal({ receipt, onConfirm, onCancel, onSav
                   <input className="field" type="date" value={data.date} onChange={e => updateField("date", e.target.value)} />
                 </div>
               </div>
-              {/* Address fields — always editable, green when any address data present */}
-              <div className={`rv2-form-row${(data.address || data.zip_code || data.city) ? " rv2-addr-matched" : ""}`}>
-                <div className="rv2-form-group rv2-form-grow">
-                  <label className="rv2-label">Adres</label>
-                  <input className="field" value={data.address}
-                    onChange={e => updateField("address", e.target.value)}
-                    placeholder="ul. Przykładowa 1" />
+              {/* Show address as green info bar when present */}
+              {(data.address || data.zip_code || data.city) && (
+                <div className="rv2-loc-info">
+                  <span className="rv2-loc-icon">📍</span>
+                  <span className="rv2-loc-text">{[data.address, data.zip_code, data.city].filter(Boolean).join(", ")}</span>
                 </div>
-                <div className="rv2-form-group">
-                  <label className="rv2-label">Kod poczt.</label>
-                  <input className="field" value={data.zip_code}
-                    onChange={e => updateField("zip_code", e.target.value)}
-                    placeholder="00-000" />
-                </div>
-                <div className="rv2-form-group">
-                  <label className="rv2-label">Miasto</label>
-                  <input className="field" value={data.city}
-                    onChange={e => updateField("city", e.target.value)}
-                    placeholder="Miasto" />
-                </div>
-              </div>
+              )}
               {/* New location: ask user to name this branch */}
               {receipt._isNewLocation && data.store && (
                 <div className="rv2-new-loc-form">

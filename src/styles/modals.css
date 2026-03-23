@@ -459,15 +459,6 @@
 }
 .rv2-loc-icon { font-size: 14px; flex-shrink: 0; }
 .rv2-loc-text { font-size: 12px; color: var(--c-ink2); }
-.rv2-addr-matched {
-  background: rgba(6,193,103,0.06);
-  border: 1px solid rgba(6,193,103,0.15);
-  border-radius: 10px;
-  padding: 8px;
-}
-.rv2-addr-matched .field {
-  border-color: rgba(6,193,103,0.30);
-}
 .rv2-new-loc-form {
   padding: 10px 12px;
   margin-bottom: 10px;
