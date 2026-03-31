@@ -19,6 +19,11 @@ function apiHeaders(apiKey) {
 async function handleApiResponse(res) {
   if (res.ok) return;
   if (res.status === 401) throw new Error("Nieprawidłowy klucz API — sprawdź lub zaktualizuj klucz w ustawieniach (ikona klucza)");
+  if (res.status === 402) {
+    throw new Error(
+      "DeepSeek API: niewystarczające saldo (HTTP 402). W panelu DeepSeek sprawdź doładowanie konta API i limity; po zaksięgowaniu środków spróbuj ponownie."
+    );
+  }
   let detail = "";
   try {
     const body = await res.json();
@@ -44,6 +49,7 @@ async function chatCompletion(apiKey, messages, maxTokens) {
       model: MODEL,
       max_tokens: maxTokens,
       messages,
+      stream: false,
     }),
   });
   await handleApiResponse(res);
@@ -70,6 +76,7 @@ export async function scanReceipt(b64, mt, apiKey, correctionsHint = "") {
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 8192,
+      stream: false,
       messages: [
         {
           role: "user",
@@ -97,6 +104,11 @@ export async function scanReceipt(b64, mt, apiKey, correctionsHint = "") {
       detail.includes("unsupported");
     if (looksLikeVision) throw new Error(VISION_UNSUPPORTED_MSG);
     if (res.status === 401) throw new Error("Nieprawidłowy klucz API — sprawdź lub zaktualizuj klucz w ustawieniach (ikona klucza)");
+    if (res.status === 402) {
+      throw new Error(
+        "DeepSeek API: niewystarczające saldo (HTTP 402). W panelu DeepSeek sprawdź doładowanie konta API i limity; po zaksięgowaniu środków spróbuj ponownie."
+      );
+    }
     throw new Error(detail ? `HTTP ${res.status}: ${data?.error?.message || detail}` : `HTTP ${res.status}`);
   }
   if (data.error) {

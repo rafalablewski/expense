@@ -9,6 +9,7 @@ import {
   getCorrectionsHint,
   compressImageIfNeeded,
   AI_PROVIDER,
+  normalizeAiProvider,
 } from "../services/ai";
 import { initCorrections, getCorrections, learnFromCorrections, applyLearnedCorrections } from "../hooks/useCorrections";
 import { haptic, sumReceiptItems, toMonthly } from "../utils/helpers";
@@ -56,8 +57,16 @@ export function AppDataProvider({ uid, children }) {
   const [apiKey, setApiKey] = useState(() => lsGet(LS_KEYS.apiKey, ""));
   const [deepseekApiKey, setDeepseekApiKey] = useState(() => lsGet(LS_KEYS.deepseekApiKey, ""));
   const [aiProvider, setAiProvider] = useState(() => {
-    const p = lsGet(LS_KEYS.aiProvider, AI_PROVIDER.ANTHROPIC);
-    return p === AI_PROVIDER.DEEPSEEK ? AI_PROVIDER.DEEPSEEK : AI_PROVIDER.ANTHROPIC;
+    try {
+      const raw = localStorage.getItem(LS_KEYS.aiProvider);
+      if (raw !== null) return normalizeAiProvider(JSON.parse(raw));
+    } catch {}
+    const anth = lsGet(LS_KEYS.apiKey, "");
+    const deep = lsGet(LS_KEYS.deepseekApiKey, "");
+    const anthOk = typeof anth === "string" && anth.trim().length > 0;
+    const deepOk = typeof deep === "string" && deep.trim().length > 0;
+    if (anthOk && !deepOk) return AI_PROVIDER.ANTHROPIC;
+    return AI_PROVIDER.DEEPSEEK;
   });
   const activeApiKey = useMemo(
     () => (aiProvider === AI_PROVIDER.DEEPSEEK ? deepseekApiKey : apiKey),
