@@ -55,6 +55,7 @@
 [data-dark="1"] .dropzone:hover, [data-dark="1"] .dropzone.drag { background: rgba(6,193,103,0.08); }
 [data-dark="1"] .feature-pill { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.14); }
 [data-dark="1"] .cur-toggle { background: rgba(255,255,255,0.08); }
+[data-dark="1"] .ai-toggle { background: rgba(255,255,255,0.08); }
 
 /* Dark mode toggle button */
 .dark-btn {

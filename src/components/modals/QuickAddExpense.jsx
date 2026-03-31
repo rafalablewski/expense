@@ -12,7 +12,7 @@ const SOURCES = [
 ];
 
 export default function QuickAddExpense({ onClose, onManualEntry, onTextReceipt, onJsonImport, onSourceImport, onNeedKey, onBulkAdd, onNavigate }) {
-  const { apiKey } = useAppData();
+  const { activeApiKey } = useAppData();
   const [mode, setMode] = useState(null); // null = menu, "text", "json", "source:lidl", "source:biedronka"
   const [textVal, setTextVal] = useState("");
   const [sourceTextVal, setSourceTextVal] = useState("");
@@ -58,7 +58,7 @@ export default function QuickAddExpense({ onClose, onManualEntry, onTextReceipt,
 
   const handleSourceText = (source) => {
     if (!sourceTextVal.trim()) return;
-    if (!apiKey) { onNeedKey(); return; }
+    if (!activeApiKey) { onNeedKey(); return; }
     haptic(20);
     onSourceImport(source, null, sourceTextVal.trim());
     onClose();
@@ -173,7 +173,7 @@ export default function QuickAddExpense({ onClose, onManualEntry, onTextReceipt,
                 placeholder={"Wklej cały tekst paragonu lub wpisz listę:\n\nmleko 2zł\n2kg ziemniaków 6zł\nchleb razowy 5.50\n\nlub tekst z paragonu fiskalnego..."} />
               <button className="btn-primary" onClick={() => {
                   if (!textVal.trim()) return;
-                  if (!apiKey) { onNeedKey(); return; }
+                  if (!activeApiKey) { onNeedKey(); return; }
                   haptic(20);
                   onTextReceipt(textVal.trim());
                 }}

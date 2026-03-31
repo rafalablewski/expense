@@ -2,10 +2,10 @@ import { useMemo, useState } from "react";
 import { haptic } from "../utils/helpers";
 import Spinner from "../components/primitives/Spinner";
 import { useAppData } from "../contexts/AppDataContext";
-import { claudeChat } from "../services/claude";
+import { aiChat } from "../services/ai";
 
 export default function MealPlanView({ onNeedKey }) {
-  const { receipts, apiKey } = useAppData();
+  const { receipts, activeApiKey, aiProvider } = useAppData();
   const DAYS  = ["Pon","Wt","Śr","Czw","Pt","Sob","Ndz"];
   const MEALS = ["Śniadanie","Obiad","Kolacja"];
   const [plan,     setPlan]     = useState({}); // {`${day}-${meal}`: text}
@@ -28,12 +28,12 @@ export default function MealPlanView({ onNeedKey }) {
     )].slice(0, 40);
   }, [receipts]);
 
-  const callClaude = (prompt) => {
-    if (!apiKey) {
+  const callAi = (prompt) => {
+    if (!activeApiKey) {
       if (onNeedKey) onNeedKey();
       throw new Error("Brak klucza API — ustaw go w ustawieniach (ikona klucza)");
     }
-    return claudeChat(prompt, apiKey);
+    return aiChat(prompt, activeApiKey, aiProvider);
   };
 
   const generateCell = async (day, meal) => {
@@ -46,7 +46,7 @@ export default function MealPlanView({ onNeedKey }) {
         ? `Produkty dostępne w lodówce: ${knownItems.slice(0,20).join(", ")}.`
         : "";
       const extra = pantry ? `Dodatkowe składniki: ${pantry}.` : "";
-      const text = await callClaude(
+      const text = await callAi(
         `Zaproponuj jedno konkretne danie na ${meal} na ${day}. ${context} ${extra}
 Odpowiedz TYLKO nazwą dania i jednym zdaniem opisu (max 60 znaków). Format: "Nazwa — opis". Bez list, bez gwiazdek.`
       );
@@ -61,7 +61,7 @@ Odpowiedz TYLKO nazwą dania i jednym zdaniem opisu (max 60 znaków). Format: "N
   };
 
   const generateAll = async () => {
-    if (!apiKey) {
+    if (!activeApiKey) {
       if (onNeedKey) onNeedKey();
       setError("Brak klucza API — ustaw go w ustawieniach (ikona klucza)");
       return;
@@ -77,7 +77,7 @@ Odpowiedz TYLKO nazwą dania i jednym zdaniem opisu (max 60 znaków). Format: "N
         setLoading(key);
         try {
           const context = knownItems.length ? `Produkty w lodówce: ${knownItems.slice(0,15).join(", ")}.` : "";
-          const text = await callClaude(
+          const text = await callAi(
             `Danie na ${meal}, ${day}. ${context} Odpowiedz TYLKO: "Nazwa — krótki opis" (max 55 znaków). Zero list.`
           );
           setPlan(p => ({ ...p, [key]: text.trim() }));
@@ -102,7 +102,7 @@ Odpowiedz TYLKO nazwą dania i jednym zdaniem opisu (max 60 znaków). Format: "N
 
   const generateShoppingList = async () => {
     if (!Object.keys(plan).length) return;
-    if (!apiKey) {
+    if (!activeApiKey) {
       if (onNeedKey) onNeedKey();
       setError("Brak klucza API — ustaw go w ustawieniach (ikona klucza)");
       return;
@@ -112,7 +112,7 @@ Odpowiedz TYLKO nazwą dania i jednym zdaniem opisu (max 60 znaków). Format: "N
     haptic(20);
     try {
       const meals = Object.values(plan).join("\n");
-      const text = await callClaude(
+      const text = await callAi(
         `Na podstawie tych posiłków: ${meals}
 
 Wygeneruj listę zakupów. Odpowiedz TYLKO jako JSON array stringów, np. ["Mleko","Jajka"]. Zero innych słów.`
@@ -154,9 +154,9 @@ Wygeneruj listę zakupów. Odpowiedz TYLKO jako JSON array stringów, np. ["Mlek
           )}
 
           {/* API key warning */}
-          {!apiKey && (
+          {!activeApiKey && (
             <div className="toast-warn au" role="alert">
-              <span>🔑 Ustaw klucz API Anthropic aby korzystać z planera posiłków</span>
+              <span>🔑 Ustaw klucz API (Anthropic lub DeepSeek) w ustawieniach, aby korzystać z planera posiłków</span>
               {onNeedKey && <button className="btn-primary" style={{ marginLeft: "auto", minHeight: 36, fontSize: 13 }} onClick={onNeedKey}>Ustaw klucz</button>}
             </div>
           )}
@@ -171,8 +171,8 @@ Wygeneruj listę zakupów. Odpowiedz TYLKO jako JSON array stringów, np. ["Mlek
                 <input id="pantry" className="field" value={pantry} onChange={e=>setPantry(e.target.value)}
                   placeholder="np. ryż, pomidory, ser żółty…" />
               </div>
-              <button className="btn-primary" onClick={generateAll} disabled={genAll || !apiKey}
-                style={{ gap: 8, minHeight: 48, opacity: (genAll || !apiKey) ? 0.5 : 1 }}>
+              <button className="btn-primary" onClick={generateAll} disabled={genAll || !activeApiKey}
+                style={{ gap: 8, minHeight: 48, opacity: (genAll || !activeApiKey) ? 0.5 : 1 }}>
                 {genAll ? <><Spinner />Generuję…</> : "✦ Generuj cały plan"}
               </button>
               {filledCells > 0 && (
@@ -224,7 +224,7 @@ Wygeneruj listę zakupów. Odpowiedz TYLKO jako JSON array stringów, np. ["Mlek
                               onClick={() => !busy && generateCell(day, meal)}
                               aria-label={`${meal} ${day}${text ? ": "+text : " — kliknij aby wygenerować"}`}
                               className={`meal-cell-btn${busy ? " busy" : ""}`}
-                              disabled={!apiKey}
+                              disabled={!activeApiKey}
                             >
                               {busy ? (
                                 <div className="meal-spinner-wrap">

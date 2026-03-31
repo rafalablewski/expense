@@ -23,7 +23,7 @@ export default function ReceiptsView({ onFiles, onManualEntry, onTextReceipt, on
     receipts, setReceipts, updateReceipt,
     recurring, setRecurring,
     processing, errors, setErrors,
-    currency, apiKey,
+    currency, activeApiKey,
     pendingReceipts, deletePending,
   } = useAppData();
 
@@ -148,7 +148,7 @@ export default function ReceiptsView({ onFiles, onManualEntry, onTextReceipt, on
                     autoFocus />
                   <button className="btn-primary" onClick={() => {
                       if (!textVal.trim()) return;
-                      if (!apiKey) { onNeedKey(); return; }
+                      if (!activeApiKey) { onNeedKey(); return; }
                       haptic(20);
                       onTextReceipt(textVal.trim());
                       setTextVal("");

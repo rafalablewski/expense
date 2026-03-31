@@ -2,7 +2,14 @@ import { createContext, useContext, useState, useCallback, useRef, useMemo, useE
 import { loadUserData, saveAllUserData, updateField, subscribeUserData } from "../firestore";
 import { DEFAULT_STORES, DEFAULT_STORE_LOCATIONS } from "../config/defaults";
 import { LS_KEYS, lsGet, lsSet } from "../services/localStorage";
-import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, parseJsonReceipt as parseJsonReceiptAPI, getCorrectionsHint, compressImageIfNeeded } from "../services/claude";
+import {
+  scanReceipt as scanReceiptAPI,
+  parseTextReceipt as parseTextReceiptAPI,
+  parseJsonReceipt as parseJsonReceiptAPI,
+  getCorrectionsHint,
+  compressImageIfNeeded,
+  AI_PROVIDER,
+} from "../services/ai";
 import { initCorrections, getCorrections, learnFromCorrections, applyLearnedCorrections } from "../hooks/useCorrections";
 import { haptic, sumReceiptItems, toMonthly } from "../utils/helpers";
 import { matchStoreAddress, normalize, stripStreetPrefix, fuzzyStoreMatch } from "../utils/addressMatcher";
@@ -46,7 +53,16 @@ export function AppDataProvider({ uid, children }) {
   const [currency,  setCurrency]  = useState("PLN");
   const [darkMode,  setDarkMode]  = useState(() => lsGet(LS_KEYS.darkMode, false));
   const [onboarded, setOnboarded] = useState(false);
-  const [apiKey,    setApiKey]    = useState(() => lsGet(LS_KEYS.apiKey, ""));
+  const [apiKey, setApiKey] = useState(() => lsGet(LS_KEYS.apiKey, ""));
+  const [deepseekApiKey, setDeepseekApiKey] = useState(() => lsGet(LS_KEYS.deepseekApiKey, ""));
+  const [aiProvider, setAiProvider] = useState(() => {
+    const p = lsGet(LS_KEYS.aiProvider, AI_PROVIDER.ANTHROPIC);
+    return p === AI_PROVIDER.DEEPSEEK ? AI_PROVIDER.DEEPSEEK : AI_PROVIDER.ANTHROPIC;
+  });
+  const activeApiKey = useMemo(
+    () => (aiProvider === AI_PROVIDER.DEEPSEEK ? deepseekApiKey : apiKey),
+    [aiProvider, deepseekApiKey, apiKey]
+  );
   const [processing,setProcessing]= useState([]);
   const [errors,    setErrors]    = useState([]);
   const [reviewQueue, setReviewQueue] = useState([]);
@@ -86,8 +102,9 @@ export function AppDataProvider({ uid, children }) {
           await saveAllUserData(uid, migrated);
           const verify = await loadUserData(uid);
           if (verify && (verify.receipts || []).length >= (migrated.receipts || []).length) {
+            const preserveLs = new Set(["apiKey", "aiProvider", "deepseekApiKey"]);
             Object.entries(LS_KEYS).forEach(([k, v]) => {
-              if (k !== "apiKey") localStorage.removeItem(v);
+              if (!preserveLs.has(k)) localStorage.removeItem(v);
             });
           }
           applyData(migrated);
@@ -390,7 +407,7 @@ export function AppDataProvider({ uid, children }) {
     }
   }, []);
 
-  const processFiles = useCallback(async (files, key) => {
+  const processFiles = useCallback(async (files, key, provider) => {
     for (const file of files) {
       const id = Date.now() + Math.random();
       setProcessing(p => [...p, { id, name: file.name }]);
@@ -402,7 +419,7 @@ export function AppDataProvider({ uid, children }) {
           r.readAsDataURL(file);
         });
         const { b64, mediaType } = await compressImageIfNeeded(rawB64, file.type);
-        const parsed = trimLocationFields(await scanReceiptAPI(b64, mediaType, key, getCorrectionsHint(getCorrections())));
+        const parsed = trimLocationFields(await scanReceiptAPI(b64, mediaType, key, provider, getCorrectionsHint(getCorrections())));
         const matched = matchStoreAddress(parsed, storeLocationsRef.current);
         const corrected = applyLearnedCorrections(matched);
         setReviewQueue(q => [...q, { ...corrected, id, _original: parsed }]);
@@ -416,24 +433,24 @@ export function AppDataProvider({ uid, children }) {
   }, []);
 
   const handleFiles = useCallback(async (files, onNeedKey) => {
-    if (!apiKey) {
+    if (!activeApiKey) {
       pendingFilesRef.current = files;
       onNeedKey();
       return;
     }
-    processFiles(files, apiKey);
-  }, [apiKey, processFiles]);
+    processFiles(files, activeApiKey, aiProvider);
+  }, [activeApiKey, aiProvider, processFiles]);
 
   useEffect(() => {
-    if (apiKey && pendingFilesRef.current) {
+    if (activeApiKey && pendingFilesRef.current) {
       const files = pendingFilesRef.current;
       pendingFilesRef.current = null;
-      processFiles(files, apiKey);
+      processFiles(files, activeApiKey, aiProvider);
     }
-  }, [apiKey, processFiles]);
+  }, [activeApiKey, aiProvider, processFiles]);
 
   const processTextReceipt = useCallback(async (text, onNeedKey) => {
-    if (!apiKey) {
+    if (!activeApiKey) {
       if (onNeedKey) onNeedKey();
       else setErrors(p => [...p, "Brak klucza API — ustaw go w ustawieniach (ikona klucza)"]);
       return;
@@ -441,7 +458,7 @@ export function AppDataProvider({ uid, children }) {
     const id = Date.now() + Math.random();
     setProcessing(p => [...p, { id, name: "Analiza tekstu..." }]);
     try {
-      const rawParsed = await parseTextReceiptAPI(text, apiKey, getCorrectionsHint(getCorrections()));
+      const rawParsed = await parseTextReceiptAPI(text, activeApiKey, aiProvider, getCorrectionsHint(getCorrections()));
       // AI may return an array of receipts (multiple orders) or a single object
       const receiptsArray = (Array.isArray(rawParsed) ? rawParsed : [rawParsed]).map(trimLocationFields);
       const batchId = receiptsArray.length > 1 ? Date.now() + "_batch" : null;
@@ -457,10 +474,10 @@ export function AppDataProvider({ uid, children }) {
     } finally {
       setProcessing(p => p.filter(x => x.id !== id));
     }
-  }, [apiKey]);
+  }, [activeApiKey, aiProvider]);
 
   const processJsonFiles = useCallback(async (files, onNeedKey, source = null) => {
-    if (!apiKey) {
+    if (!activeApiKey) {
       if (onNeedKey) onNeedKey();
       else setErrors(p => [...p, "Brak klucza API — ustaw go w ustawieniach (ikona klucza)"]);
       return;
@@ -470,7 +487,7 @@ export function AppDataProvider({ uid, children }) {
       setProcessing(p => [...p, { id, name: file.name }]);
       try {
         const text = await file.text();
-        const rawParsed = await parseJsonReceiptAPI(text, apiKey, source, getCorrectionsHint(getCorrections()));
+        const rawParsed = await parseJsonReceiptAPI(text, activeApiKey, aiProvider, source, getCorrectionsHint(getCorrections()));
         const receiptsArray = (Array.isArray(rawParsed) ? rawParsed : [rawParsed]).map(trimLocationFields);
         const batchId = receiptsArray.length > 1 ? Date.now() + "_batch" : null;
         for (let i = 0; i < receiptsArray.length; i++) {
@@ -487,10 +504,10 @@ export function AppDataProvider({ uid, children }) {
         setProcessing(p => p.filter(x => x.id !== id));
       }
     }
-  }, [apiKey]);
+  }, [activeApiKey, aiProvider]);
 
   const processSourceText = useCallback(async (source, text, onNeedKey) => {
-    if (!apiKey) {
+    if (!activeApiKey) {
       if (onNeedKey) onNeedKey();
       else setErrors(p => [...p, "Brak klucza API — ustaw go w ustawieniach (ikona klucza)"]);
       return;
@@ -502,9 +519,9 @@ export function AppDataProvider({ uid, children }) {
       let parsed;
       try {
         JSON.parse(text);
-        parsed = await parseJsonReceiptAPI(text, apiKey, source, getCorrectionsHint(getCorrections()));
+        parsed = await parseJsonReceiptAPI(text, activeApiKey, aiProvider, source, getCorrectionsHint(getCorrections()));
       } catch {
-        parsed = await parseTextReceiptAPI(text, apiKey, getCorrectionsHint(getCorrections()));
+        parsed = await parseTextReceiptAPI(text, activeApiKey, aiProvider, getCorrectionsHint(getCorrections()));
       }
       const receiptsArray = (Array.isArray(parsed) ? parsed : [parsed]).map(trimLocationFields);
       const batchId = receiptsArray.length > 1 ? Date.now() + "_batch" : null;
@@ -520,7 +537,7 @@ export function AppDataProvider({ uid, children }) {
     } finally {
       setProcessing(p => p.filter(x => x.id !== id));
     }
-  }, [apiKey]);
+  }, [activeApiKey, aiProvider]);
 
   const learnStoreLocation = useCallback((receipt) => {
     const { store, address, city, zip_code, _locationLabel } = receipt;
@@ -683,6 +700,9 @@ export function AppDataProvider({ uid, children }) {
     darkMode, setDarkMode,
     onboarded, setOnboarded,
     apiKey, setApiKey,
+    deepseekApiKey, setDeepseekApiKey,
+    aiProvider, setAiProvider,
+    activeApiKey,
     // Status
     processing, errors, setErrors,
     reviewQueue, setReviewQueue,
@@ -710,7 +730,7 @@ export function AppDataProvider({ uid, children }) {
     deletePending,
   }), [
     receipts, expenses, budgets, recurring, customStores, storeLocations,
-    currency, darkMode, onboarded, apiKey,
+    currency, darkMode, onboarded, apiKey, deepseekApiKey, aiProvider, activeApiKey,
     processing, errors, reviewQueue, pendingReceipts,
     dataLoaded, loadFailed, allItems,
     addExpense, addCustomStore, updateExpense, deleteExpense, updateReceipt,

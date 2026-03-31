@@ -4,9 +4,21 @@ import { auth } from "../../firebase";
 import { VIEWS } from "../../config/constants";
 import { haptic } from "../../utils/helpers";
 import { useAppData } from "../../contexts/AppDataContext";
+import { AI_PROVIDER } from "../../services/ai";
+import { LS_KEYS, lsSet } from "../../services/localStorage";
 
 export default function TopNav({ view, go, onAddExpense, onApiKey }) {
-  const { receipts, currency, setCurrency, apiKey, darkMode, setDarkMode, allItems } = useAppData();
+  const {
+    receipts,
+    currency,
+    setCurrency,
+    activeApiKey,
+    darkMode,
+    setDarkMode,
+    allItems,
+    aiProvider,
+    setAiProvider,
+  } = useAppData();
   const totalItems = allItems.length;
   const currentView = VIEWS.find(v => v.id === view);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -15,6 +27,35 @@ export default function TopNav({ view, go, onAddExpense, onApiKey }) {
     go(id);
     setMenuOpen(false);
   };
+
+  const setAiProviderAndPersist = (p) => {
+    setAiProvider(p);
+    lsSet(LS_KEYS.aiProvider, p);
+    haptic(10);
+  };
+
+  const aiToggle = (
+    <div className="ai-toggle" role="group" aria-label="Dostawca AI">
+      <button
+        type="button"
+        className={`ai-toggle-btn${aiProvider === AI_PROVIDER.ANTHROPIC ? " active" : ""}`}
+        onClick={() => setAiProviderAndPersist(AI_PROVIDER.ANTHROPIC)}
+        aria-pressed={aiProvider === AI_PROVIDER.ANTHROPIC}
+        title="Anthropic (Claude) — skan zdjęć paragonów"
+      >
+        Claude
+      </button>
+      <button
+        type="button"
+        className={`ai-toggle-btn${aiProvider === AI_PROVIDER.DEEPSEEK ? " active" : ""}`}
+        onClick={() => setAiProviderAndPersist(AI_PROVIDER.DEEPSEEK)}
+        aria-pressed={aiProvider === AI_PROVIDER.DEEPSEEK}
+        title="DeepSeek — klucz ustawiasz po kliknięciu 🔑"
+      >
+        DeepSeek
+      </button>
+    </div>
+  );
 
   return (
     <header>
@@ -65,11 +106,14 @@ export default function TopNav({ view, go, onAddExpense, onApiKey }) {
           Dodaj
         </button>
 
-        {/* API Key */}
+        {aiToggle}
+
+        {/* API Key — DeepSeek key: open modal, switch to DeepSeek, paste sk-... */}
         <button className="dark-btn pos-relative" onClick={() => { onApiKey(); haptic(12); }}
-          aria-label="Klucz API" title="Klucz API">
+          aria-label="Klucz API — ustawienia DeepSeek i Anthropic"
+          title="Klucz API: wybierz dostawcę w oknie i wklej klucz (DeepSeek: sk-..., Anthropic: sk-ant-...)">
           🔑
-          {!apiKey && <span className="key-dot" />}
+          {!activeApiKey && <span className="key-dot" />}
         </button>
 
         {/* Dark mode */}
@@ -117,15 +161,23 @@ export default function TopNav({ view, go, onAddExpense, onApiKey }) {
               ))}
             </div>
             <div className="mobile-menu-footer">
-              <div className="cur-toggle" role="group" aria-label="Waluta">
-                {["PLN","EUR","USD"].map(c => (
-                  <button key={c} className={`cur-btn${currency === c ? " active" : ""}`}
-                    onClick={() => setCurrency(c)} aria-pressed={currency === c}>{c}</button>
-                ))}
+              <div className="mobile-menu-footer-tools">
+                <div className="cur-toggle" role="group" aria-label="Waluta">
+                  {["PLN","EUR","USD"].map(c => (
+                    <button key={c} className={`cur-btn${currency === c ? " active" : ""}`}
+                      onClick={() => setCurrency(c)} aria-pressed={currency === c}>{c}</button>
+                  ))}
+                </div>
+                {aiToggle}
               </div>
-              <button className="mobile-menu-action" onClick={() => { onAddExpense(); setMenuOpen(false); haptic(12); }}>
-                + Dodaj wydatek
-              </button>
+              <div className="mobile-menu-footer-actions">
+                <button type="button" className="mobile-menu-action mobile-menu-action--ghost" onClick={() => { onApiKey(); setMenuOpen(false); haptic(12); }}>
+                  🔑 Klucz API
+                </button>
+                <button className="mobile-menu-action" onClick={() => { onAddExpense(); setMenuOpen(false); haptic(12); }}>
+                  + Dodaj wydatek
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -9,6 +9,8 @@ export const LS_KEYS = {
   darkMode: "maszka_darkMode",
   onboarded: "maszka_onboarded",
   apiKey: "maszka_apiKey",
+  aiProvider: "maszka_aiProvider",
+  deepseekApiKey: "maszka_deepseekApiKey",
   corrections: "maszka_corrections",
 };
 
