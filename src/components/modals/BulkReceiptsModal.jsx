@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { haptic } from '../../utils/helpers';
 import { useAppData } from '../../contexts/AppDataContext';
-import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, parseJsonReceipt as parseJsonReceiptAPI, getCorrectionsHint, compressImageIfNeeded } from '../../services/claude';
+import { scanReceipt as scanReceiptAPI, parseTextReceipt as parseTextReceiptAPI, parseJsonReceipt as parseJsonReceiptAPI, getCorrectionsHint, compressImageIfNeeded } from '../../services/ai';
 import { getCorrections, applyLearnedCorrections } from '../../hooks/useCorrections';
 import { FX_SYMBOLS } from '../../config/defaults';
 
@@ -11,7 +11,7 @@ const SOURCES = [
 ];
 
 export default function BulkReceiptsModal({ onClose, onNeedKey }) {
-  const { apiKey, currency } = useAppData();
+  const { activeApiKey, aiProvider, currency } = useAppData();
   const sym = FX_SYMBOLS[currency] || "zł";
 
   const [staged, setStaged] = useState([]); // receipts ready to submit
@@ -54,11 +54,11 @@ export default function BulkReceiptsModal({ onClose, onNeedKey }) {
   // ── Add via text ──
   const addFromText = async () => {
     if (!textVal.trim()) return;
-    if (!apiKey) { onNeedKey(); return; }
+    if (!activeApiKey) { onNeedKey(); return; }
     setProcessing("Analiza tekstu...");
     setError(null);
     try {
-      const parsed = await parseTextReceiptAPI(textVal.trim(), apiKey, getCorrectionsHint(getCorrections()));
+      const parsed = await parseTextReceiptAPI(textVal.trim(), activeApiKey, aiProvider, getCorrectionsHint(getCorrections()));
       const arr = Array.isArray(parsed) ? parsed : [parsed];
       const newReceipts = arr.map((r, i) => ({
         ...applyLearnedCorrections(r),
@@ -82,13 +82,13 @@ export default function BulkReceiptsModal({ onClose, onNeedKey }) {
       f.name.endsWith(".json") || f.type === "application/json"
     );
     if (!jsonFiles.length) return;
-    if (!apiKey) { onNeedKey(); return; }
+    if (!activeApiKey) { onNeedKey(); return; }
     setError(null);
     for (const file of jsonFiles) {
       setProcessing(`${file.name}...`);
       try {
         const text = await file.text();
-        const parsed = await parseJsonReceiptAPI(text, apiKey, source, getCorrectionsHint(getCorrections()));
+        const parsed = await parseJsonReceiptAPI(text, activeApiKey, aiProvider, source, getCorrectionsHint(getCorrections()));
         const arr = Array.isArray(parsed) ? parsed : [parsed];
         const sourceTag = source ? `import-${source}` : "import-json";
         const newReceipts = arr.map((r, i) => ({
@@ -108,7 +108,7 @@ export default function BulkReceiptsModal({ onClose, onNeedKey }) {
 
   // ── Add via photo ──
   const addFromPhoto = async (files) => {
-    if (!apiKey) { onNeedKey(); return; }
+    if (!activeApiKey) { onNeedKey(); return; }
     setError(null);
     for (const file of Array.from(files)) {
       if (!file.type.startsWith("image/")) continue;
@@ -121,7 +121,7 @@ export default function BulkReceiptsModal({ onClose, onNeedKey }) {
           r.readAsDataURL(file);
         });
         const { b64, mediaType } = await compressImageIfNeeded(rawB64, file.type);
-        const parsed = await scanReceiptAPI(b64, mediaType, apiKey, getCorrectionsHint(getCorrections()));
+        const parsed = await scanReceiptAPI(b64, mediaType, activeApiKey, aiProvider, getCorrectionsHint(getCorrections()));
         const corrected = applyLearnedCorrections(parsed);
         setStaged(s => [...s, { ...corrected, id: Date.now() + Math.random(), source: "camera" }]);
         haptic(30);

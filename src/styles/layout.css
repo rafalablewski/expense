@@ -383,6 +383,7 @@
   .cur-toggle { display: none; }
   .topnav .nav-add-btn { display: none; }
   .topnav .dark-btn { display: none; }
+  .topnav .ai-toggle-btn { display: none; }
   .hamburger-btn { display: flex; }
   .mobile-menu-backdrop {
     display: block;

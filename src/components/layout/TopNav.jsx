@@ -4,9 +4,10 @@ import { auth } from "../../firebase";
 import { VIEWS } from "../../config/constants";
 import { haptic } from "../../utils/helpers";
 import { useAppData } from "../../contexts/AppDataContext";
+import { LS_KEYS, lsSet } from "../../services/localStorage";
 
 export default function TopNav({ view, go, onAddExpense, onApiKey }) {
-  const { receipts, currency, setCurrency, apiKey, darkMode, setDarkMode, allItems } = useAppData();
+  const { receipts, currency, setCurrency, apiKey, darkMode, setDarkMode, allItems, aiProvider, setAiProvider, activeApiKey } = useAppData();
   const totalItems = allItems.length;
   const currentView = VIEWS.find(v => v.id === view);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -65,11 +66,26 @@ export default function TopNav({ view, go, onAddExpense, onApiKey }) {
           Dodaj
         </button>
 
+        {/* AI Provider toggle */}
+        <button
+          className="ai-toggle-btn"
+          onClick={() => {
+            const next = aiProvider === "claude" ? "deepseek" : "claude";
+            setAiProvider(next);
+            lsSet(LS_KEYS.aiProvider, next);
+            haptic(12);
+          }}
+          aria-label={`Dostawca AI: ${aiProvider === "claude" ? "Claude" : "DeepSeek"}`}
+          title={`Dostawca AI: ${aiProvider === "claude" ? "Claude" : "DeepSeek"} — kliknij aby przełączyć`}
+        >
+          <span className="ai-toggle-label">{aiProvider === "claude" ? "Claude" : "DeepSeek"}</span>
+        </button>
+
         {/* API Key */}
         <button className="dark-btn pos-relative" onClick={() => { onApiKey(); haptic(12); }}
           aria-label="Klucz API" title="Klucz API">
           🔑
-          {!apiKey && <span className="key-dot" />}
+          {!activeApiKey && <span className="key-dot" />}
         </button>
 
         {/* Dark mode */}
@@ -121,6 +137,13 @@ export default function TopNav({ view, go, onAddExpense, onApiKey }) {
                 {["PLN","EUR","USD"].map(c => (
                   <button key={c} className={`cur-btn${currency === c ? " active" : ""}`}
                     onClick={() => setCurrency(c)} aria-pressed={currency === c}>{c}</button>
+                ))}
+              </div>
+              <div className="cur-toggle" role="group" aria-label="Dostawca AI">
+                {["claude","deepseek"].map(p => (
+                  <button key={p} className={`cur-btn${aiProvider === p ? " active" : ""}`}
+                    onClick={() => { setAiProvider(p); lsSet(LS_KEYS.aiProvider, p); haptic(12); }}
+                    aria-pressed={aiProvider === p}>{p === "claude" ? "Claude" : "DeepSeek"}</button>
                 ))}
               </div>
               <button className="mobile-menu-action" onClick={() => { onAddExpense(); setMenuOpen(false); haptic(12); }}>

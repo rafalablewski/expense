@@ -2,10 +2,10 @@ import { useMemo, useState } from "react";
 import { haptic } from "../utils/helpers";
 import Spinner from "../components/primitives/Spinner";
 import { useAppData } from "../contexts/AppDataContext";
-import { claudeChat } from "../services/claude";
+import { aiChat } from "../services/ai";
 
 export default function MealPlanView({ onNeedKey }) {
-  const { receipts, apiKey } = useAppData();
+  const { receipts, activeApiKey, aiProvider } = useAppData();
   const DAYS  = ["Pon","Wt","Śr","Czw","Pt","Sob","Ndz"];
   const MEALS = ["Śniadanie","Obiad","Kolacja"];
   const [plan,     setPlan]     = useState({}); // {`${day}-${meal}`: text}
@@ -28,12 +28,12 @@ export default function MealPlanView({ onNeedKey }) {
     )].slice(0, 40);
   }, [receipts]);
 
-  const callClaude = (prompt) => {
-    if (!apiKey) {
+  const callAI = (prompt) => {
+    if (!activeApiKey) {
       if (onNeedKey) onNeedKey();
       throw new Error("Brak klucza API — ustaw go w ustawieniach (ikona klucza)");
     }
-    return claudeChat(prompt, apiKey);
+    return aiChat(prompt, activeApiKey, aiProvider);
   };
 
   const generateCell = async (day, meal) => {
@@ -46,7 +46,7 @@ export default function MealPlanView({ onNeedKey }) {
         ? `Produkty dostępne w lodówce: ${knownItems.slice(0,20).join(", ")}.`
         : "";
       const extra = pantry ? `Dodatkowe składniki: ${pantry}.` : "";
-      const text = await callClaude(
+      const text = await callAI(
         `Zaproponuj jedno konkretne danie na ${meal} na ${day}. ${context} ${extra}
 Odpowiedz TYLKO nazwą dania i jednym zdaniem opisu (max 60 znaków). Format: "Nazwa — opis". Bez list, bez gwiazdek.`
       );
@@ -77,7 +77,7 @@ Odpowiedz TYLKO nazwą dania i jednym zdaniem opisu (max 60 znaków). Format: "N
         setLoading(key);
         try {
           const context = knownItems.length ? `Produkty w lodówce: ${knownItems.slice(0,15).join(", ")}.` : "";
-          const text = await callClaude(
+          const text = await callAI(
             `Danie na ${meal}, ${day}. ${context} Odpowiedz TYLKO: "Nazwa — krótki opis" (max 55 znaków). Zero list.`
           );
           setPlan(p => ({ ...p, [key]: text.trim() }));
@@ -112,7 +112,7 @@ Odpowiedz TYLKO nazwą dania i jednym zdaniem opisu (max 60 znaków). Format: "N
     haptic(20);
     try {
       const meals = Object.values(plan).join("\n");
-      const text = await callClaude(
+      const text = await callAI(
         `Na podstawie tych posiłków: ${meals}
 
 Wygeneruj listę zakupów. Odpowiedz TYLKO jako JSON array stringów, np. ["Mleko","Jajka"]. Zero innych słów.`
