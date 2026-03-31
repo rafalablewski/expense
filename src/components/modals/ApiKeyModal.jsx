@@ -24,13 +24,14 @@ export default function ApiKeyModal({ onClose }) {
 
   const onKeyChange = (e) => {
     const v = e.target.value;
-    if (isDeepseek) {
-      setDeepseekApiKey(v);
-      lsSet(LS_KEYS.deepseekApiKey, v);
-    } else {
-      setApiKey(v);
-      lsSet(LS_KEYS.apiKey, v);
-    }
+    if (isDeepseek) setDeepseekApiKey(v);
+    else setApiKey(v);
+  };
+
+  const persistKeysAndClose = () => {
+    lsSet(LS_KEYS.apiKey, apiKey);
+    lsSet(LS_KEYS.deepseekApiKey, deepseekApiKey);
+    onClose();
   };
 
   const btnBase = darkMode
@@ -39,7 +40,7 @@ export default function ApiKeyModal({ onClose }) {
   const btnActive = { borderColor: $.green, background: darkMode ? "#1a2e1f" : "#e8f5e9", color: darkMode ? "#fff" : $.ink0 };
 
   return (
-    <div className="apikey-overlay" onClick={onClose}>
+    <div className="apikey-overlay" onClick={persistKeysAndClose}>
       <div
         className={`apikey-box ${darkMode ? "apikey-box-dark" : "apikey-box-light"}`}
         onClick={e => e.stopPropagation()}
@@ -98,7 +99,7 @@ export default function ApiKeyModal({ onClose }) {
           onBlur={e => (e.target.style.borderColor = darkMode ? "#333" : "#e0e0e0")}
         />
         <div className="apikey-actions">
-          <button onClick={onClose} className="apikey-save">
+          <button type="button" onClick={persistKeysAndClose} className="apikey-save">
             Zapisz
           </button>
         </div>
