@@ -2551,3 +2551,44 @@
   transition: opacity .15s;
 }
 .sdb-loc-row:hover .sdb-loc-actions { opacity: 1; }
+
+/* ── SEED RECEIPTS BANNER ── */
+.seed-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 12px 16px 0;
+  padding: 14px 16px;
+  background: var(--c-glass-full);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--c-green-rim);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(6,193,103,0.12);
+}
+.seed-banner__icon {
+  font-size: 28px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.seed-banner__text { flex: 1; min-width: 0; }
+.seed-banner__title {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--c-ink0);
+}
+.seed-banner__sub {
+  font-size: 13px;
+  color: var(--c-ink2);
+  margin-top: 2px;
+}
+.seed-banner__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+@media (max-width: 520px) {
+  .seed-banner { flex-wrap: wrap; }
+  .seed-banner__actions { width: 100%; }
+  .seed-banner__actions > * { flex: 1; }
+}

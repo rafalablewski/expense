@@ -22,6 +22,7 @@ import ExpensesView from "./views/ExpensesView";
 import TopNav from "./components/layout/TopNav";
 import BottomNav from "./components/layout/BottomNav";
 import Fab from "./components/layout/Fab";
+import SeedReceiptsBanner from "./components/banners/SeedReceiptsBanner";
 
 
 export default function App() {
@@ -180,6 +181,7 @@ export default function App() {
       />
 
       <main id="main" className="page" ref={pageRef}>
+        <SeedReceiptsBanner />
         {view === "receipts"   && <ReceiptsView
           onFiles={(files) => handleFiles(files, () => setShowKeyModal(true))}
           onManualEntry={() => openManualEntry()}
