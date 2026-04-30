@@ -87,6 +87,12 @@
 [data-dark="1"] .rv-del-btn:hover { color: #FF6B6B; background: rgba(217,48,37,0.15); }
 [data-dark="1"] .rv-suggest-pill { border-color: rgba(6,193,103,0.35); background: rgba(6,193,103,0.12); color: #3DDC84; }
 [data-dark="1"] .rv-suggest-pill:hover { background: var(--c-green); color: #fff; }
+[data-dark="1"] .rv-footer {
+  background: rgba(12,22,15,0.95);
+  border-top-color: rgba(255,255,255,0.10);
+}
+[data-dark="1"] .tp-items { border-top-color: rgba(255,255,255,0.10); }
+[data-dark="1"] .tp-item-cat { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.55); }
 
 /* v2 receipt review dark */
 [data-dark="1"] .rv2-header {

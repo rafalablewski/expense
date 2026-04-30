@@ -955,6 +955,86 @@
   font-size: 13px;
 }
 
+/* ── SHARED rv- HEADER / FOOTER ── */
+.rv-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 8px;
+}
+.rv-title {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  color: var(--c-ink0);
+}
+.rv-footer {
+  display: flex;
+  gap: 10px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  position: sticky;
+  bottom: 0;
+  background: rgba(248,255,252,0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.rv-footer .btn-primary,
+.rv-footer .btn-secondary {
+  flex: 1;
+  justify-content: center;
+}
+
+/* ── TRANSCRIPT PREVIEW MODAL ── */
+.tp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.tp-city { color: var(--c-ink3); font-weight: 400; }
+.tp-chevron {
+  font-size: 14px;
+  color: var(--c-ink3);
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+.tp-items {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 8px 0 0;
+  border-top: 1px dashed rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tp-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.tp-item-name { color: var(--c-ink0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tp-item-cat {
+  font-size: 10px;
+  color: var(--c-ink3);
+  background: rgba(0,0,0,0.04);
+  padding: 1px 6px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.tp-item-qty { color: var(--c-ink2); font-size: 11px; }
+.tp-item-price { color: var(--c-ink0); font-weight: 600; }
+
 /* ── ONBOARDING ── */
 .onboard-overlay {
   position: fixed;
