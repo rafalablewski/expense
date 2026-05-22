@@ -2667,11 +2667,6 @@
   box-shadow: 0 6px 18px rgba(0,0,0,0.22);
 }
 .may26-cta__btn:active:not(:disabled) { transform: translateY(0); }
-.may26-cta__btn:disabled {
-  opacity: 0.85;
-  cursor: default;
-  background: rgba(255,255,255,0.85);
-}
 .may26-cta__close {
   position: absolute;
   top: 8px;
