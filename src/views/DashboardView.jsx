@@ -3,6 +3,7 @@ import $ from "../config/theme";
 import { FX_SYMBOLS } from "../config/defaults";
 import { convertAmt, isRecurringPaused, parseDate, receiptSavings, sumReceiptItems, toMonthly } from "../utils/helpers";
 import Empty from "../components/primitives/Empty";
+import May2026ReceiptsBanner from "../components/banners/May2026ReceiptsBanner";
 import { useAppData } from "../contexts/AppDataContext";
 
 export default function DashboardView({ go }) {
@@ -89,6 +90,8 @@ export default function DashboardView({ go }) {
 
   return (
     <>
+      <May2026ReceiptsBanner />
+
       <div className="page-hero">
         <div className="page-hero-inner">
           <h1 className="page-title au">Cześć! <span>MaszkaApp</span></h1>
