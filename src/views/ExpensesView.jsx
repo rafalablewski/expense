@@ -169,7 +169,7 @@ export default function ExpensesView() {
                 const isOpen = expanded === i;
                 return (
                   <div key={i} onClick={() => setExpanded(isOpen ? null : i)}
-                    className="glass-card cursor-pointer">
+                    className="glass-card cursor-pointer cv-row">
 
                     {/* Collapsed row */}
                     <div className="expense-row">
