@@ -16,7 +16,7 @@ export default function ReceiptCard({ r, onDelete, onUpdate, delay = 0, receiptN
   return (
     <>
       <article
-        className="card"
+        className="card cv-row"
         style={{ animation: `fadeUp .45s cubic-bezier(.16,1,.3,1) ${delay}s both` }}
         aria-labelledby={`${bid}-name`}
       >

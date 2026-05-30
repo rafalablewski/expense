@@ -55,5 +55,16 @@ body {
 .au2 { animation: fadeUp .45s cubic-bezier(.16,1,.3,1) .16s both; }
 .au3 { animation: fadeUp .45s cubic-bezier(.16,1,.3,1) .24s both; }
 
+/* ── List virtualization ──
+   Off-screen list rows skip layout/paint entirely, including their costly
+   `backdrop-filter` blur, so long receipt/expense lists stay smooth while
+   scrolling. `contain-intrinsic-size: auto <h>` caches each row's real height
+   after first paint, so there's no scrollbar jump. Degrades gracefully —
+   browsers without support just render every row as before. */
+.cv-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 72px;
+}
+
 /* ── MONO ── */
 .mono { font-family: 'JetBrains Mono', monospace; }
