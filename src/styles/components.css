@@ -2612,7 +2612,6 @@
     inset 0 1px 0 rgba(255,255,255,0.25);
   overflow: hidden;
   isolation: isolate;
-  animation: may26-pulse 4.5s ease-in-out infinite;
 }
 .may26-cta::before {
   content: "";
@@ -2624,6 +2623,11 @@
   transform: rotate(18deg);
   pointer-events: none;
   z-index: -1;
+  /* GPU-composited opacity pulse — keeps the CTA "alive" without forcing a
+     per-frame box-shadow repaint of the whole banner (the old approach made
+     the app janky because the blurred shadow was re-rasterized every frame). */
+  will-change: opacity;
+  animation: may26-glow 4.5s ease-in-out infinite;
 }
 .may26-cta__icon {
   flex-shrink: 0;
@@ -2686,9 +2690,9 @@
 }
 .may26-cta__close:hover { background: rgba(255,255,255,0.24); }
 
-@keyframes may26-pulse {
-  0%, 100% { box-shadow: 0 12px 32px rgba(6,193,103,0.28), 0 2px 6px rgba(37,99,235,0.18), inset 0 1px 0 rgba(255,255,255,0.25); }
-  50%      { box-shadow: 0 14px 38px rgba(6,193,103,0.40), 0 2px 8px rgba(37,99,235,0.24), inset 0 1px 0 rgba(255,255,255,0.30); }
+@keyframes may26-glow {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
 }
 
 @media (max-width: 520px) {
@@ -2697,5 +2701,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .may26-cta { animation: none; }
+  .may26-cta::before { animation: none; opacity: 0.8; }
 }
