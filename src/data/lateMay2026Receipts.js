@@ -153,13 +153,13 @@ export const LATE_MAY_2026_RECEIPTS = [
     item("Zwrot kaucji za butelki", "Inne", 1, null, -18.70, null, "szt", "zwrot opakowań"),
   ]),
 
-  // ── #13 Tauron (rachunek za prąd), data niepodana — 370,00 PLN ──
-  r(13, { ...TAURON, date: "" }, [
+  // ── #13 Tauron (rachunek za prąd), data niepodana → 2026-05-31 (data transkrypcji) — 370,00 PLN ──
+  r(13, { ...TAURON, date: "2026-05-31" }, [
     item("Opłata za energię elektryczną", "Dom", 1, 370.00, 370.00),
   ]),
 
-  // ── #14 Owoce (sklep niepodany), data niepodana — 18,20 PLN ──
-  r(14, { ...UNKNOWN, date: "" }, [
+  // ── #14 Owoce (sklep niepodany), data niepodana → 2026-05-31 (data transkrypcji) — 18,20 PLN ──
+  r(14, { ...UNKNOWN, date: "2026-05-31" }, [
     item("Truskawki", "Owoce", 0.340, null, 8.20, null, "kg"),
     item("Śliwki", "Owoce", 0.350, null, 10.00, null, "kg"),
   ]),
