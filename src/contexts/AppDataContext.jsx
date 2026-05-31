@@ -13,6 +13,7 @@ import {
 } from "../services/ai";
 import { initCorrections, getCorrections, learnFromCorrections, applyLearnedCorrections } from "../hooks/useCorrections";
 import { haptic, sumReceiptItems, toMonthly } from "../utils/helpers";
+import { LATE_MAY_2026_BASE_ID } from "../data/lateMay2026Receipts";
 import { matchStoreAddress, normalize, stripStreetPrefix, fuzzyStoreMatch } from "../utils/addressMatcher";
 
 const AppDataContext = createContext(null);
@@ -203,6 +204,25 @@ export function AppDataProvider({ uid, children }) {
         updateField(uid, "recurring", rec);
       }
     }
+
+    // One-time backfill: the late-May 2026 import included two receipts that
+    // had no date on the original transcript (Tauron electricity bill, loose
+    // fruit), so they were excluded from monthly totals. Date them 2026-05-31
+    // (the transcript date). Only touches those two IDs when the date is still
+    // blank, then persists — idempotent, so it's a no-op once healed.
+    const UNDATED_BACKFILL = {
+      [LATE_MAY_2026_BASE_ID + 13]: "2026-05-31",
+      [LATE_MAY_2026_BASE_ID + 14]: "2026-05-31",
+    };
+    let backfilledDate = false;
+    finalReceipts = finalReceipts.map(r => {
+      if (UNDATED_BACKFILL[r.id] && !r.date) {
+        backfilledDate = true;
+        return { ...r, date: UNDATED_BACKFILL[r.id] };
+      }
+      return r;
+    });
+    if (backfilledDate) updateField(uid, "receipts", finalReceipts);
 
     setReceipts(prev => deepEqual(prev, finalReceipts) ? prev : finalReceipts);
     setExpenses(prev => prev.length === 0 ? prev : []);
