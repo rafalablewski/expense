@@ -1,5 +1,10 @@
 /* ── DARK MODE ── */
 [data-dark="1"] body {
+  background: #080e0a;
+  color: #F5F5F7;
+}
+/* Dark ambient gradient on the same fixed, painted-once backdrop layer (see reset.css). */
+[data-dark="1"] body::before {
   background:
     radial-gradient(ellipse 80% 60% at 10% 0%,   #0a2e1a 0%, transparent 55%),
     radial-gradient(ellipse 60% 50% at 90% 5%,   #0d1a2e 0%, transparent 50%),
@@ -7,7 +12,6 @@
     radial-gradient(ellipse 70% 50% at 5%  95%,  #0a0f1e 0%, transparent 55%),
     radial-gradient(ellipse 90% 80% at 50% 50%,  #0a1f12 0%, transparent 70%),
     #080e0a;
-  color: #F5F5F7;
 }
 [data-dark="1"] .card,
 [data-dark="1"] .stat-card,

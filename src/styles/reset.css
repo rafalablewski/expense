@@ -5,6 +5,26 @@ html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
 
 body {
   font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  background: #eef8f2;
+  color: var(--c-ink0);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+  line-height: 1.5;
+}
+
+/* Ambient gradient backdrop on a fixed, painted-once compositor layer.
+   Previously this lived on `body` with `background-attachment: fixed`, which
+   forces desktop browsers to repaint the whole gradient on every scroll frame
+   (and every `backdrop-filter` card to re-sample it) — the cause of the
+   desktop-only scroll jank. Mobile browsers rasterize fixed backgrounds once,
+   which is why mobile stayed smooth. A fixed pseudo-element is composited once
+   and never repaints on scroll, preserving the exact look without the cost. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background:
     radial-gradient(ellipse 80% 60% at 10% 0%,   #c8f7dc 0%, transparent 55%),
     radial-gradient(ellipse 60% 50% at 90% 5%,   #daf0ff 0%, transparent 50%),
@@ -12,11 +32,6 @@ body {
     radial-gradient(ellipse 70% 50% at 5%  95%,  #e5f0ff 0%, transparent 55%),
     radial-gradient(ellipse 90% 80% at 50% 50%,  #f5fff9 0%, transparent 70%),
     #eef8f2;
-  background-attachment: fixed;
-  color: var(--c-ink0);
-  -webkit-font-smoothing: antialiased;
-  min-height: 100dvh;
-  line-height: 1.5;
 }
 
 :focus-visible {
